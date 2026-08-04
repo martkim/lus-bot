@@ -113,23 +113,7 @@ async def get_students():
     모든 활성화된 학생 목록과 현재 연습 중인 세션 정보를 함께 조회하여 반환합니다.
     """
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
-        query = """
-            SELECT s.*, 
-                   sess.id as active_session_id,
-                   sess.start_time as active_session_start
-            FROM students s
-            LEFT JOIN sessions sess ON s.id = sess.student_id AND sess.status = 'ACTIVE'
-            WHERE s.status = 'ACTIVE'
-            ORDER BY s.name ASC
-        """
-        cursor.execute(query)
-        rows = cursor.fetchall()
-        conn.close()
-        
-        students = [dict(row) for row in rows]
+        students = db.get_active_students_with_session()
         return {"success": True, "data": students}
     except Exception as e:
         raise HTTPException(status_code=500, detail={"success": False, "message": "학생 목록 조회 중 오류 발생", "error": str(e)})
@@ -145,17 +129,10 @@ async def create_student(student: StudentCreate, request: Request):
         raise HTTPException(status_code=400, detail={"success": False, "message": "이름과 전공 악기를 모두 입력해 주세요."})
         
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "INSERT INTO students (name, instrument, age, mbti) VALUES (?, ?, ?, ?)",
-            (student.name.strip(), student.instrument.strip(), student.age, student.mbti.strip().upper())
+        new_id = db.create_student(
+            student.name.strip(), student.instrument.strip(), student.age, student.mbti.strip().upper()
         )
-        new_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
+
         return {
             "success": True, 
             "message": "학생이 성공적으로 등록되었습니다.", 
@@ -179,29 +156,14 @@ async def start_session(payload: SessionControl):
     student_id = payload.studentId
     
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "SELECT id FROM sessions WHERE student_id = ? AND status = 'ACTIVE'",
-            (student_id,)
-        )
-        active_session = cursor.fetchone()
-        
+        active_session = db.get_active_session(student_id)
+
         if active_session:
-            conn.close()
             raise HTTPException(status_code=400, detail={"success": False, "message": "이미 진행 중인 연습 세션이 존재합니다. 먼저 기존 연습을 종료해 주세요."})
-            
+
         now_iso = datetime.now(timezone.utc).isoformat()
-        
-        cursor.execute(
-            "INSERT INTO sessions (student_id, start_time, status) VALUES (?, ?, 'ACTIVE')",
-            (student_id, now_iso)
-        )
-        new_session_id = cursor.lastrowid
-        conn.commit()
-        conn.close()
-        
+        new_session_id = db.create_session(student_id, now_iso)
+
         return {
             "success": True,
             "message": "연습을 시작합니다!",
@@ -221,19 +183,11 @@ async def end_session(payload: SessionControl):
     student_id = payload.studentId
     
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            "SELECT id, start_time FROM sessions WHERE student_id = ? AND status = 'ACTIVE'",
-            (student_id,)
-        )
-        active_session = cursor.fetchone()
-        
+        active_session = db.get_active_session(student_id)
+
         if not active_session:
-            conn.close()
             raise HTTPException(status_code=404, detail={"success": False, "message": "진행 중인 연습 세션이 없습니다. 먼저 연습을 시작해 주세요."})
-            
+
         if payload.client_end_time:
             now_iso = payload.client_end_time
             now_dt = datetime.fromisoformat(now_iso.replace("Z", "+00:00"))
@@ -250,14 +204,9 @@ async def end_session(payload: SessionControl):
         
         diff_seconds = (now_dt - start_dt).total_seconds()
         duration_minutes = max(1, round(diff_seconds / 60))
-        
-        cursor.execute(
-            "UPDATE sessions SET end_time = ?, duration_minutes = ?, status = 'COMPLETED' WHERE id = ?",
-            (now_iso, duration_minutes, active_session["id"])
-        )
-        conn.commit()
-        conn.close()
-        
+
+        db.end_session(active_session["id"], now_iso, duration_minutes)
+
         return {
             "success": True,
             "message": "연습을 정상 종료했습니다. 수고하셨습니다!",
@@ -284,55 +233,18 @@ async def get_dashboard_status(request: Request):
         today_local_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         today_start_iso = today_local_start.astimezone(timezone.utc).isoformat()
         
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         # 1. 현재 연습 중인 학생들
-        cursor.execute("""
-            SELECT s.id as student_id, s.name, s.instrument, sess.id as session_id, sess.start_time 
-            FROM sessions sess
-            JOIN students s ON sess.student_id = s.id
-            WHERE sess.status = 'ACTIVE'
-            ORDER BY sess.start_time DESC
-        """)
-        active_students = [dict(row) for row in cursor.fetchall()]
-        
+        active_students = db.get_active_sessions_with_students()
+
         # 2. 오늘 누적 연습시간 랭킹 (COMPLETED 상태)
-        cursor.execute("""
-            SELECT s.id as student_id, s.name, s.instrument,
-                   COALESCE(SUM(sess.duration_minutes), 0) as total_minutes,
-                   COUNT(sess.id) as session_count
-            FROM students s
-            LEFT JOIN sessions sess ON s.id = sess.student_id 
-              AND sess.status = 'COMPLETED'
-              AND sess.end_time >= ?
-            GROUP BY s.id
-            ORDER BY total_minutes DESC
-        """, (today_start_iso,))
-        daily_stats = [dict(row) for row in cursor.fetchall()]
-        
+        daily_stats = db.get_daily_stats_since(today_start_iso)
+
         # 3. 오늘 완료된 타임라인 세션 내역
-        cursor.execute("""
-            SELECT s.name, s.instrument, sess.start_time, sess.end_time, sess.duration_minutes
-            FROM sessions sess
-            JOIN students s ON sess.student_id = s.id
-            WHERE sess.status = 'COMPLETED' AND sess.end_time >= ?
-            ORDER BY sess.end_time DESC
-        """, (today_start_iso,))
-        timeline = [dict(row) for row in cursor.fetchall()]
-        
+        timeline = db.get_completed_timeline_since(today_start_iso)
+
         # 4. 최근 20개 실시간 Q&A 질문 목록 (대시보드 표시용)
-        cursor.execute("""
-            SELECT q.id, q.student_id, q.student_name, s.instrument, q.question_text, q.ai_answer, q.teacher_answer, q.created_at, q.status
-            FROM questions q
-            LEFT JOIN students s ON q.student_id = s.id
-            ORDER BY q.created_at DESC
-            LIMIT 20
-        """)
-        questions = [dict(row) for row in cursor.fetchall()]
-        
-        conn.close()
-        
+        questions = db.get_recent_questions_with_student(limit=20)
+
         return {
             "success": True,
             "data": {
@@ -357,37 +269,22 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     
     if student_id is not None:
         try:
-            conn = db.get_db_connection()
-            cursor = conn.cursor()
-            
-            # 학생 정보 조회
-            cursor.execute("SELECT name, instrument FROM students WHERE id = ?", (student_id,))
-            student_row = cursor.fetchone()
-            if student_row:
-                student_info = dict(student_row)
-                
+            student_info = db.get_student_basic(student_id)
+            if student_info:
                 # 오늘 하루 연습 통계 (완료된 세션 기준)
                 today_local_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
                 today_start_iso = today_local_start.astimezone(timezone.utc).isoformat()
-                
-                cursor.execute("""
-                    SELECT COALESCE(SUM(duration_minutes), 0) as total_minutes,
-                           COUNT(id) as session_count
-                    FROM sessions
-                    WHERE student_id = ? AND status = 'COMPLETED' AND start_time >= ?
-                """, (student_id, today_start_iso))
-                stats_row = cursor.fetchone()
-                if stats_row:
-                    today_minutes = stats_row["total_minutes"]
-                    session_count = stats_row["session_count"]
-                
+
+                stats_row = db.get_today_completed_stats(student_id, today_start_iso)
+                today_minutes = stats_row["total_minutes"]
+                session_count = stats_row["session_count"]
+
                 student_context = (
                     f"이름: {student_info['name']}\n"
                     f"전공: {student_info['instrument']}\n"
                     f"오늘 총 연습 시간: {today_minutes}분\n"
                     f"오늘 완료한 연습 세션: {session_count}회"
                 )
-            conn.close()
         except Exception as db_err:
             print(f"[Warning] Database query failed: {db_err}")
             student_context = "등록된 학생 정보가 있으나 조회에 실패했습니다."
@@ -560,35 +457,18 @@ async def ask_question(request: QuestionAsk):
         raise HTTPException(status_code=400, detail={"success": False, "message": "질문 내용을 입력해 주세요."})
         
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         # 학생 이름 및 전공 정보 조회
-        cursor.execute("SELECT name FROM students WHERE id = ?", (student_id,))
-        student = cursor.fetchone()
-        
-        if not student:
-            conn.close()
+        student_name = db.get_student_name(student_id)
+
+        if not student_name:
             raise HTTPException(status_code=404, detail={"success": False, "message": "등록되지 않은 학생입니다."})
-            
-        student_name = student["name"]
-        
+
         # 🤖 AI 추천 답변 초안 자동 생성 (is_draft=True, student_id 전달)
         ai_draft = await get_ai_reply(question_text, is_draft=True, student_id=student_id)
-        
+
         now_iso = datetime.now().isoformat()
-        
-        cursor.execute(
-            """
-            INSERT INTO questions (student_id, student_name, question_text, ai_answer, created_at, status) 
-            VALUES (?, ?, ?, ?, ?, 'WAITING')
-            """,
-            (student_id, student_name, question_text, ai_draft, now_iso)
-        )
-        
-        conn.commit()
-        conn.close()
-        
+        db.create_question(student_id, student_name, question_text, ai_draft, now_iso)
+
         return {"success": True, "message": "선생님께 질문이 성공적으로 접수되었습니다. 💌", "data": {"aiDraft": ai_draft}}
         
     except HTTPException as he:
@@ -609,24 +489,14 @@ async def resolve_question(request: QuestionResolve, req_raw: Request):
         raise HTTPException(status_code=400, detail={"success": False, "message": "답변 내용을 작성해 주세요."})
         
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         # 질문이 실제로 존재하는지 확인
-        cursor.execute("SELECT id FROM questions WHERE id = ?", (question_id,))
-        question = cursor.fetchone()
-        
+        question = db.get_question_by_id(question_id)
+
         if not question:
-            conn.close()
             raise HTTPException(status_code=404, detail={"success": False, "message": "존재하지 않는 질문입니다."})
-            
-        cursor.execute(
-            "UPDATE questions SET teacher_answer = ?, status = 'ANSWERED' WHERE id = ?",
-            (teacher_answer, question_id)
-        )
-        conn.commit()
-        conn.close()
-        
+
+        db.resolve_question(question_id, teacher_answer)
+
         return {"success": True, "message": "답변 전송이 완료되었습니다! 🎓"}
         
     except HTTPException as he:
@@ -640,22 +510,7 @@ async def get_student_questions(student_id: int):
     특정 학생의 질문 히스토리 및 교사 피드백 조회 API.
     """
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute(
-            """
-            SELECT id, question_text, ai_answer, teacher_answer, created_at, status 
-            FROM questions 
-            WHERE student_id = ? 
-            ORDER BY created_at DESC
-            """,
-            (student_id,)
-        )
-        rows = cursor.fetchall()
-        conn.close()
-        
-        questions = [dict(row) for row in rows]
+        questions = db.get_questions_for_student(student_id)
         return {"success": True, "data": questions}
     except Exception as e:
         raise HTTPException(status_code=500, detail={"success": False, "message": "개인 Q&A 목록 조회 중 오류 발생", "error": str(e)})
@@ -669,32 +524,18 @@ async def delete_student(student_id: int, request: Request):
     """
     verify_teacher_auth(request)
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         # 원생 존재 여부 파악
-        cursor.execute("SELECT name FROM students WHERE id = ? AND status = 'ACTIVE'", (student_id,))
-        student = cursor.fetchone()
-        if not student:
-            conn.close()
+        student_name = db.get_active_student_name(student_id)
+        if not student_name:
             raise HTTPException(status_code=404, detail={"success": False, "message": "존재하지 않거나 이미 삭제된 원생입니다."})
-            
-        student_name = student["name"]
-        
+
         # 1. 혹시 진행 중인 활성 연습 세션이 있다면 강제 정상 종료 처리
-        now_dt = datetime.now(timezone.utc)
-        now_iso = now_dt.isoformat()
-        cursor.execute(
-            "UPDATE sessions SET end_time = ?, duration_minutes = 1, status = 'COMPLETED' WHERE student_id = ? AND status = 'ACTIVE'",
-            (now_iso, student_id)
-        )
-        
+        now_iso = datetime.now(timezone.utc).isoformat()
+        db.force_end_active_sessions_for_student(student_id, now_iso, duration_minutes=1)
+
         # 2. 원생 상태를 'DELETED'로 업데이트 (소프트 딜리트!)
-        cursor.execute("UPDATE students SET status = 'DELETED' WHERE id = ?", (student_id,))
-        
-        conn.commit()
-        conn.close()
-        
+        db.soft_delete_student(student_id)
+
         return {"success": True, "message": f"입시생 {student_name}님의 프로필이 안전하게 삭제(소프트 삭제) 처리되었습니다! 기존 연습 이력 및 질문 내역 데이터는 AI 통계 분석용으로 고스란히 보존됩니다."}
     except HTTPException as he:
         raise he
@@ -709,30 +550,19 @@ async def force_end_session(payload: SessionControl, request: Request):
     """
     verify_teacher_auth(request)
     student_id = payload.studentId
-    
+
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         # 학생 명 확인
-        cursor.execute("SELECT name FROM students WHERE id = ?", (student_id,))
-        student_row = cursor.fetchone()
-        if not student_row:
-            conn.close()
+        student_name = db.get_student_name(student_id)
+        if not student_name:
             raise HTTPException(status_code=404, detail={"success": False, "message": "학생 정보를 찾을 수 없습니다."})
-        student_name = student_row["name"]
-        
+
         # 활성 세션 조회
-        cursor.execute(
-            "SELECT id, start_time FROM sessions WHERE student_id = ? AND status = 'ACTIVE'",
-            (student_id,)
-        )
-        active_session = cursor.fetchone()
-        
+        active_session = db.get_active_session(student_id)
+
         if not active_session:
-            conn.close()
             raise HTTPException(status_code=400, detail={"success": False, "message": f"{student_name} 학생은 현재 진행 중인 연습 세션이 없습니다."})
-            
+
         now_dt = datetime.now(timezone.utc)
         now_iso = now_dt.isoformat()
         
@@ -743,14 +573,9 @@ async def force_end_session(payload: SessionControl, request: Request):
         
         diff_seconds = (now_dt - start_dt).total_seconds()
         duration_minutes = max(1, round(diff_seconds / 60))
-        
-        cursor.execute(
-            "UPDATE sessions SET end_time = ?, duration_minutes = ?, status = 'COMPLETED' WHERE id = ?",
-            (now_iso, duration_minutes, active_session["id"])
-        )
-        conn.commit()
-        conn.close()
-        
+
+        db.end_session(active_session["id"], now_iso, duration_minutes)
+
         return {
             "success": True,
             "message": f"{student_name} 학생의 연습 세션을 강제로 정상 종료 처리했습니다! (소요 시간: {duration_minutes}분)",
@@ -773,35 +598,15 @@ async def generate_ai_analysis_report_logic() -> str:
     선생님의 커리큘럼(curriculum_text)을 연계하여 종합적인 AI 딥 러닝 분석 리포트를 생성합니다.
     """
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         # 1. 모든 원생 데이터
-        cursor.execute("SELECT id, name, instrument, age, mbti FROM students")
-        students = [dict(row) for row in cursor.fetchall()]
-        
+        students = db.get_all_students()
+
         # 2. 모든 연습 세션 데이터 (최근 200개)
-        cursor.execute("""
-            SELECT s.name, s.instrument, s.age, s.mbti, sess.start_time, sess.end_time, sess.duration_minutes, sess.status
-            FROM sessions sess
-            JOIN students s ON sess.student_id = s.id
-            ORDER BY sess.start_time DESC
-            LIMIT 200
-        """)
-        sessions = [dict(row) for row in cursor.fetchall()]
-        
+        sessions = db.get_recent_sessions_with_student(limit=200)
+
         # 3. 모든 Q&A 질문 (최근 100개)
-        cursor.execute("""
-            SELECT q.student_name, s.instrument, s.age, s.mbti, q.question_text, q.teacher_answer, q.created_at
-            FROM questions q
-            JOIN students s ON q.student_id = s.id
-            ORDER BY q.created_at DESC
-            LIMIT 100
-        """)
-        questions = [dict(row) for row in cursor.fetchall()]
-        
-        conn.close()
-        
+        questions = db.get_recent_questions_for_analysis(limit=100)
+
         # 데이터가 없을 경우
         if not students:
             return "### 📭 분석할 원생 명부가 비어 있습니다.\n원생 관리 메뉴에서 학생을 먼저 등록해 주세요!"
@@ -936,25 +741,9 @@ async def run_24h_ai_analysis_loop():
         print("[AI Background Worker] Starting scheduled 24H student pattern analysis...")
         try:
             report_text = await generate_ai_analysis_report_logic()
-            
-            conn = db.get_db_connection()
-            cursor = conn.cursor()
+
             now_iso = datetime.now().isoformat()
-            cursor.execute(
-                "INSERT INTO ai_analysis_reports (report_text, created_at) VALUES (?, ?)",
-                (report_text, now_iso)
-            )
-            # 오래된 리포트 정리 (최근 50개만 보존)
-            cursor.execute("""
-                DELETE FROM ai_analysis_reports 
-                WHERE id NOT IN (
-                    SELECT id FROM ai_analysis_reports 
-                    ORDER BY created_at DESC 
-                    LIMIT 50
-                )
-            """)
-            conn.commit()
-            conn.close()
+            db.create_analysis_report(report_text, now_iso)
             print(f"[AI Background Worker] Analysis report successfully generated and saved at {now_iso}")
         except Exception as e:
             print(f"[AI Background Worker Error] Failed to generate background analysis: {e}")
@@ -970,20 +759,12 @@ async def auto_update_curriculum_logic():
         return
 
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         # 오늘 치 데이터 및 최근 50개의 질문 수집
         today_local_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         today_start_iso = today_local_start.astimezone(timezone.utc).isoformat()
 
-        cursor.execute("SELECT * FROM sessions WHERE end_time >= ?", (today_start_iso,))
-        recent_sessions = [dict(row) for row in cursor.fetchall()]
-        
-        cursor.execute("SELECT * FROM questions ORDER BY created_at DESC LIMIT 50")
-        recent_questions = [dict(row) for row in cursor.fetchall()]
-        
-        conn.close()
+        recent_sessions = db.get_sessions_since(today_start_iso)
+        recent_questions = db.get_recent_questions_simple(limit=50)
 
         data_summary = {
             "recent_sessions_count": len(recent_sessions),
@@ -1060,17 +841,9 @@ async def auto_generate_daily_insight():
         return
 
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-
         # 오늘 이미 생성된 인사이트가 있으면 스킵
         today_str = datetime.now().strftime("%Y-%m-%d")
-        cursor.execute(
-            "SELECT id FROM ai_daily_insights WHERE created_at LIKE ? AND is_active = 1 LIMIT 1",
-            (f"{today_str}%",)
-        )
-        if cursor.fetchone():
-            conn.close()
+        if db.has_todays_insight(today_str):
             print("[AI Insight] Today's insight already exists. Skipping generation.")
             return
 
@@ -1115,19 +888,7 @@ async def auto_generate_daily_insight():
 
         # DB에 저장
         now_iso = datetime.now().isoformat()
-        cursor.execute(
-            "INSERT INTO ai_daily_insights (insight_type, title, html_content, is_active, created_at) VALUES (?, ?, ?, 1, ?)",
-            (insight_type, title, html_content, now_iso)
-        )
-        # 오래된 인사이트 정리 (최근 30개만 보존)
-        cursor.execute("""
-            DELETE FROM ai_daily_insights
-            WHERE id NOT IN (
-                SELECT id FROM ai_daily_insights ORDER BY created_at DESC LIMIT 30
-            )
-        """)
-        conn.commit()
-        conn.close()
+        db.create_daily_insight(insight_type, title, html_content, now_iso)
         try:
             print(f"[AI Insight] Today's insight [{title}] saved successfully.")
         except Exception:
@@ -1161,15 +922,9 @@ async def get_daily_insight():
     오늘 생성된 최신 AI 꿀팁/퀴즈/추천 카드를 학생 화면으로 반환합니다.
     """
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM ai_daily_insights WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"
-        )
-        row = cursor.fetchone()
-        conn.close()
+        row = db.get_latest_active_insight()
         if row:
-            return {"success": True, "data": dict(row)}
+            return {"success": True, "data": row}
         return {"success": False, "message": "아직 오늘의 꿀팁이 준비 중입니다."}
     except Exception as e:
         raise HTTPException(status_code=500, detail={"success": False, "error": str(e)})
@@ -1182,11 +937,7 @@ async def get_all_insights(request: Request):
     """
     verify_teacher_auth(request)
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, insight_type, title, is_active, created_at FROM ai_daily_insights ORDER BY created_at DESC LIMIT 30")
-        rows = [dict(r) for r in cursor.fetchall()]
-        conn.close()
+        rows = db.get_all_insights(limit=30)
         return {"success": True, "data": rows}
     except Exception as e:
         raise HTTPException(status_code=500, detail={"success": False, "error": str(e)})
@@ -1199,17 +950,11 @@ async def toggle_insight(insight_id: int, request: Request):
     """
     verify_teacher_auth(request)
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT is_active FROM ai_daily_insights WHERE id = ?", (insight_id,))
-        row = cursor.fetchone()
-        if not row:
-            conn.close()
+        current_status = db.get_insight_active_status(insight_id)
+        if current_status is None:
             raise HTTPException(status_code=404, detail="인사이트를 찾을 수 없습니다.")
-        new_status = 0 if row["is_active"] == 1 else 1
-        cursor.execute("UPDATE ai_daily_insights SET is_active = ? WHERE id = ?", (new_status, insight_id))
-        conn.commit()
-        conn.close()
+        new_status = 0 if current_status == 1 else 1
+        db.set_insight_active_status(insight_id, new_status)
         return {"success": True, "is_active": new_status}
     except HTTPException as he:
         raise he
@@ -1219,33 +964,23 @@ async def toggle_insight(insight_id: int, request: Request):
 
 async def auto_cleanup_ghost_sessions():
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("SELECT id, start_time FROM sessions WHERE status = 'ACTIVE'")
-        active_sessions = cursor.fetchall()
-        
+        active_sessions = db.get_all_active_sessions()
+
         now_dt = datetime.now(timezone.utc)
         now_iso = now_dt.isoformat()
-        
+
         for sess in active_sessions:
             start_time_str = sess["start_time"].replace("Z", "+00:00")
             start_dt = datetime.fromisoformat(start_time_str)
             if start_dt.tzinfo is None:
                 start_dt = start_dt.replace(tzinfo=timezone.utc)
-                
+
             diff_hours = (now_dt - start_dt).total_seconds() / 3600
-            
+
             if diff_hours >= 20:
                 # 20시간 초과 시 강제 종료 처리 (최대 1200분으로 제한)
-                cursor.execute(
-                    "UPDATE sessions SET end_time = ?, duration_minutes = 1200, status = 'COMPLETED' WHERE id = ?",
-                    (now_iso, sess["id"])
-                )
+                db.close_ghost_session(sess["id"], now_iso, duration_minutes=1200)
                 print(f"[Ghost Session Cleanup] Session {sess['id']} automatically closed (exceeded 20 hours).")
-                
-        conn.commit()
-        conn.close()
     except Exception as e:
         print(f"[Ghost Session Cleanup Error] {e}")
 
@@ -1278,44 +1013,30 @@ async def analyze_patterns(request: Request, refresh: bool = False):
     24시간 백그라운드로 자동 갱신된 최신 리포트를 즉시 반환하며, refresh=True 전달 시 즉각 수동 갱신합니다.
     """
     verify_teacher_auth(request)
-    
+
     try:
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
-        
         if not refresh:
             # 1. 24시간 백그라운드 AI 엔진이 작성해 놓은 최신 캐싱 보고서 조회 (대기시간 0초 즉시 제공!)
-            cursor.execute("SELECT report_text, created_at FROM ai_analysis_reports ORDER BY created_at DESC LIMIT 1")
-            latest_report = cursor.fetchone()
-            
+            latest_report = db.get_latest_analysis_report()
+
             if latest_report:
-                conn.close()
                 return {
-                    "success": True, 
-                    "report": latest_report["report_text"], 
+                    "success": True,
+                    "report": latest_report["report_text"],
                     "created_at": latest_report["created_at"],
                     "source": "24H_BACKGROUND_AI"
                 }
-        
-        conn.close()
-        
+
         # 2. 캐싱된 리포트가 없거나 refresh=True인 경우 수동 갱신 생성
         print("[AI On-Demand] Running manual on-demand student pattern analysis...")
         report_text = await generate_ai_analysis_report_logic()
-        
-        conn = db.get_db_connection()
-        cursor = conn.cursor()
+
         now_iso = datetime.now().isoformat()
-        cursor.execute(
-            "INSERT INTO ai_analysis_reports (report_text, created_at) VALUES (?, ?)",
-            (report_text, now_iso)
-        )
-        conn.commit()
-        conn.close()
-        
+        db.create_analysis_report(report_text, now_iso)
+
         return {
-            "success": True, 
-            "report": report_text, 
+            "success": True,
+            "report": report_text,
             "created_at": now_iso,
             "source": "ON_DEMAND_REFRESH"
         }
