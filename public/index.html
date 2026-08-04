@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>입시생 연습 시간 메이트 - PASSION</title>
+  
+  <!-- 모바일 웹앱 PWA 설정 -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="PASSION">
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+  
+  <!-- 구글 폰트 및 아이콘 라이브러리 -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- 스타일 시트 -->
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  
+  <!-- 📶 와이파이 오프라인 자동 감지 경고 배너 -->
+  <div id="offline-warning-banner" class="network-status-banner">
+    <div class="wifi-pulse-dot"></div>
+    <span>학원 와이파이가 끊겼습니다. 연결 복구 시 즉시 자동 재연결됩니다. [오프라인 백업 모드]</span>
+  </div>
+  
+  <!-- 전체 앱 레이아웃 -->
+  <div class="app-container">
+    
+    <!-- 1. 헤더 영역 -->
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-accent"><i class="fa-solid fa-bolt-lightning"></i></span>
+        <h1>PASSION <span>MATE</span></h1>
+      </div>
+      <div class="status-indicator">
+        <span id="header-connection-status"><span class="dot live"></span> 실시간 연결됨</span>
+      </div>
+    </header>
+
+    <!-- 2. 메인 컨텐츠 영역 (뷰포트) -->
+    <main class="app-content">
+      
+      <!-- [탭 1] 학생 연습 타이머 화면 (Default) -->
+      <section id="view-timer" class="app-view active">
+        <div class="glass-card welcome-card">
+          <h2>오늘도 한 걸음 더 성장해봐요 🚀</h2>
+          <p>선생님이 지정해주신 본인의 이름을 입력하고 입장해 주세요.</p>
+          
+          <!-- 이름 입력 로그인 영역 -->
+          <div class="input-group select-student-container" id="login-form-container">
+            <label for="student-name-input"><i class="fa-solid fa-user-lock"></i> 입시생 이름 입력</label>
+            <div class="login-input-wrapper">
+              <input type="text" id="student-name-input" class="custom-input-text" placeholder="이름을 입력하세요..." autocomplete="off">
+              <button id="btn-student-login" class="btn btn-secondary btn-login-submit">입장</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 메인 타이머 카드 -->
+        <div class="timer-section">
+          <div class="timer-outer-ring" id="timer-ring">
+            <div class="timer-inner-ring">
+              <div class="timer-display">
+                <div class="timer-digits" id="timer-time">00:00:00</div>
+                <div class="timer-label" id="timer-status-text">대기 중</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="timer-info-badge" id="student-info-badge" style="display: none;">
+            <span class="badge-instrument" id="info-instrument">피아노</span>
+            <span class="badge-name" id="info-name">김지우</span>
+            <button id="btn-student-logout" class="btn-logout" title="다른 이름으로 로그인">
+              <i class="fa-solid fa-right-from-bracket"></i> 퇴장
+            </button>
+          </div>
+
+          <!-- 타이머 버튼 제어 -->
+          <div class="timer-controls">
+            <button id="btn-timer-toggle" class="btn btn-primary btn-lg" disabled>
+              <i class="fa-solid fa-play"></i> 연습 시작하기
+            </button>
+          </div>
+        </div>
+
+        <!-- 오늘의 추천 연습 계획 (전공별 체크리스트) -->
+        <div class="glass-card plan-card" id="personal-plan-section" style="display: none;">
+          <h3><i class="fa-solid fa-clipboard-list"></i> 오늘의 추천 연습 계획</h3>
+          <div id="personal-plan-list" class="plan-list">
+            <!-- JS로 전공별 오늘의 계획 동적 생성 -->
+          </div>
+        </div>
+
+        <!-- 🎓 AI 오늘의 서울예대 꿀팁 위젯 -->
+        <div id="ai-daily-insight-zone" style="margin-top: 15px;"></div>
+
+        <!-- 선생님께 직접 질문하는 실시간 Q&A 칸 -->
+        <div class="glass-card plan-card" id="personal-qa-section" style="display: none; margin-top: 15px;">
+          <h3><i class="fa-solid fa-circle-question"></i> 선생님께 질문하기 (Q&A)</h3>
+          <p class="section-desc" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
+            연습 중 막히는 부분이나 전공 상담 질문을 보내면 선생님의 대시보드로 실시간 자동 전송됩니다. (AI 추천 답변 초안 제공)
+          </p>
+          <div class="qa-input-wrapper" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
+            <textarea id="student-qa-input" class="custom-textarea" placeholder="질문 내용을 입력하세요... (예: 피아노 32마디 릴렉스하는 요령이 헷갈려요.)" style="width: 100%; min-height: 70px; padding: 12px; font-size: 0.88rem; resize: none; border-radius: 12px; background: var(--bg-tertiary); border: 1px solid var(--glass-border); color: var(--text-main); outline: none;" required></textarea>
+            <button id="btn-student-qa-submit" class="btn btn-secondary" style="align-self: flex-end; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; border: none; cursor: pointer;">
+              <i class="fa-solid fa-paper-plane"></i> 질문 보내기
+            </button>
+          </div>
+          
+          <div class="personal-qa-history">
+            <h4 style="font-size: 0.88rem; font-weight: 600; margin-bottom: 10px; color: var(--neon-mint); display: flex; align-items: center; gap: 6px;">
+              <i class="fa-solid fa-clock-rotate-left"></i> 보낸 질문 내역
+            </h4>
+            <div id="student-qa-list" class="qa-history-list" style="display: flex; flex-direction: column; gap: 8px;">
+              <!-- 동적 질문 히스토리 렌더링 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 오늘 본인의 연습 세션 이력 -->
+        <div class="glass-card history-card" id="personal-history-section" style="display: none;">
+          <h3><i class="fa-solid fa-clock-rotate-left"></i> 오늘의 기록</h3>
+          <div id="personal-sessions" class="history-list">
+            <!-- 오늘의 기록 목록이 들어옴 -->
+            <div class="empty-placeholder">
+              <p>아직 오늘 완료된 연습 기록이 없습니다.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
+      
+      <!-- [탭 2] 오늘의 서울예대 꿀팁 전용 화면 -->
+      <section id="view-daily-tip" class="app-view">
+        <div class="glass-card welcome-card">
+          <h2>🎓 오늘의 서울예대 입시 꿀팁</h2>
+          <p>AI가 매일 자정, 서울예대 합격을 위한 최신 꿀팁·화성학 퀴즈·추천 도서를 자동으로 준비해 놓습니다!</p>
+        </div>
+        <div id="daily-tip-content" style="margin-top: 15px;">
+          <div class="empty-placeholder" id="daily-tip-loading" style="padding: 60px 0;">
+            <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: #a78bfa; margin-bottom: 12px;"></i>
+            <p style="color: #e0e0e0; font-weight: 600;">AI 꿀팁 불러오는 중...</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- [탭 3] AI 튜터 Q&A 화면 -->
+      <section id="view-ai-chat" class="app-view">
+        <div class="glass-card welcome-card">
+          <h2>PASSION AI 튜터 🤖</h2>
+          <p>입시 지침이나 음악 이론, 슬럼프 상담 등 궁금한 점을 질문해 보세요!</p>
+        </div>
+
+        <div class="glass-card chat-card">
+          <div id="chat-messages" class="chat-messages-container">
+            <!-- 기본 웰컴 메시지 -->
+            <div class="chat-message tutor">
+              <div class="message-bubble">
+                안녕하세요! PASSION MATE AI 튜터입니다. 💡<br><br>
+                입시 지침이나 연습 수칙, 마인드 컨트롤에 대해 궁금한 점을 언제든 편하게 물어보세요!
+              </div>
+            </div>
+          </div>
+          
+          <form id="chat-form" class="chat-input-form">
+            <input type="text" id="chat-input" placeholder="질문을 입력하세요..." required autocomplete="off">
+            <button type="submit" class="btn-chat-send" id="btn-chat-send">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+      </section>
+      
+    </main>
+
+    <!-- 3. 하단 탭 내비게이션 바 -->
+    <nav class="app-navbar">
+      <button class="nav-item active" data-target="view-timer">
+        <div class="nav-icon"><i class="fa-solid fa-stopwatch"></i></div>
+        <span class="nav-text">연습 타이머</span>
+      </button>
+      <button class="nav-item" data-target="view-daily-tip">
+        <div class="nav-icon"><i class="fa-solid fa-graduation-cap"></i></div>
+        <span class="nav-text">오늘의 꿀팁</span>
+      </button>
+      <button class="nav-item" data-target="view-ai-chat">
+        <div class="nav-icon"><i class="fa-solid fa-robot"></i></div>
+        <span class="nav-text">AI 튜터</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- 토스트 알림 컴포넌트 -->
+  <div id="toast-container"></div>
+
+  <!-- 스크립트 파일 로드 -->
+  <script src="/app.js"></script>
+  <script src="/dashboard.js"></script>
+</body>
+</html>

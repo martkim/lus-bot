@@ -1,0 +1,25 @@
+# secrets
+.env
+
+# python
+.venv/
+__pycache__/
+*.pyc
+src/__pycache__/
+
+# runtime data
+database.db
+backups/
+logs/
+latest_url.txt
+query
+
+# node
+node_modules/
+
+# large local binaries (downloaded, not source)
+cloudflared.exe
+ngrok.exe
+
+# claude code local project data
+.claude/

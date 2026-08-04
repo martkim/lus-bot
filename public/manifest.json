@@ -1,0 +1,25 @@
+{
+  "name": "PASSION MATE - 입시생 연습 시간 메이트",
+  "short_name": "PASSION MATE",
+  "description": "입시생의 실시간 연습시간 타이머 및 학습 통계 관리 모바일 앱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080c14",
+  "theme_color": "#080c14",
+  "orientation": "portrait",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<!-- PASSION MATE Teacher Dashboard - with Daily Insight Manager -->
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>PASSION MATE - 교사 대시보드 (보안)</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="/style.css">
+  <style>
+    /* 🎛️ 교사용 프리미엄 서브 내비게이션 스타일 */
+    .teacher-tab-nav {
+      display: flex;
+      gap: 12px;
+      margin: 20px 0;
+      justify-content: center;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px;
+      border-radius: 14px;
+      border: 1px solid var(--glass-border);
+    }
+    .teacher-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      padding: 10px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .teacher-tab-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.02);
+    }
+    .teacher-tab-btn.active {
+      color: #fff;
+      background: var(--gradient-primary);
+      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+    }
+    .teacher-sub-view {
+      display: none;
+    }
+    .teacher-sub-view.active {
+      display: block;
+      animation: fadeIn 0.4s ease;
+    }
+    
+    /* 원생 관리 테이블 스타일 */
+    .mgmt-table-container {
+      overflow-x: auto;
+      margin-top: 15px;
+      border-radius: 12px;
+      border: 1px solid var(--glass-border);
+    }
+    .mgmt-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+    .mgmt-table th, .mgmt-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--glass-border);
+    }
+    .mgmt-table th {
+      font-weight: 600;
+      color: var(--neon-mint);
+      background: rgba(0, 0, 0, 0.3);
+    }
+    .mgmt-table td {
+      color: var(--text-body);
+    }
+    .mgmt-table tr:hover {
+      background: rgba(255, 255, 255, 0.02);
+    }
+    
+    /* 강제완료 및 삭제 버튼 스타일 */
+    .btn-table-action {
+      background: rgba(239, 68, 68, 0.08);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-table-action:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #fff;
+      border-color: rgba(239, 68, 68, 0.3);
+    }
+    
+    .btn-force-end {
+      background: rgba(239, 68, 68, 0.08);
+      color: #f87171;
+      border: 1px solid rgba(239, 68, 68, 0.2);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+    .btn-force-end:hover {
+      background: #ef4444;
+      color: #fff;
+      border-color: #ef4444;
+      box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+    }
+    
+    /* AI 분석 카드 스타일 */
+    .ai-report-box {
+      padding: 22px;
+      background: rgba(0, 0, 0, 0.25);
+      border-radius: 16px;
+      border: 1px solid var(--glass-border);
+      min-height: 200px;
+      line-height: 1.7;
+      color: var(--text-body);
+      font-size: 0.92rem;
+    }
+    .ai-report-box h3 {
+      margin-top: 25px;
+      font-size: 1.08rem;
+      color: var(--neon-mint);
+      border-bottom: 1px solid var(--glass-border);
+      padding-bottom: 8px;
+      font-weight: 600;
+    }
+    .ai-report-box h3:first-child {
+      margin-top: 0;
+    }
+    .ai-report-box ul {
+      padding-left: 20px;
+      margin-bottom: 15px;
+    }
+    .ai-report-box li {
+      margin-bottom: 8px;
+    }
+    .ai-report-box hr {
+      border: 0;
+      border-top: 1px solid var(--glass-border);
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  
+  <!-- 📶 와이파이 오프라인 자동 감지 경고 배너 -->
+  <div id="offline-warning-banner" class="network-status-banner">
+    <div class="wifi-pulse-dot"></div>
+    <span>학원 와이파이가 끊겼습니다. 연결 복구 시 교사 대시보드와 Q&A가 즉시 재가동됩니다.</span>
+  </div>
+  
+  <div class="app-container">
+    
+    <header class="app-header">
+      <div class="logo">
+        <span class="logo-accent"><i class="fa-solid fa-user-shield"></i></span>
+        <h1>PASSION <span>TEACHER</span></h1>
+      </div>
+      <div class="status-indicator">
+        <span id="header-connection-status"><span class="dot live"></span> 보안 게이트 작동중</span>
+      </div>
+    </header>
+
+    <main class="app-content">
+      
+      <!-- 🔒 교사 인증 로그인 폼 -->
+      <section id="view-teacher-login" class="app-view active">
+        <div class="glass-card welcome-card" style="margin-top: 40px; text-align: center;">
+          <h2>교사용 관리자 페이지 🔐</h2>
+          <p>등록생 현황 및 실시간 Q&A 관리를 위해 비밀번호를 입력해 주세요.</p>
+          
+          <div class="input-group" style="margin-top: 25px; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+            <label for="teacher-name-input" style="font-weight: 600; font-size: 0.9rem; color: var(--neon-mint);">
+              <i class="fa-solid fa-user-tie"></i> 선생님 이름 입력
+            </label>
+            <input type="text" id="teacher-name-input" class="custom-input-text" placeholder="이름을 입력하세요..." style="max-width: 280px; text-align: center;" autocomplete="off">
+            
+            <label for="teacher-password-input" style="font-weight: 600; font-size: 0.9rem; color: var(--neon-purple); margin-top: 5px;">
+              <i class="fa-solid fa-lock"></i> 관리자 비밀번호
+            </label>
+            <input type="password" id="teacher-password-input" class="custom-input-text" placeholder="비밀번호 입력..." style="max-width: 280px; text-align: center; font-size: 1.1rem; letter-spacing: 3px;" autocomplete="off">
+            <button id="btn-teacher-login" class="btn btn-primary" style="margin-top: 10px; width: 100%; max-width: 280px; padding: 12px 0; font-size: 0.95rem; font-weight: bold; border-radius: 12px; border: none; cursor: pointer;">
+              대시보드 입장 <i class="fa-solid fa-right-to-bracket"></i>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- 📊 교사 대시보드 본 화면 (인증 후 표시됨) -->
+      <section id="view-teacher-dashboard" class="app-view">
+        
+        <!-- 🎛️ 교사용 세부 메뉴 서브 탭바 -->
+        <div class="teacher-tab-nav">
+          <button class="teacher-tab-btn active" data-target="teacher-sub-dash">
+            <i class="fa-solid fa-chart-line"></i> 실시간 대시보드
+          </button>
+          <button class="teacher-tab-btn" data-target="teacher-sub-mgmt" id="btn-tab-mgmt">
+            <i class="fa-solid fa-users-gear"></i> 원생 관리
+          </button>
+          <button class="teacher-tab-btn" data-target="teacher-sub-ai">
+            <i class="fa-solid fa-brain"></i> AI 딥 러닝 분석
+          </button>
+          <button class="teacher-tab-btn" data-target="teacher-sub-curriculum">
+            <i class="fa-solid fa-book-open-reader"></i> AI 커리큘럼 학습 관리
+          </button>
+        </div>
+
+        <!-- 1. [서브 뷰] 실시간 대시보드 -->
+        <div id="teacher-sub-dash" class="teacher-sub-view active">
+          <!-- 실시간 활동 요약 그리드 -->
+          <div class="dashboard-stats-grid">
+            <div class="glass-card stat-item">
+              <div class="stat-icon icon-neon-green"><i class="fa-solid fa-circle-play"></i></div>
+              <div class="stat-content">
+                <div class="stat-value" id="stat-active-count">0</div>
+                <div class="stat-label">현재 연습 중</div>
+              </div>
+            </div>
+            <div class="glass-card stat-item">
+              <div class="stat-icon icon-neon-purple"><i class="fa-solid fa-check-double"></i></div>
+              <div class="stat-content">
+                <div class="stat-value" id="stat-completed-count">0</div>
+                <div class="stat-label">오늘 완료 횟수</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 실시간 연습 중인 학생들 -->
+          <div class="glass-card dashboard-card">
+            <div class="card-header">
+              <h3><span class="pulse-indicator"></span> 실시간 연습 현황</h3>
+              <span class="badge badge-live">LIVE</span>
+            </div>
+            <div id="active-students-list" class="active-list">
+              <div class="empty-placeholder">
+                <i class="fa-solid fa-mug-hot"></i>
+                <p>현재 연습 중인 학생이 없습니다.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 입시생 실시간 Q&A 질문 피드백 -->
+          <div class="glass-card dashboard-card">
+            <div class="card-header">
+              <h3><i class="fa-solid fa-comments"></i> 입시생 실시간 Q&A 피드백</h3>
+              <span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.2);">실시간</span>
+            </div>
+            <div id="dashboard-questions-list" class="qa-timeline-container" style="display: flex; flex-direction: column; gap: 12px; margin-top: 10px;">
+              <div class="empty-placeholder">
+                <i class="fa-regular fa-comment-dots"></i>
+                <p>아직 도착한 질문이 없습니다.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 오늘의 학습 랭킹 -->
+          <div class="glass-card dashboard-card">
+            <h3><i class="fa-solid fa-crown"></i> 오늘 누적 연습시간 랭킹</h3>
+            <div id="ranking-list" class="ranking-container">
+              <div class="empty-placeholder">
+                <p>기록이 집계되지 않았습니다.</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- 오늘 완료된 세션 타임라인 -->
+          <div class="glass-card dashboard-card">
+            <h3><i class="fa-solid fa-timeline"></i> 오늘 타임라인</h3>
+            <div id="timeline-list" class="timeline-container">
+              <div class="empty-placeholder">
+                <p>오늘 완료된 세션 내역이 없습니다.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. [서브 뷰] 원생 관리 -->
+        <div id="teacher-sub-mgmt" class="teacher-sub-view">
+          <!-- 원생 목록 카드 -->
+          <div class="glass-card dashboard-card">
+            <h3><i class="fa-solid fa-id-card"></i> 등록 원생 명부</h3>
+            <p class="section-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">등록된 모든 입시생의 정보를 통합 관리하고 명부에서 삭제할 수 있습니다.</p>
+            <div class="mgmt-table-container">
+              <table class="mgmt-table">
+                <thead>
+                  <tr>
+                    <th>이름</th>
+                    <th>전공 과목</th>
+                    <th>나이</th>
+                    <th>MBTI</th>
+                    <th>등록 일자</th>
+                    <th style="text-align: center;">작업</th>
+                  </tr>
+                </thead>
+                <tbody id="mgmt-student-list">
+                  <!-- JS로 목록 동적 생성 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 신규 학생 등록 카드 (나이 및 MBTI 필드 확장) -->
+          <div class="glass-card dashboard-card admin-card" style="margin-top: 20px;">
+            <h3><i class="fa-solid fa-user-plus"></i> 신규 입시생 등록</h3>
+            <form id="form-register-student" class="admin-form" style="display: flex; flex-direction: column; gap: 15px;">
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; width: 100%;">
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">학생 이름</label>
+                  <input type="text" id="reg-name" placeholder="이름 입력 (예: 김지우)" required style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">전공 과목</label>
+                  <input type="text" id="reg-instrument" placeholder="전공 (예: 피아노, 작곡)" required style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">나이</label>
+                  <input type="number" id="reg-age" placeholder="나이 (예: 19)" min="1" max="100" value="19" required style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">MBTI</label>
+                  <select id="reg-mbti" required style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
+                    <option value="ENFP" selected>ENFP</option>
+                    <option value="ENFJ">ENFJ</option>
+                    <option value="ENTP">ENTP</option>
+                    <option value="ENTJ">ENTJ</option>
+                    <option value="ESFP">ESFP</option>
+                    <option value="ESFJ">ESFJ</option>
+                    <option value="ESTP">ESTP</option>
+                    <option value="ESTJ">ESTJ</option>
+                    <option value="INFP">INFP</option>
+                    <option value="INFJ">INFJ</option>
+                    <option value="INTP">INTP</option>
+                    <option value="INTJ">INTJ</option>
+                    <option value="ISFP">ISFP</option>
+                    <option value="ISFJ">ISFJ</option>
+                    <option value="ISTP">ISTP</option>
+                    <option value="ISTJ">ISTJ</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-secondary" style="align-self: flex-end; padding: 10px 30px; font-weight: bold;">등록 완료</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- 3. [서브 뷰] AI 딥 러닝 분석 -->
+        <div id="teacher-sub-ai" class="teacher-sub-view">
+          <div class="glass-card dashboard-card">
+            <h3><i class="fa-solid fa-robot"></i> Gemini AI 딥 러닝 패턴 분석 엔진</h3>
+            <p class="section-desc" style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+              레슨실 원생들의 누적 연습 시간 로그, MBTI 및 연령 통계, 실시간 Q&A 애로사항 데이터를 모아 <strong>Google Gemini AI</strong>가 심도 있게 분석합니다. 
+              작성된 AI 분석 리포트를 기반으로 레슨실의 다음 주 커리큘럼 방향성 및 원생별 맞춤 케어 가이드를 확인해 보세요.
+            </p>
+            
+            <div style="text-align: center; margin-bottom: 25px;">
+              <button id="btn-generate-ai-report" class="btn btn-primary btn-lg" style="padding: 12px 36px; border-radius: 12px; font-weight: bold; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 10px;">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> AI 분석 리포트 발행하기
+              </button>
+            </div>
+
+            <!-- AI 분석 대기/로딩 및 출력 창 -->
+            <div id="ai-analysis-container">
+              <div id="ai-analysis-loading" class="empty-placeholder" style="display: none; padding: 50px 0;">
+                <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2.5rem; color: var(--neon-purple); margin-bottom: 15px;"></i>
+                <p style="font-weight: 600; color: #fff;">Gemini AI가 원생들의 모든 데이터셋을 정밀 다차원 분석 중입니다...</p>
+                <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 5px;">잠시만 기다려 주세요 (약 3~5초 소요)</p>
+              </div>
+              
+              <div id="ai-analysis-placeholder" class="empty-placeholder" style="padding: 40px 0;">
+                <i class="fa-solid fa-microchip" style="font-size: 2rem; color: var(--text-muted); margin-bottom: 10px;"></i>
+                <p>위의 버튼을 눌러 AI 딥 러닝 분석 결과를 확인하세요.</p>
+              </div>
+
+              <div id="ai-analysis-result" class="ai-report-box" style="display: none;">
+                <!-- 마크다운 결과가 파싱되어 주입됨 -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. [서브 뷰] AI 커리큘럼 학습 관리 -->
+        <div id="teacher-sub-curriculum" class="teacher-sub-view">
+          <div class="glass-card dashboard-card">
+            <h3><i class="fa-solid fa-book-open-reader"></i> AI 튜터 커리큘럼 학습소</h3>
+            <p class="section-desc" style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5;">
+              현재 적용 중인 입시생 지도 커리큘럼을 관리하고, 새로운 <b>PDF나 이미지 자료</b>를 업로드하여 AI 튜터에게 학습시킬 수 있습니다.
+            </p>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+              <!-- 좌측: 커리큘럼 텍스트 & 업로드 -->
+              <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                  <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--neon-mint);"><i class="fa-solid fa-file-lines"></i> 현재 커리큘럼 내용</h4>
+                  <textarea id="curriculum-editor" style="width: 100%; height: 250px; background: rgba(0,0,0,0.4); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; font-size: 0.85rem; font-family: 'Noto Sans KR', sans-serif; resize: vertical; box-sizing: border-box;"></textarea>
+                  <button id="btn-save-curriculum" class="btn btn-primary" style="margin-top: 10px; width: 100%; padding: 8px; font-weight: bold;">
+                    <i class="fa-solid fa-save"></i> 커리큘럼 저장하기
+                  </button>
+                </div>
+                
+                <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border);">
+                  <h4 style="margin-top: 0; margin-bottom: 10px; color: var(--neon-purple);"><i class="fa-solid fa-cloud-arrow-up"></i> 새 자료 학습시키기 (PDF, JPG)</h4>
+                  <form id="form-upload-curriculum" style="display: none; flex-direction: column; gap: 10px;">
+                    <input type="file" id="curriculum-file" accept=".pdf, image/jpeg, image/png" style="background: rgba(0,0,0,0.3); padding: 8px; border-radius: 8px; border: 1px dashed var(--glass-border); color: #fff; width: 100%; box-sizing: border-box;" required>
+                    <button type="submit" class="btn btn-secondary" style="width: 100%; padding: 8px; font-weight: bold;">
+                      <i class="fa-solid fa-microchip"></i> AI 분석 및 요약 요청
+                    </button>
+                  </form>
+                  <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 8px; padding: 12px; text-align: center; color: #f87171; font-size: 0.85rem; font-weight: 600;">
+                    <i class="fa-solid fa-triangle-exclamation"></i> 현재 업로드 기능은 시스템 점검 중입니다. (일시 중단)
+                  </div>
+                  <div id="ai-upload-loading" style="display: none; text-align: center; margin-top: 15px;">
+                    <i class="fa-solid fa-circle-notch fa-spin" style="color: var(--neon-purple);"></i> 분석 중...
+                  </div>
+                </div>
+              </div>
+
+              <!-- 우측: AI 교육 컨설팅 채팅 -->
+              <div style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid var(--glass-border); display: flex; flex-direction: column; height: 100%;">
+                <h4 style="margin-top: 0; margin-bottom: 10px; color: #00f2fe;"><i class="fa-solid fa-comments"></i> AI 마스터 챗봇</h4>
+                <div id="curriculum-chat-box" style="flex: 1; background: rgba(0,0,0,0.4); border-radius: 8px; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; margin-bottom: 10px; min-height: 400px; max-height: 500px;">
+                  <div style="align-self: flex-start; background: rgba(0, 242, 254, 0.1); padding: 10px 14px; border-radius: 14px; border-bottom-left-radius: 0; max-width: 85%; font-size: 0.88rem; line-height: 1.4; border: 1px solid rgba(0, 242, 254, 0.2);">
+                    안녕하세요 선생님! 커리큘럼 관련하여 추가하거나 수정할 내용이 있으신가요? 파일을 업로드하시면 제가 요약해 드릴 수도 있습니다.
+                  </div>
+                </div>
+                <form id="form-curriculum-chat" style="display: flex; gap: 8px;">
+                  <input type="text" id="curriculum-chat-input" placeholder="AI와 커리큘럼에 대해 대화하기..." required style="flex: 1; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px 15px; border-radius: 20px; outline: none;">
+                  <button type="submit" style="background: var(--gradient-primary); border: none; color: #fff; width: 40px; height: 40px; border-radius: 50%; cursor: pointer;">
+                    <i class="fa-solid fa-paper-plane"></i>
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+
+
+        <!-- ✅ AI 오늘의 꿀팁 관리 카드 (커리큘럼 탭 하단 추가) -->
+        <div id="ai-insight-manager" class="glass-card dashboard-card" style="margin-top: 20px; display: none;">
+          <h3><i class="fa-solid fa-graduation-cap"></i> AI 오늘의 입시 꿀팁 배포 관리</h3>
+          <p class="section-desc" style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 15px; line-height: 1.5;">
+            AI가 매일 자동으로 학생들에게 뿌린 <b>서울예대 꿀팁 · 화성학 퀴즈 · 추천 도서</b> 목록입니다.<br>
+            토글 버튼을 눌러 특정 콘텐츠를 학생 화면에서 숨기거나 다시 표시할 수 있습니다.
+          </p>
+          <div id="insight-list-container">
+            <div class="empty-placeholder" style="padding: 30px 0;">
+              <i class="fa-solid fa-circle-notch fa-spin" style="color: #a78bfa;"></i>
+              <p>불러오는 중...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 로그아웃 버튼 -->
+        <div style="text-align: center; margin: 30px 0 20px 0;">
+          <button id="btn-teacher-logout" class="btn" style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.2); color: #f87171; padding: 10px 24px; border-radius: 10px; font-weight: bold; cursor: pointer; transition: all 0.3s ease;">
+            <i class="fa-solid fa-power-off"></i> 대시보드 접속 종료
+          </button>
+        </div>
+
+      </section>
+      
+    </main>
+
+  </div>
+
+  <div id="toast-container"></div>
+
+  <!-- 교사용 실시간 갱신 & 인증 스크립트 바인딩 -->
+  <script src="/teacher.js"></script>
+  <script src="/dashboard.js"></script>
+</body>
+</html>
