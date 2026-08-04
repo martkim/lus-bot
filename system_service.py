@@ -20,6 +20,7 @@ LOGS_DIR.mkdir(exist_ok=True)
 SERVER_ERR_LOG = LOGS_DIR / "server_err.log"
 MONITOR_LOG = LOGS_DIR / "monitor_log.txt"
 ATTENTION_LOG = LOGS_DIR / "needs_attention.log"
+DEPLOY_LOG = LOGS_DIR / "deploy_log.txt"
 CLOUDFLARED_ERR_LOG = LOGS_DIR / "cf_err.log"
 LATEST_URL_FILE = BASE_DIR / "latest_url.txt"
 CLOUDFLARED_EXE = BASE_DIR / "cloudflared.exe"
@@ -27,6 +28,8 @@ CLOUDFLARED_EXE = BASE_DIR / "cloudflared.exe"
 PORT = 8088
 CHECK_INTERVAL_SECONDS = 300  # 5 minutes
 ERROR_PATTERN = re.compile(r"traceback|error|exception", re.IGNORECASE)
+GIT_REMOTE = "origin"
+GIT_BRANCH = "main"
 
 
 def log_attention(message):
@@ -34,6 +37,13 @@ def log_attention(message):
     with open(ATTENTION_LOG, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {message}\n")
     print(f"[ATTENTION] {message}")
+
+
+def log_deploy(message):
+    ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with open(DEPLOY_LOG, "a", encoding="utf-8") as f:
+        f.write(f"[{ts}] {message}\n")
+    print(f"[Deploy] {message}")
 
 
 def is_port_open(port, host="127.0.0.1", timeout=2):
@@ -62,6 +72,97 @@ def start_uvicorn():
         stdout=out_log,
         stderr=err_log,
     )
+
+
+def kill_port_process(port):
+    """Find and forcefully stop whatever is listening on `port` (used before a deploy restart)."""
+    try:
+        result = subprocess.run(["netstat", "-ano"], capture_output=True, text=True, timeout=10)
+        pids = set()
+        for line in result.stdout.splitlines():
+            if f":{port}" in line and "LISTENING" in line:
+                parts = line.split()
+                if parts:
+                    pids.add(parts[-1])
+        for pid in pids:
+            subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+        return len(pids) > 0
+    except Exception as e:
+        log_attention(f"Failed to stop process on port {port}: {e}")
+        return False
+
+
+def run_git(*args):
+    return subprocess.run(
+        ["git", *args], cwd=str(BASE_DIR), capture_output=True, text=True, timeout=30
+    )
+
+
+def get_local_commit():
+    r = run_git("rev-parse", "HEAD")
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def get_remote_commit():
+    r = run_git("rev-parse", f"{GIT_REMOTE}/{GIT_BRANCH}")
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def requirements_changed(old_commit, new_commit):
+    r = run_git("diff", "--name-only", old_commit, new_commit)
+    return "requirements.txt" in r.stdout.strip().splitlines()
+
+
+def restart_server():
+    kill_port_process(PORT)
+    time.sleep(2)
+    start_uvicorn()
+    time.sleep(5)
+
+
+def check_and_deploy_updates():
+    """Pull new commits from GitHub if any exist, reinstall deps if needed, and
+    restart the server. Rolls back to the previous commit if the new version
+    fails its post-deploy health check."""
+    fetch_result = run_git("fetch", GIT_REMOTE, GIT_BRANCH)
+    if fetch_result.returncode != 0:
+        log_deploy(f"git fetch failed: {fetch_result.stderr.strip()[:300]}")
+        return
+
+    local_commit = get_local_commit()
+    remote_commit = get_remote_commit()
+    if not local_commit or not remote_commit or local_commit == remote_commit:
+        return  # already up to date, or git state unreadable
+
+    log_deploy(f"New commit detected: {local_commit[:8]} -> {remote_commit[:8]}. Deploying...")
+    reqs_changed = requirements_changed(local_commit, remote_commit)
+
+    pull_result = run_git("pull", GIT_REMOTE, GIT_BRANCH)
+    if pull_result.returncode != 0:
+        log_attention(f"git pull failed, deploy aborted: {pull_result.stderr.strip()[:500]}")
+        return
+
+    if reqs_changed:
+        log_deploy("requirements.txt changed — installing dependencies...")
+        subprocess.run(
+            ["python", "-m", "pip", "install", "-r", "requirements.txt", "--quiet"],
+            cwd=str(BASE_DIR), timeout=180,
+        )
+
+    restart_server()
+
+    if is_server_responsive():
+        log_deploy(f"Deploy succeeded — now running {remote_commit[:8]}.")
+        return
+
+    log_attention(f"Deploy to {remote_commit[:8]} failed health check — rolling back to {local_commit[:8]}.")
+    run_git("reset", "--hard", local_commit)
+    restart_server()
+
+    if is_server_responsive():
+        log_deploy(f"Rollback to {local_commit[:8]} succeeded.")
+    else:
+        log_attention("CRITICAL: rollback also failed to respond. Manual intervention needed.")
 
 
 def is_cloudflared_running():
@@ -144,6 +245,8 @@ def append_monitor_line(server_up, tunnel_up, db_status):
 
 
 def watchdog_cycle():
+    check_and_deploy_updates()
+
     port_open = is_port_open(PORT)
     if not port_open:
         log_attention(f"Port {PORT} not listening — server appears down. Restarting.")
