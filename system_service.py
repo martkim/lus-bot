@@ -6,9 +6,20 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import urllib.request
 import urllib.error
 from pathlib import Path
+
+# Avoid crashing on non-ASCII output (e.g. "-", Korean text) when running
+# under a console using a legacy codepage like cp949. pythonw.exe has no
+# stdout/stderr at all, so guard against that too.
+for _stream in (sys.stdout, sys.stderr):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 BASE_DIR = Path("C:/PASSION_MATE")
 DB_PATH = BASE_DIR / "database.db"
@@ -143,7 +154,7 @@ def check_and_deploy_updates():
         return
 
     if reqs_changed:
-        log_deploy("requirements.txt changed — installing dependencies...")
+        log_deploy("requirements.txt changed - installing dependencies...")
         subprocess.run(
             ["python", "-m", "pip", "install", "-r", "requirements.txt", "--quiet"],
             cwd=str(BASE_DIR), timeout=180,
@@ -152,10 +163,10 @@ def check_and_deploy_updates():
     restart_server()
 
     if is_server_responsive():
-        log_deploy(f"Deploy succeeded — now running {remote_commit[:8]}.")
+        log_deploy(f"Deploy succeeded - now running {remote_commit[:8]}.")
         return
 
-    log_attention(f"Deploy to {remote_commit[:8]} failed health check — rolling back to {local_commit[:8]}.")
+    log_attention(f"Deploy to {remote_commit[:8]} failed health check - rolling back to {local_commit[:8]}.")
     run_git("reset", "--hard", local_commit)
     restart_server()
 
@@ -249,7 +260,7 @@ def watchdog_cycle():
 
     port_open = is_port_open(PORT)
     if not port_open:
-        log_attention(f"Port {PORT} not listening — server appears down. Restarting.")
+        log_attention(f"Port {PORT} not listening - server appears down. Restarting.")
         start_uvicorn()
         time.sleep(5)
     elif not is_server_responsive():
@@ -259,7 +270,7 @@ def watchdog_cycle():
 
     tunnel_up = is_cloudflared_running()
     if not tunnel_up:
-        log_attention("Cloudflared tunnel process not found — restarting.")
+        log_attention("Cloudflared tunnel process not found - restarting.")
         start_cloudflared()
         tunnel_up = is_cloudflared_running()
 
