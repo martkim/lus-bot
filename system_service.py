@@ -35,6 +35,7 @@ DEPLOY_LOG = LOGS_DIR / "deploy_log.txt"
 CLOUDFLARED_ERR_LOG = LOGS_DIR / "cf_err.log"
 LATEST_URL_FILE = BASE_DIR / "latest_url.txt"
 CLOUDFLARED_EXE = BASE_DIR / "cloudflared.exe"
+LOCK_FILE = LOGS_DIR / "watchdog.lock"
 
 PORT = 8088
 CHECK_INTERVAL_SECONDS = 300  # 5 minutes
@@ -297,7 +298,38 @@ def run_daily_backup_and_integrity_check():
         log_attention(f"Daily backup/integrity job error: {e}")
 
 
+def is_pid_alive(pid):
+    """True if `pid` is currently running as a python(w) process (not just any
+    process — PIDs get reused, so a stale lock file must not match a reused PID
+    belonging to something unrelated)."""
+    try:
+        result = subprocess.run(
+            ["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, timeout=10
+        )
+        return str(pid) in result.stdout and "python" in result.stdout.lower()
+    except Exception:
+        return False
+
+
+def acquire_single_instance_lock():
+    """Refuse to start a second watchdog. Windows re-runs the Startup shortcut on
+    every login, so without this a login while one instance is already running
+    (e.g. started manually, or the machine slept instead of rebooting) would
+    launch a duplicate that races the first one on port kills / git resets."""
+    my_pid = os.getpid()
+    if LOCK_FILE.exists():
+        try:
+            existing_pid = int(LOCK_FILE.read_text(encoding="utf-8").strip())
+        except (ValueError, OSError):
+            existing_pid = None
+        if existing_pid and existing_pid != my_pid and is_pid_alive(existing_pid):
+            print(f"[Watchdog] Another instance is already running (PID {existing_pid}). Exiting.")
+            sys.exit(0)
+    LOCK_FILE.write_text(str(my_pid), encoding="utf-8")
+
+
 def main():
+    acquire_single_instance_lock()
     print("PASSION MATE System Service (watchdog) started.")
     last_backup_date = None
 
