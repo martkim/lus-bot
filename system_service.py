@@ -125,6 +125,21 @@ def requirements_changed(old_commit, new_commit):
     return "requirements.txt" in r.stdout.strip().splitlines()
 
 
+def has_uncommitted_changes():
+    r = run_git("status", "--porcelain")
+    return bool(r.stdout.strip())
+
+
+def backup_local_changes():
+    """Stash any uncommitted local changes, labeled, before a forced deploy reset.
+    Never silently discard them — someone edited files without going through
+    the normal commit/push workflow, and that's worth being able to recover."""
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    label = f"watchdog-auto-backup-{ts}"
+    r = run_git("stash", "push", "-u", "-m", label)
+    return r.returncode == 0, label
+
+
 def restart_server():
     kill_port_process(PORT)
     time.sleep(2)
@@ -149,10 +164,23 @@ def check_and_deploy_updates():
     log_deploy(f"New commit detected: {local_commit[:8]} -> {remote_commit[:8]}. Deploying...")
     reqs_changed = requirements_changed(local_commit, remote_commit)
 
-    pull_result = run_git("pull", GIT_REMOTE, GIT_BRANCH)
-    if pull_result.returncode != 0:
-        log_attention(f"git pull failed, deploy aborted: {pull_result.stderr.strip()[:500]}")
-        return
+    if has_uncommitted_changes():
+        backed_up, label = backup_local_changes()
+        if not backed_up:
+            log_attention(
+                "CRITICAL: uncommitted local changes found but stash backup failed - "
+                "deploy aborted this cycle to avoid losing them. Will retry next cycle."
+            )
+            return
+        log_attention(
+            f"Uncommitted local changes found before deploy - backed up to git stash '{label}' "
+            f"(run `git stash list` to find it, then `git stash show -p <ref>` to inspect). "
+            f"Local edits should always be committed and pushed instead of left uncommitted on the server."
+        )
+
+    # git fetch already pulled the remote objects locally, so a hard reset to the
+    # remote commit can never conflict the way a merge-based `git pull` could.
+    run_git("reset", "--hard", remote_commit)
 
     if reqs_changed:
         log_deploy("requirements.txt changed - installing dependencies...")
