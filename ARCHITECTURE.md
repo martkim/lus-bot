@@ -87,7 +87,11 @@ git fetch origin main
 로컬 HEAD ≠ origin/main HEAD ?
         │ yes
         ▼
-git pull origin main
+로컬에 커밋 안 된 변경사항이 있나?
+        │ yes → git stash push (라벨: watchdog-auto-backup-<timestamp>)
+        │        → needs_attention.log에 기록 (절대 조용히 버리지 않음)
+        ▼
+git reset --hard <origin/main 커밋>   ← fetch로 이미 받아온 객체라 병합 충돌 불가능
 requirements.txt 변경됐으면 → pip install -r requirements.txt
         │
         ▼
@@ -101,8 +105,9 @@ requirements.txt 변경됐으면 → pip install -r requirements.txt
               실패 시: needs_attention.log에 CRITICAL 기록 (수동 개입 필요)
 ```
 
-- `.env`, `database.db`, `logs/`, `backups/` 는 `.gitignore` 대상이라 배포(pull/reset) 과정에서 절대 건드리지 않는다.
+- `.env`, `database.db`, `logs/`, `backups/` 는 `.gitignore` 대상이라 배포(reset) 과정에서 절대 건드리지 않는다.
 - 브랜치는 `main` 고정, 원격은 `origin` (`https://github.com/martkim/lus-bot.git`) 고정.
+- 병합 기반 `git pull` 대신 `fetch` + `reset --hard`를 쓰기 때문에 로컬 워킹 트리 상태와 무관하게 배포가 항상 성공한다. 로컬에 손대지 않은 변경사항이 있었다면 stash로 백업되고 (`git stash list`로 확인 가능) needs_attention.log에 남는다.
 
 ## 4. 외부 노출 — Cloudflare Tunnel
 
@@ -149,5 +154,6 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 ## 8. 알려진 제약
 
 - SQLite 파일 기반 DB — 동시 쓰기 부하가 커지면 다음 단계로 Postgres 등 전환 고려 필요.
-- 배포 파이프라인은 fast-forward pull만 가정한다. 로컬에서 직접 파일을 고쳐두면(uncommitted change) 다음 배포 사이클의 `git pull`이 충돌하며 실패할 수 있다 — 로컬에서 직접 코드를 고쳤다면 반드시 커밋 후 push까지 마쳐야 한다.
+- ~~배포 파이프라인은 fast-forward pull만 가정한다...~~ **해결됨 (2026-08-05)**: `git pull` → `fetch` + `reset --hard`로 교체, 로컬에 커밋 안 된 변경사항은 자동 stash 백업 후 진행하도록 변경. 로컬 워킹 트리 상태와 무관하게 배포가 항상 성공한다.
 - Cloudflare Quick Tunnel은 무료지만 주소가 고정되지 않는다.
+- CI(문법/import 자동 검사), 실시간 장애 알림, 고정 도메인은 아직 미구축.
