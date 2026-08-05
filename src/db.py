@@ -1,5 +1,8 @@
 import sqlite3
 import os
+import logging
+
+logger = logging.getLogger("passion_mate")
 
 # SQLite DB 파일 경로 설정 (프로젝트 루트의 database.db)
 DB_PATH = os.path.join(os.path.dirname(__file__), "../database.db")
@@ -128,6 +131,7 @@ def init_db():
         print("[OK] SQLite table structures checked/created.")
     except Exception as e:
         conn.rollback()
+        logger.exception("DB 초기화 실패")
         print(f"[Error] DB initialization error: {e}")
     finally:
         conn.close()

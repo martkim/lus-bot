@@ -7,6 +7,9 @@ from datetime import datetime, timezone
 import os
 import json
 import asyncio
+import time
+import logging
+from logging.handlers import RotatingFileHandler
 import urllib.request
 import urllib.error
 import tempfile
@@ -17,6 +20,23 @@ from dotenv import load_dotenv
 from src import db
 
 load_dotenv()
+
+# ==========================================
+# 📝 로깅 설정 — 핸들링된 예외도 logs/app.log에 스택트레이스까지 남긴다.
+# server_err.log는 uvicorn 자체 크래시/print만 남기지, try/except로 잡힌
+# 에러는 안 남았었다. 이게 그 구멍을 메운다.
+# ==========================================
+logger = logging.getLogger("passion_mate")
+logger.setLevel(logging.INFO)
+_logs_dir = os.path.join(os.path.dirname(__file__), "logs")
+os.makedirs(_logs_dir, exist_ok=True)
+_file_handler = RotatingFileHandler(
+    os.path.join(_logs_dir, "app.log"),
+    maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8"
+)
+_file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s"))
+logger.addHandler(_file_handler)
+logger.addHandler(logging.StreamHandler())
 
 # ==========================================
 # 🛠️ AI 튜터 환경 설정 및 커리큘럼 로드
@@ -39,6 +59,7 @@ try:
     else:
         print("[Warning] curriculum.txt not found. AI will run on default rules.")
 except Exception as e:
+    logger.exception("커리큘럼 파일 로드 실패")
     print(f"[Error] Failed to load curriculum.txt: {e}")
 
 # 데이터베이스 및 테이블 초기화
@@ -46,6 +67,16 @@ print("[DB] Initializing SQLite database and tables...")
 db.init_db()
 
 app = FastAPI(title="PASSION MATE API Server")
+
+
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    start = time.monotonic()
+    response = await call_next(request)
+    duration_ms = round((time.monotonic() - start) * 1000, 1)
+    logger.info(f"{request.method} {request.url.path} -> {response.status_code} ({duration_ms}ms)")
+    return response
+
 
 # 외부 접근(PWA, 로컬터널 등) 시 CORS 차단 방지 미들웨어 추가
 app.add_middleware(
@@ -116,6 +147,7 @@ async def get_students():
         students = db.get_active_students_with_session()
         return {"success": True, "data": students}
     except Exception as e:
+        logger.exception("학생 목록 조회 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "학생 목록 조회 중 오류 발생", "error": str(e)})
 
 
@@ -145,6 +177,7 @@ async def create_student(student: StudentCreate, request: Request):
             }
         }
     except Exception as e:
+        logger.exception("학생 등록 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "학생 등록 중 오류 발생", "error": str(e)})
 
 
@@ -172,6 +205,7 @@ async def start_session(payload: SessionControl):
     except HTTPException as he:
         raise he
     except Exception as e:
+        logger.exception("연습 시작 처리 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "연습 시작 처리 중 오류 발생", "error": str(e)})
 
 
@@ -220,6 +254,7 @@ async def end_session(payload: SessionControl):
     except HTTPException as he:
         raise he
     except Exception as e:
+        logger.exception("연습 종료 처리 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "연습 종료 처리 중 오류 발생", "error": str(e)})
 
 
@@ -255,6 +290,7 @@ async def get_dashboard_status(request: Request):
             }
         }
     except Exception as e:
+        logger.exception("대시보드 정보 조회 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "대시보드 정보 조회 중 오류 발생", "error": str(e)})
 
 
@@ -286,6 +322,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
                     f"오늘 완료한 연습 세션: {session_count}회"
                 )
         except Exception as db_err:
+            logger.exception("AI 챗봇용 학생 정보 조회 실패")
             print(f"[Warning] Database query failed: {db_err}")
             student_context = "등록된 학생 정보가 있으나 조회에 실패했습니다."
     else:
@@ -318,6 +355,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
             )
             return response.text.strip()
         except Exception as e:
+            logger.exception("Gemini SDK 호출 실패, 폴백으로 전환")
             print(f"[Warning] Gemini SDK error: {e}. Falling back.")
         
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY
@@ -338,6 +376,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
         except urllib.error.URLError as ue:
             print(f"[Warning] Gemini API Connection failed: {ue}. Falling back to rule-based Q&A.")
         except Exception as e:
+            logger.exception("Gemini REST 호출 실패, 폴백으로 전환")
             print(f"[Warning] Gemini error: {e}. Falling back.")
 
     # Rule-based Q&A Fallback
@@ -474,6 +513,7 @@ async def ask_question(request: QuestionAsk):
     except HTTPException as he:
         raise he
     except Exception as e:
+        logger.exception("Q&A 질문 제출 처리 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "Q&A 질문 제출 처리 중 오류 발생", "error": str(e)})
 
 @app.post("/api/qa/resolve")
@@ -502,6 +542,7 @@ async def resolve_question(request: QuestionResolve, req_raw: Request):
     except HTTPException as he:
         raise he
     except Exception as e:
+        logger.exception("질문 답변 처리 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "질문 답변 처리 중 오류 발생", "error": str(e)})
 
 @app.get("/api/qa/student/{student_id}")
@@ -513,6 +554,7 @@ async def get_student_questions(student_id: int):
         questions = db.get_questions_for_student(student_id)
         return {"success": True, "data": questions}
     except Exception as e:
+        logger.exception("개인 Q&A 목록 조회 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "개인 Q&A 목록 조회 중 오류 발생", "error": str(e)})
 
 
@@ -540,6 +582,7 @@ async def delete_student(student_id: int, request: Request):
     except HTTPException as he:
         raise he
     except Exception as e:
+        logger.exception("원생 삭제 처리 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "원생 삭제 처리 중 오류 발생", "error": str(e)})
 
 
@@ -587,6 +630,7 @@ async def force_end_session(payload: SessionControl, request: Request):
     except HTTPException as he:
         raise he
     except Exception as e:
+        logger.exception("강제 퇴장 처리 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "강제 퇴장 처리 중 오류 발생", "error": str(e)})
 
 
@@ -629,7 +673,7 @@ async def generate_ai_analysis_report_logic() -> str:
         report_markdown = ""
         
         if GEMINI_API_KEY:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={GEMINI_API_KEY}"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
             headers = {"Content-Type": "application/json"}
             
             system_instruction = (
@@ -661,6 +705,7 @@ async def generate_ai_analysis_report_logic() -> str:
                     res_data = json.loads(response.read().decode("utf-8"))
                     report_markdown = res_data["candidates"][0]["content"]["parts"][0]["text"]
             except Exception as e:
+                logger.exception("AI 분석 리포트용 Gemini 호출 실패, 시뮬레이션 엔진으로 폴백")
                 print(f"[Warning] Gemini analysis fail: {e}. Falling back to simulation engine.")
                 report_markdown = ""
 
@@ -727,6 +772,7 @@ async def generate_ai_analysis_report_logic() -> str:
 """
         return report_markdown
     except Exception as e:
+        logger.exception("AI 패턴 분석 리포트 생성 실패")
         print(f"[Error] generate_ai_analysis_report_logic error: {e}")
         return "### ⚠️ AI 패턴 분석 리포트 생성에 실패했습니다."
 
@@ -746,6 +792,7 @@ async def run_24h_ai_analysis_loop():
             db.create_analysis_report(report_text, now_iso)
             print(f"[AI Background Worker] Analysis report successfully generated and saved at {now_iso}")
         except Exception as e:
+            logger.exception("24H AI 패턴 분석 백그라운드 작업 실패")
             print(f"[AI Background Worker Error] Failed to generate background analysis: {e}")
         
         # 1시간 주기로 상시 백그라운드 구동
@@ -782,7 +829,7 @@ async def auto_update_curriculum_logic():
         )
 
         response = _genai_client.models.generate_content(
-            model='gemini-1.5-flash-latest',
+            model='gemini-2.5-flash',
             contents=prompt
         )
         updated_curriculum = response.text.strip()
@@ -801,6 +848,7 @@ async def auto_update_curriculum_logic():
             print("[AI Auto Update] Curriculum successfully updated and saved based on daily student data.")
             
     except Exception as e:
+        logger.exception("커리큘럼 자동 업데이트 실패")
         print(f"[AI Auto Update Error] Failed to auto-update curriculum: {e}")
 
 async def run_daily_curriculum_update_loop():
@@ -895,6 +943,7 @@ async def auto_generate_daily_insight():
             print("[AI Insight] Today's insight saved successfully.")
 
     except Exception as e:
+        logger.exception("오늘의 AI 인사이트 생성 실패")
         try:
             print(f"[AI Insight Error] Failed to generate daily insight: {e}")
         except Exception:
@@ -927,6 +976,7 @@ async def get_daily_insight():
             return {"success": True, "data": row}
         return {"success": False, "message": "아직 오늘의 꿀팁이 준비 중입니다."}
     except Exception as e:
+        logger.exception("오늘의 인사이트 조회 실패")
         raise HTTPException(status_code=500, detail={"success": False, "error": str(e)})
 
 
@@ -940,6 +990,7 @@ async def get_all_insights(request: Request):
         rows = db.get_all_insights(limit=30)
         return {"success": True, "data": rows}
     except Exception as e:
+        logger.exception("전체 인사이트 목록 조회 실패")
         raise HTTPException(status_code=500, detail={"success": False, "error": str(e)})
 
 
@@ -959,6 +1010,7 @@ async def toggle_insight(insight_id: int, request: Request):
     except HTTPException as he:
         raise he
     except Exception as e:
+        logger.exception("인사이트 활성화 토글 실패")
         raise HTTPException(status_code=500, detail={"success": False, "error": str(e)})
 
 
@@ -982,6 +1034,7 @@ async def auto_cleanup_ghost_sessions():
                 db.close_ghost_session(sess["id"], now_iso, duration_minutes=1200)
                 print(f"[Ghost Session Cleanup] Session {sess['id']} automatically closed (exceeded 20 hours).")
     except Exception as e:
+        logger.exception("고스트 세션 정리 실패")
         print(f"[Ghost Session Cleanup Error] {e}")
 
 async def run_ghost_session_cleanup_loop():
@@ -1041,6 +1094,7 @@ async def analyze_patterns(request: Request, refresh: bool = False):
             "source": "ON_DEMAND_REFRESH"
         }
     except Exception as e:
+        logger.exception("AI 패턴 분석 리포트 조회/생성 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "AI 패턴 분석 리포트 생성 실패", "error": str(e)})
 
 
@@ -1068,6 +1122,7 @@ async def get_curriculum(request: Request):
         else:
             return {"success": True, "curriculum": ""}
     except Exception as e:
+        logger.exception("커리큘럼 파일 읽기 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "커리큘럼 파일 읽기 오류", "error": str(e)})
 
 @app.post("/api/curriculum")
@@ -1084,6 +1139,7 @@ async def update_curriculum(payload: CurriculumUpdate, request: Request):
         curriculum_text = new_text
         return {"success": True, "message": "커리큘럼이 성공적으로 업데이트되었습니다."}
     except Exception as e:
+        logger.exception("커리큘럼 파일 저장 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "커리큘럼 파일 저장 오류", "error": str(e)})
 
 @app.post("/api/ai/analyze-file")
@@ -1131,6 +1187,7 @@ async def analyze_file(request: Request, file: UploadFile = File(...)):
             
         return {"success": True, "message": "파일 분석 완료", "analysis": analysis_result}
     except Exception as e:
+        logger.exception("업로드 파일 AI 분석 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "파일 분석 중 오류 발생", "error": str(e)})
 
 @app.post("/api/ai/curriculum-chat")
@@ -1156,6 +1213,7 @@ async def chat_about_curriculum(payload: AICurriculumChatRequest, request: Reque
         )
         return {"success": True, "reply": response.text}
     except Exception as e:
+        logger.exception("커리큘럼 AI 챗봇 응답 실패")
         return {"success": False, "reply": f"AI 답변 오류: {str(e)}"}
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
