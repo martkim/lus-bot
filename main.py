@@ -294,6 +294,18 @@ async def get_dashboard_status(request: Request):
         raise HTTPException(status_code=500, detail={"success": False, "message": "대시보드 정보 조회 중 오류 발생", "error": str(e)})
 
 
+def _call_gemini_rest_sync(url: str, payload: dict, timeout: int) -> str:
+    """Blocking Gemini REST call (urllib has no async API). Always invoke via
+    `await asyncio.to_thread(...)` from async code — called directly, this would
+    freeze the whole event loop (every other request/response) for up to
+    `timeout` seconds while waiting on the network."""
+    headers = {"Content-Type": "application/json"}
+    req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
+    with urllib.request.urlopen(req, timeout=timeout) as response:
+        res_data = json.loads(response.read().decode("utf-8"))
+        return res_data["candidates"][0]["content"]["parts"][0]["text"]
+
+
 async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: int = None) -> str:
     user_message = user_message.strip()
     if not user_message:
@@ -349,7 +361,8 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
         
         try:
             prompt = f"System Instructions: {system_instruction}\n\nUser Question: {user_message}"
-            response = _genai_client.models.generate_content(
+            response = await asyncio.to_thread(
+                _genai_client.models.generate_content,
                 model='gemini-2.5-flash',
                 contents=prompt
             )
@@ -357,22 +370,17 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
         except Exception as e:
             logger.exception("Gemini SDK 호출 실패, 폴백으로 전환")
             print(f"[Warning] Gemini SDK error: {e}. Falling back.")
-        
+
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" + GEMINI_API_KEY
-        
-        headers = {"Content-Type": "application/json"}
         payload = {
             "contents": [{
                 "parts": [{"text": f"System Instructions: {system_instruction}\n\nUser Question: {user_message}"}]
             }]
         }
-        
+
         try:
-            req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
-            with urllib.request.urlopen(req, timeout=8) as response:
-                res_data = json.loads(response.read().decode("utf-8"))
-                reply_text = res_data["candidates"][0]["content"]["parts"][0]["text"]
-                return reply_text
+            reply_text = await asyncio.to_thread(_call_gemini_rest_sync, url, payload, 8)
+            return reply_text
         except urllib.error.URLError as ue:
             print(f"[Warning] Gemini API Connection failed: {ue}. Falling back to rule-based Q&A.")
         except Exception as e:
@@ -674,8 +682,7 @@ async def generate_ai_analysis_report_logic() -> str:
         
         if GEMINI_API_KEY:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={GEMINI_API_KEY}"
-            headers = {"Content-Type": "application/json"}
-            
+
             system_instruction = (
                 "너는 입시 음악 레슨실의 수석 AI 분석가이자 교육 전략 부원장이다.\n"
                 "교사 대시보드에 축적된 입시생 데이터(인적 정보, 연습 히스토리, 실시간 질문 텍스트)와 "
@@ -700,10 +707,7 @@ async def generate_ai_analysis_report_logic() -> str:
             }
             
             try:
-                req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"), headers=headers, method="POST")
-                with urllib.request.urlopen(req, timeout=12) as response:
-                    res_data = json.loads(response.read().decode("utf-8"))
-                    report_markdown = res_data["candidates"][0]["content"]["parts"][0]["text"]
+                report_markdown = await asyncio.to_thread(_call_gemini_rest_sync, url, payload, 12)
             except Exception as e:
                 logger.exception("AI 분석 리포트용 Gemini 호출 실패, 시뮬레이션 엔진으로 폴백")
                 print(f"[Warning] Gemini analysis fail: {e}. Falling back to simulation engine.")
@@ -828,7 +832,8 @@ async def auto_update_curriculum_logic():
             "코드 블록 백틱(```)은 절대 쓰지 말고, 즉시 파일에 덮어쓸 수 있도록 완성된 전체 텍스트만 반환해 주세요."
         )
 
-        response = _genai_client.models.generate_content(
+        response = await asyncio.to_thread(
+            _genai_client.models.generate_content,
             model='gemini-2.5-flash',
             contents=prompt
         )
@@ -919,7 +924,8 @@ async def auto_generate_daily_insight():
             print(f"[AI Insight] Generating today's insight: [{title}]...")
         except Exception:
             print(f"[AI Insight] Generating today's insight of type: {insight_type}...")
-        response = _genai_client.models.generate_content(
+        response = await asyncio.to_thread(
+            _genai_client.models.generate_content,
             model='gemini-2.5-flash',
             contents=system_prompt
         )
@@ -1161,7 +1167,9 @@ async def analyze_file(request: Request, file: UploadFile = File(...)):
 
         # Gemini SDK를 통한 파일 업로드
         print(f"[AI Analysis] Uploading {file.filename} to Gemini...")
-        uploaded_file = _genai_client.files.upload(file=tmp_path, config={'display_name': file.filename})
+        uploaded_file = await asyncio.to_thread(
+            _genai_client.files.upload, file=tmp_path, config={'display_name': file.filename}
+        )
         
         # 파일 분석 요청 프롬프트
         prompt = (
@@ -1172,7 +1180,8 @@ async def analyze_file(request: Request, file: UploadFile = File(...)):
         )
         
         # 모델 설정 (플래시 모델 사용)
-        response = _genai_client.models.generate_content(
+        response = await asyncio.to_thread(
+            _genai_client.models.generate_content,
             model='gemini-2.5-flash',
             contents=[uploaded_file, prompt]
         )
@@ -1207,7 +1216,8 @@ async def chat_about_curriculum(payload: AICurriculumChatRequest, request: Reque
             f"선생님의 질문/요청: {payload.message}\n\n"
             "선생님의 요청에 맞게 커리큘럼의 어떤 부분을 추가하거나 수정하면 좋을지 친절하게 답변해 주세요."
         )
-        response = _genai_client.models.generate_content(
+        response = await asyncio.to_thread(
+            _genai_client.models.generate_content,
             model='gemini-2.5-flash',
             contents=prompt
         )
