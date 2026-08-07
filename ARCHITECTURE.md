@@ -27,11 +27,14 @@
                                 │
                 ┌───────────────┼───────────────┐
                 ▼               ▼               ▼
-         public/*.html    src/db.py         Gemini API
-         (프런트엔드)      (데이터 접근 계층)   (AI 튜터/분석/인사이트)
-                                │
-                                ▼
-                          database.db (SQLite)
+         public/*.html   src/routers/*      src/services/*
+         (프런트엔드)     (Controller)        (비즈니스 로직) ──→ Gemini API
+                                                    │
+                                                    ▼
+                                              src/db.py (Repository)
+                                                    │
+                                                    ▼
+                                              database.db (SQLite)
 
                     ┌─────────────────────────┐
                     │  cloudflared tunnel       │  → https://*.trycloudflare.com
@@ -41,29 +44,40 @@
 
 ## 2. 컴포넌트
 
-### 2.1 백엔드 — `main.py` (FastAPI, 포트 8088)
-- 라우트 계층. 모든 DB 접근은 `src/db.py`를 통해서만 하고, 라우트 자체에는 SQL이 없다.
-- 주요 API: 학생 CRUD, 연습 세션 시작/종료, 실시간 Q&A, 교사 대시보드, AI 챗봇/분석/커리큘럼.
-- 백그라운드 루프(앱 시작 시 `asyncio.create_task`로 기동, 전부 무한 루프):
-  - `run_24h_ai_analysis_loop` — 1시간마다 AI 패턴 분석 리포트 갱신
-  - `run_daily_curriculum_update_loop` — 24시간마다 커리큘럼 자동 업데이트
-  - `run_daily_insight_loop` — 24시간마다 "오늘의 인사이트" 카드 생성
-  - `run_ghost_session_cleanup_loop` — 1시간마다 20시간 넘게 켜진 세션 강제 종료
-- 인증: 교사 전용 엔드포인트는 `verify_teacher_auth`가 `X-Teacher-Name` / `X-Teacher-Password` 헤더를 검사 (값은 URL-encoded로 와야 함).
+이 프로젝트는 **3계층(Controller/Service/Repository) + DTO** 구조를 표준으로 따른다 (2026-08-07 리팩터링). `main.py`는 앱 부트스트랩만 담당하고 나머지는 전부 `src/` 하위로 분리되어 있다.
 
-### 2.2 데이터 접근 계층 — `src/db.py`
+### 2.1 Controller — `src/routers/*` (FastAPI APIRouter)
+- 도메인별로 분리: `students.py`, `sessions.py`, `dashboard.py`, `qa.py`, `ai.py`, `insights.py`, `curriculum.py`, `pages.py`(정적 파일 + SPA 폴백).
+- 각 핸들러는 "요청 파싱 → service 호출 → DTO 응답" 3~5줄. **비즈니스 로직을 라우터에 추가하지 말 것** — Service로 보낸다.
+- 예외 처리 패턴: `ValueError`→400, `NotFoundError`/`ConflictError`(`src/errors.py`)→404/400, 그 외 `Exception`→500 + `logger.exception(...)`.
+- 인증: 교사 전용 엔드포인트는 `Depends(verify_teacher_auth)` (`src/auth.py`)로 라우터 데코레이터에 건다. `X-Teacher-Name`/`X-Teacher-Password` 헤더는 URL-encoded로 와야 함.
+
+### 2.2 Service — `src/services/*`
+- 실제 비즈니스 로직 전부: `student_service`, `session_service`(세션 시간 계산), `dashboard_service`, `qa_service`, `ai_chat_service`(AI 챗봇 프롬프트+Gemini 호출+룰베이스 폴백), `analysis_service`(AI 패턴 분석 리포트), `curriculum_service`(커리큘럼 CRUD+자동 업데이트+파일분석), `insight_service`(오늘의 인사이트), `ghost_cleanup_service`.
+- FastAPI를 import하지 않는다 (프레임워크 독립적) — 검증 실패는 `ValueError`, 리소스 없음은 `NotFoundError`를 그냥 raise하고 라우터가 HTTP로 변환.
+- 함수 진입부마다 `logger.info("[FUNCTION_NAME] 시작")` 태그를 남긴다 (디버깅용, `logs/app.log`에서 실행 흐름 추적 가능).
+- `src/background.py`: 4개의 상시 asyncio 루프(1시간/24시간 주기)가 여기 있고, 실제 로직은 위 서비스들을 호출만 한다.
+- `src/gemini_client.py` / `src/curriculum_store.py`: Gemini 클라이언트와 커리큘럼 텍스트 캐시(mutable) — 여러 서비스가 공유하는 상태라 별도 모듈로 분리.
+
+### 2.3 Repository — `src/db.py`
 - `get_db_connection()` / `init_db()` (스키마 생성 + 컬럼 자동 마이그레이션) + 엔티티별 `get_*`/`create_*`/`update_*` 함수.
 - 엔티티: `students`, `sessions`, `questions`, `ai_analysis_reports`, `ai_daily_insights`.
 - 함수 하나당 커넥션을 열고 닫는다 (커넥션 풀 없음 — SQLite + 저동시성 환경이라 문제 없음).
-- main.py에서 데이터 관련 버그가 나면 **여기부터 본다.**
+- **데이터 관련 버그가 나면 여기부터 본다.**
 
-### 2.3 프런트엔드 — `public/`
+### 2.4 DTO — `src/dto/*`
+- 도메인별 Pydantic 모델 (`students.py`, `sessions.py`, `qa.py`, `dashboard.py`, `ai.py`, `insights.py`, `curriculum.py`, `common.py`).
+- 요청 모델(예: `StudentCreateRequest`)과 응답 모델(예: `StudentListResponse`)을 함께 보관.
+- 라우터의 `response_model=`에 항상 지정 — DB row(dict)를 그대로 클라이언트에 반환하지 않는다.
+- 필드명은 프런트엔드(`public/*.js`)가 직접 읽는 이름과 **1:1로 고정** (예: `active_session_id`, `dailyStats`) — 바꾸면 프런트가 깨진다.
+
+### 2.5 프런트엔드 — `public/`
 - `index.html`/`app.js` — 학생용 (연습 타이머, AI 챗봇, Q&A, 오늘의 인사이트)
 - `teacher.html`/`teacher.js` — 교사용 대시보드 (실시간 현황, 통계, Q&A 답변, 커리큘럼 관리, AI 분석 리포트)
 - `dashboard.js`, `style.css`, `manifest.json` (PWA)
 - 정적 파일은 캐시 무효화 헤더(`no-store`)로 서빙되고, 알 수 없는 경로는 전부 `index.html`로 폴백 (SPA 라우팅).
 
-### 2.4 로컬 상시 에이전트 — `system_service.py`
+### 2.6 로컬 상시 에이전트 — `system_service.py`
 Windows 시작프로그램에 `pythonw.exe system_service.py`로 등록되어 있어 **PC가 켜져 있는 한 항상 백그라운드에서 5분 주기로 순환**한다. 콘솔 창이 없는 `pythonw`에서도, 콘솔이 있는 환경에서도 안전하게 로그를 찍도록 stdout/stderr를 UTF-8로 재설정한다.
 
 한 사이클(`watchdog_cycle`)에서 하는 일, 순서대로:
@@ -124,15 +138,25 @@ requirements.txt 변경됐으면 → pip install -r requirements.txt
 ## 6. 디렉터리 구조
 
 ```
-main.py                 FastAPI 앱, 라우트, 백그라운드 루프
-src/db.py               데이터 접근 계층 (get_*/create_*/update_* 함수)
+main.py                 앱 부트스트랩만 (~80줄): FastAPI 생성, 로깅/CORS 설정, 라우터 등록, startup_event
+src/
+  routers/              Controller — students.py, sessions.py, dashboard.py, qa.py, ai.py, insights.py, curriculum.py, pages.py
+  services/             Service — student_service.py, session_service.py, dashboard_service.py, qa_service.py,
+                         ai_chat_service.py, analysis_service.py, curriculum_service.py, insight_service.py, ghost_cleanup_service.py
+  dto/                  Pydantic 요청/응답 모델 — students.py, sessions.py, qa.py, dashboard.py, ai.py, insights.py, curriculum.py, common.py
+  db.py                 Repository (get_*/create_*/update_* 함수)
+  auth.py               verify_teacher_auth (FastAPI Depends)
+  errors.py             NotFoundError / ConflictError (서비스→라우터 에러 전달용)
+  background.py         4개 상시 asyncio 루프 스케줄러 (로직은 services에)
+  gemini_client.py       Gemini 클라이언트 싱글톤
+  curriculum_store.py    커리큘럼 텍스트 캐시 (mutable, 여러 서비스가 공유)
 public/                 프런트엔드 정적 파일
 system_service.py       로컬 워치독 + 배포 파이프라인 (Windows 시작프로그램 등록됨)
 health_check.py         1회성 수동 헬스체크 스크립트 (DB 무결성, 유령 세션, API 키 여부)
 check_db.py             1회성 수동 DB 점검 스크립트
 requirements.txt        Python 의존성
 .env / .env.example     시크릿 (.env는 gitignore)
-logs/                   monitor_log.txt, deploy_log.txt, needs_attention.log, server_*.log (gitignore)
+logs/                   app.log(로테이팅), monitor_log.txt, deploy_log.txt, needs_attention.log, server_*.log (gitignore)
 backups/                일일 DB 백업, 최근 7개 (gitignore)
 database.db             SQLite DB 파일 (gitignore, 실 데이터 포함)
 start-*.bat/.py         수동 서버/터널 기동용 스크립트
@@ -149,6 +173,7 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 | 워치독이 뭔가 문제를 발견했나 | `logs/needs_attention.log` |
 | 지금 외부 접속 주소 | `latest_url.txt` |
 | DB가 멀쩡한가 | `python check_db.py` 또는 `python health_check.py` |
+| API 500 에러의 실제 원인(스택트레이스) | `logs/app.log` — 모든 서비스/라우터의 handled exception이 여기 찍힘 |
 | 워치독이 실제로 떠 있나 | `Get-Process pythonw` (PID 1개여야 정상 — 2개 이상이면 Windows 시작프로그램 중복 등록 의심) |
 
 ## 8. 알려진 제약
