@@ -110,6 +110,14 @@ def init_db():
             cursor.execute("ALTER TABLE questions ADD COLUMN teacher_answer TEXT")
             print("[DB Migration] Added column 'teacher_answer' to 'questions' table.")
 
+        # 자주 조회되는 컬럼 인덱스 (실제 쿼리 패턴 기준 — get_active_session 등의
+        # "WHERE student_id = ? AND status = 'ACTIVE'"류를 커버)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_student_status ON sessions(student_id, status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_status_end_time ON sessions(status, end_time)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_questions_student_id ON questions(student_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_questions_created_at ON questions(created_at)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_students_status ON students(status)")
+
         # 4. 더미 데이터 적재 (학생 테이블이 비어 있을 때만)
         cursor.execute("SELECT COUNT(*) as count FROM students")
         row = cursor.fetchone()

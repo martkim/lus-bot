@@ -80,8 +80,30 @@ def is_server_responsive():
         return False
 
 
+def rotate_if_large(path, max_bytes=10 * 1024 * 1024):
+    """Rename path -> path.1 (dropping any previous .1) if it's grown past
+    max_bytes, so plain append-mode logs don't grow forever. Only safe to call
+    at a point where nothing currently holds the file open for writing —
+    for server_out.log/server_err.log that's right before start_uvicorn()
+    reopens them (the old uvicorn process, if any, is already dead by then);
+    for needs_attention.log it's safe any time since log_attention() opens
+    and closes it on every call rather than holding it open."""
+    try:
+        path = Path(path)
+        if not path.exists() or path.stat().st_size <= max_bytes:
+            return
+        backup = path.with_suffix(path.suffix + ".1")
+        if backup.exists():
+            backup.unlink()
+        path.rename(backup)
+    except Exception as e:
+        log_attention(f"Failed to rotate log {path}: {e}")
+
+
 def start_uvicorn():
     print("[Watchdog] Starting uvicorn server...")
+    rotate_if_large(LOGS_DIR / "server_out.log")
+    rotate_if_large(SERVER_ERR_LOG)
     out_log = open(LOGS_DIR / "server_out.log", "a", encoding="utf-8")
     err_log = open(SERVER_ERR_LOG, "a", encoding="utf-8")
     subprocess.Popen(
@@ -339,6 +361,10 @@ def run_daily_backup_and_integrity_check():
 
         integrity = check_db()
         print(f"DB Integrity: {integrity}")
+
+        # needs_attention.log is only ever open()'d briefly per write (see
+        # log_attention), so it's always safe to rotate here.
+        rotate_if_large(ATTENTION_LOG)
     except Exception as e:
         log_attention(f"Daily backup/integrity job error: {e}")
 

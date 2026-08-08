@@ -9,11 +9,13 @@ from src.services.ghost_cleanup_service import auto_cleanup_ghost_sessions
 
 
 async def run_24h_ai_analysis_loop():
-    """1시간(3600초)마다 전체 원생 데이터 및 커리큘럼을 기반으로 AI 패턴 분석 리포트를 갱신합니다."""
+    """6시간(21600초)마다 전체 원생 데이터 및 커리큘럼을 기반으로 AI 패턴 분석 리포트를 갱신합니다.
+    (원래 1시간 주기였으나, 그것만으로 하루 24회 호출돼 Gemini 무료 티어 일일 한도(20회)를
+    이 루프 혼자 넘겨버렸다 — 학생 챗봇이 쓸 몫을 남겨두기 위해 하루 4회로 낮춤.)"""
     await asyncio.sleep(5)  # uvicorn 서버 로딩 안정화 대기
     while True:
         await run_scheduled_analysis()
-        await asyncio.sleep(3600)
+        await asyncio.sleep(21600)
 
 
 async def run_daily_curriculum_update_loop():
