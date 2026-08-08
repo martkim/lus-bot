@@ -12,6 +12,11 @@ from src.dto.ai import AIChatRequest
 
 logger = logging.getLogger("passion_mate")
 
+# Gemini 무료 티어 일일 한도(20회) 중 백그라운드 루프가 이미 하루 6회를 고정으로 쓴다.
+# 학생 8명이 나눠 쓴다는 가정하에 1인당 하루 2회로 제한 — 한 학생이 반복 호출해서
+# 다른 학생들 몫까지 소진시키는 걸 막는다.
+DAILY_AI_LIMIT_PER_STUDENT = 2
+
 
 def _call_gemini_rest_sync(url: str, payload: dict, timeout: int) -> str:
     """Blocking Gemini REST call (urllib has no async API). Always invoke via
@@ -29,6 +34,18 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     user_message = user_message.strip()
     if not user_message:
         return "질문 내용을 입력해 주세요."
+
+    if student_id is not None:
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        usage_count = db.get_todays_ai_usage_count(student_id, today_str)
+        if usage_count >= DAILY_AI_LIMIT_PER_STUDENT:
+            logger.info(f"[AI_LIMIT] student_id={student_id} 일일 한도 초과 ({usage_count}/{DAILY_AI_LIMIT_PER_STUDENT})")
+            if is_draft:
+                return "(오늘 AI 사용 한도를 넘어 자동 초안을 생성하지 못했습니다 — 선생님께서 직접 답변해 주세요.)"
+            return (
+                "오늘 AI 상담을 이미 2회 이용하셨어요! 하루 이용 한도라서 내일 다시 이용해 주세요. "
+                "급한 질문은 '질문하기'로 선생님께 직접 남겨주시면 답변해 드릴게요. 💌"
+            )
 
     curriculum_text = get_curriculum_text()
     student_info = None
@@ -61,6 +78,11 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
         student_context = "등록된 학생 정보가 없습니다."
 
     if GEMINI_API_KEY:
+        if student_id is not None:
+            # 성공/실패 여부와 무관하게 시도 시점에 기록 — 실패해도 Google 쪽 요청은
+            # 이미 나갔을 수 있어 공용 쿼터 보호 관점에서 보수적으로 카운트한다.
+            db.record_ai_usage(student_id, datetime.now().isoformat())
+
         if is_draft:
             system_instruction = (
                 "너는 입시생이 선생님에게 직접 물어볼 질문에 대해, 선생님이 보고 즉시 전송하거나 가볍게 수정하여 답변할 수 있도록 "

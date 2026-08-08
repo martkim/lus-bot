@@ -87,6 +87,15 @@ def init_db():
             )
         """)
 
+        # 6. 학생별 AI 사용 로그 (일일 한도 체크용)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS ai_usage_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+
         # students 테이블 컬럼 자동 마이그레이션 (age, mbti, status 추가)
         cursor.execute("PRAGMA table_info(students)")
         student_columns = [row["name"] for row in cursor.fetchall()]
@@ -117,6 +126,7 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_questions_student_id ON questions(student_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_questions_created_at ON questions(created_at)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_students_status ON students(status)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ai_usage_student_date ON ai_usage_log(student_id, created_at)")
 
         # 4. 더미 데이터 적재 (학생 테이블이 비어 있을 때만)
         cursor.execute("SELECT COUNT(*) as count FROM students")
@@ -661,6 +671,38 @@ def set_insight_active_status(insight_id, is_active):
     try:
         cursor = conn.cursor()
         cursor.execute("UPDATE ai_daily_insights SET is_active = ? WHERE id = ?", (is_active, insight_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ==========================================
+# AI Usage (학생별 일일 사용 한도)
+# ==========================================
+
+def get_todays_ai_usage_count(student_id, today_str):
+    """오늘 이 학생이 AI를 몇 번 썼는지 조회 (has_todays_insight()와 동일한 날짜 필터 패턴)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT COUNT(*) as count FROM ai_usage_log WHERE student_id = ? AND created_at LIKE ?",
+            (student_id, f"{today_str}%")
+        )
+        return cursor.fetchone()["count"]
+    finally:
+        conn.close()
+
+
+def record_ai_usage(student_id, created_at_iso):
+    """AI 호출 1회를 이 학생 몫으로 기록."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO ai_usage_log (student_id, created_at) VALUES (?, ?)",
+            (student_id, created_at_iso)
+        )
         conn.commit()
     finally:
         conn.close()
