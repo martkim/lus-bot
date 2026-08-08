@@ -37,8 +37,8 @@
                                               database.db (SQLite)
 
                     ┌─────────────────────────┐
-                    │  cloudflared tunnel       │  → https://*.trycloudflare.com
-                    │  (외부 접속용, ephemeral)  │    latest_url.txt 에 최신 주소 기록
+                    │  cloudflared Named Tunnel │  → https://passionmate.app (고정)
+                    │  (외부 접속용)             │    tunnel: passionmate
                     └─────────────────────────┘
 ```
 
@@ -123,11 +123,13 @@ requirements.txt 변경됐으면 → pip install -r requirements.txt
 - 브랜치는 `main` 고정, 원격은 `origin` (`https://github.com/martkim/lus-bot.git`) 고정.
 - 병합 기반 `git pull` 대신 `fetch` + `reset --hard`를 쓰기 때문에 로컬 워킹 트리 상태와 무관하게 배포가 항상 성공한다. 로컬에 손대지 않은 변경사항이 있었다면 stash로 백업되고 (`git stash list`로 확인 가능) needs_attention.log에 남는다.
 
-## 4. 외부 노출 — Cloudflare Tunnel
+## 4. 외부 노출 — Cloudflare Named Tunnel (고정 도메인: passionmate.app)
 
-- `cloudflared.exe tunnel --url http://127.0.0.1:8088` — 매번 새로운 `*.trycloudflare.com` 주소가 발급되는 임시(ephemeral) 터널.
-- 재기동될 때마다 주소가 바뀌므로 `latest_url.txt`가 항상 최신 주소의 단일 진실 소스(source of truth)다.
-- 고정 도메인이 필요해지면 Cloudflare 계정에 연결된 Named Tunnel로 교체해야 한다 (현재는 미적용).
+- 도메인 `passionmate.app`을 구매해 Cloudflare 계정에 연결하고, Named Tunnel `passionmate`로 고정했다 (2026-08-08).
+- 실행: `cloudflared.exe tunnel run passionmate` — 터널 설정은 `~/.cloudflared/config.yml` (tunnel ID, credentials 파일 경로, ingress 규칙: `passionmate.app`/`www.passionmate.app` → `http://127.0.0.1:8088`).
+- 워치독 재기동 때마다 주소가 안 바뀐다 — `PUBLIC_URL = "https://passionmate.app"`가 `system_service.py`에 상수로 박혀 있고, `latest_url.txt`에도 항상 이 값이 기록된다.
+- `~/.cloudflared/cert.pem`(계정 인증서)과 `~/.cloudflared/<tunnel-id>.json`(터널 자격증명)은 이 PC 로컬에만 존재 — git에 없고 백업도 안 됨. **이 PC를 포맷하거나 자격증명 파일을 잃어버리면 Cloudflare 대시보드에서 터널을 다시 만들어야 한다.**
+- (과거: `cloudflared tunnel --url` 방식의 임시 Quick Tunnel을 썼었는데, 재기동마다 `*.trycloudflare.com` 주소가 바뀌어서 매번 공유해야 하는 문제가 있었음 — 이제 해결됨.)
 
 ## 5. 시크릿 / 환경변수
 
@@ -171,7 +173,7 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 | 서버/터널이 지금 살아있나 | `logs/monitor_log.txt` 마지막 줄 |
 | 최근 배포가 성공했나 | `logs/deploy_log.txt` |
 | 워치독이 뭔가 문제를 발견했나 | `logs/needs_attention.log` |
-| 지금 외부 접속 주소 | `latest_url.txt` |
+| 지금 외부 접속 주소 | `https://passionmate.app` (고정, 안 바뀜) |
 | DB가 멀쩡한가 | `python check_db.py` 또는 `python health_check.py` |
 | API 500 에러의 실제 원인(스택트레이스) | `logs/app.log` — 모든 서비스/라우터의 handled exception이 여기 찍힘 |
 | 워치독이 실제로 떠 있나 | `Get-Process pythonw` (PID 1개여야 정상 — 2개 이상이면 Windows 시작프로그램 중복 등록 의심) |
@@ -180,5 +182,6 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 
 - SQLite 파일 기반 DB — 동시 쓰기 부하가 커지면 다음 단계로 Postgres 등 전환 고려 필요.
 - ~~배포 파이프라인은 fast-forward pull만 가정한다...~~ **해결됨 (2026-08-05)**: `git pull` → `fetch` + `reset --hard`로 교체, 로컬에 커밋 안 된 변경사항은 자동 stash 백업 후 진행하도록 변경. 로컬 워킹 트리 상태와 무관하게 배포가 항상 성공한다.
-- Cloudflare Quick Tunnel은 무료지만 주소가 고정되지 않는다.
-- CI(문법/import 자동 검사), 실시간 장애 알림, 고정 도메인은 아직 미구축.
+- ~~Cloudflare Quick Tunnel은 무료지만 주소가 고정되지 않는다.~~ **해결됨 (2026-08-08)**: `passionmate.app` 구매 + Named Tunnel로 전환.
+- CI(문법/import 자동 검사), 실시간 장애 알림은 아직 미구축.
+- Named Tunnel 자격증명(`~/.cloudflared/`)이 이 PC에만 있고 백업이 없다 — 다른 PC로 옮기거나 재설치할 경우 `cloudflared tunnel login` + `route dns`부터 다시 해야 함.
