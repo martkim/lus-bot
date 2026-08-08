@@ -43,6 +43,7 @@ CLOUDFLARED_EXE = BASE_DIR / "cloudflared.exe"
 LOCK_FILE = LOGS_DIR / "watchdog.lock"
 
 PORT = 8088
+PUBLIC_URL = "https://passionmate.app"  # Named Tunnel, fixed domain (was an ephemeral trycloudflare.com URL)
 CHECK_INTERVAL_SECONDS = 300  # 5 minutes
 ERROR_PATTERN = re.compile(r"traceback|error|exception", re.IGNORECASE)
 GIT_REMOTE = "origin"
@@ -223,38 +224,37 @@ def is_cloudflared_running():
 
 
 def start_cloudflared():
+    """Runs the Named Tunnel 'passionmate' (config: ~/.cloudflared/config.yml),
+    which always serves the fixed domain PUBLIC_URL - unlike the old ephemeral
+    Quick Tunnel, no per-restart URL capture is needed anymore."""
     print("[Watchdog] Starting cloudflared tunnel...")
     err_log = open(CLOUDFLARED_ERR_LOG, "w", encoding="utf-8")
     subprocess.Popen(
-        [str(CLOUDFLARED_EXE), "tunnel", "--url", f"http://127.0.0.1:{PORT}"],
+        [str(CLOUDFLARED_EXE), "tunnel", "run", "passionmate"],
         cwd=str(BASE_DIR),
         stdout=subprocess.DEVNULL,
         stderr=err_log,
         **_NO_WINDOW_KWARGS,
     )
-    # cloudflared runs a connectivity precheck (DNS/TCP/QUIC) before it registers
-    # the tunnel and prints the URL - a fixed short sleep sometimes fires before
-    # that finishes, leaving latest_url.txt stale. Poll instead of a single sleep.
-    url_pattern = re.compile(r"(https://[a-zA-Z0-9-]+\.trycloudflare\.com)")
+    # Confirm it actually registered a connection before moving on.
     deadline = time.monotonic() + 30
-    found_url = None
+    connected = False
     while time.monotonic() < deadline:
         time.sleep(1)
         try:
             with open(CLOUDFLARED_ERR_LOG, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
-            match = url_pattern.search(content)
-            if match:
-                found_url = match.group(1)
+            if "Registered tunnel connection" in content:
+                connected = True
                 break
         except Exception as e:
             log_attention(f"Failed to read cloudflared log after restart: {e}")
             return
-    if found_url:
-        LATEST_URL_FILE.write_text(found_url, encoding="utf-8")
-        print(f"[Watchdog] New tunnel URL: {found_url}")
+    if connected:
+        LATEST_URL_FILE.write_text(PUBLIC_URL, encoding="utf-8")
+        print(f"[Watchdog] Tunnel connected: {PUBLIC_URL}")
     else:
-        log_attention("Cloudflared restarted but no new tunnel URL appeared within 30s.")
+        log_attention("Cloudflared restarted but didn't register a tunnel connection within 30s.")
 
 
 _err_log_offset = None
