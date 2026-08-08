@@ -21,6 +21,11 @@ for _stream in (sys.stdout, sys.stderr):
         except Exception:
             pass
 
+# The watchdog itself runs headless (pythonw.exe, no console). Without this,
+# every git/netstat/taskkill/tasklist/uvicorn/cloudflared subprocess call below
+# briefly flashes its own visible console window on screen.
+_NO_WINDOW_KWARGS = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
+
 BASE_DIR = Path("C:/PASSION_MATE")
 DB_PATH = BASE_DIR / "database.db"
 BACKUP_DIR = BASE_DIR / "backups"
@@ -83,13 +88,14 @@ def start_uvicorn():
         cwd=str(BASE_DIR),
         stdout=out_log,
         stderr=err_log,
+        **_NO_WINDOW_KWARGS,
     )
 
 
 def kill_port_process(port):
     """Find and forcefully stop whatever is listening on `port` (used before a deploy restart)."""
     try:
-        result = subprocess.run(["netstat", "-ano"], capture_output=True, text=True, timeout=10)
+        result = subprocess.run(["netstat", "-ano"], capture_output=True, text=True, timeout=10, **_NO_WINDOW_KWARGS)
         pids = set()
         for line in result.stdout.splitlines():
             if f":{port}" in line and "LISTENING" in line:
@@ -97,7 +103,7 @@ def kill_port_process(port):
                 if parts:
                     pids.add(parts[-1])
         for pid in pids:
-            subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10)
+            subprocess.run(["taskkill", "/PID", pid, "/F"], capture_output=True, timeout=10, **_NO_WINDOW_KWARGS)
         return len(pids) > 0
     except Exception as e:
         log_attention(f"Failed to stop process on port {port}: {e}")
@@ -106,7 +112,7 @@ def kill_port_process(port):
 
 def run_git(*args):
     return subprocess.run(
-        ["git", *args], cwd=str(BASE_DIR), capture_output=True, text=True, timeout=30
+        ["git", *args], cwd=str(BASE_DIR), capture_output=True, text=True, timeout=30, **_NO_WINDOW_KWARGS
     )
 
 
@@ -186,7 +192,7 @@ def check_and_deploy_updates():
         log_deploy("requirements.txt changed - installing dependencies...")
         subprocess.run(
             ["python", "-m", "pip", "install", "-r", "requirements.txt", "--quiet"],
-            cwd=str(BASE_DIR), timeout=180,
+            cwd=str(BASE_DIR), timeout=180, **_NO_WINDOW_KWARGS,
         )
 
     restart_server()
@@ -209,7 +215,7 @@ def is_cloudflared_running():
     try:
         result = subprocess.run(
             ["tasklist", "/FI", "IMAGENAME eq cloudflared.exe"],
-            capture_output=True, text=True, timeout=10,
+            capture_output=True, text=True, timeout=10, **_NO_WINDOW_KWARGS,
         )
         return "cloudflared.exe" in result.stdout
     except Exception:
@@ -224,6 +230,7 @@ def start_cloudflared():
         cwd=str(BASE_DIR),
         stdout=subprocess.DEVNULL,
         stderr=err_log,
+        **_NO_WINDOW_KWARGS,
     )
     # cloudflared runs a connectivity precheck (DNS/TCP/QUIC) before it registers
     # the tunnel and prints the URL - a fixed short sleep sometimes fires before
@@ -342,7 +349,7 @@ def is_pid_alive(pid):
     belonging to something unrelated)."""
     try:
         result = subprocess.run(
-            ["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, timeout=10
+            ["tasklist", "/FI", f"PID eq {pid}"], capture_output=True, text=True, timeout=10, **_NO_WINDOW_KWARGS
         )
         return str(pid) in result.stdout and "python" in result.stdout.lower()
     except Exception:
