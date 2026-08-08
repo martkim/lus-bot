@@ -225,19 +225,29 @@ def start_cloudflared():
         stdout=subprocess.DEVNULL,
         stderr=err_log,
     )
-    # Give cloudflared a few seconds to negotiate and print the new URL.
-    time.sleep(8)
-    try:
-        with open(CLOUDFLARED_ERR_LOG, "r", encoding="utf-8", errors="ignore") as f:
-            content = f.read()
-        match = re.search(r"(https://[a-zA-Z0-9-]+\.trycloudflare\.com)", content)
-        if match:
-            LATEST_URL_FILE.write_text(match.group(1), encoding="utf-8")
-            print(f"[Watchdog] New tunnel URL: {match.group(1)}")
-        else:
-            log_attention("Cloudflared restarted but no new tunnel URL was found in its log yet.")
-    except Exception as e:
-        log_attention(f"Failed to read cloudflared log after restart: {e}")
+    # cloudflared runs a connectivity precheck (DNS/TCP/QUIC) before it registers
+    # the tunnel and prints the URL - a fixed short sleep sometimes fires before
+    # that finishes, leaving latest_url.txt stale. Poll instead of a single sleep.
+    url_pattern = re.compile(r"(https://[a-zA-Z0-9-]+\.trycloudflare\.com)")
+    deadline = time.monotonic() + 30
+    found_url = None
+    while time.monotonic() < deadline:
+        time.sleep(1)
+        try:
+            with open(CLOUDFLARED_ERR_LOG, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+            match = url_pattern.search(content)
+            if match:
+                found_url = match.group(1)
+                break
+        except Exception as e:
+            log_attention(f"Failed to read cloudflared log after restart: {e}")
+            return
+    if found_url:
+        LATEST_URL_FILE.write_text(found_url, encoding="utf-8")
+        print(f"[Watchdog] New tunnel URL: {found_url}")
+    else:
+        log_attention("Cloudflared restarted but no new tunnel URL appeared within 30s.")
 
 
 _err_log_offset = None
