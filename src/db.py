@@ -1,6 +1,9 @@
 import sqlite3
 import os
 import logging
+from datetime import datetime
+
+from src.password_utils import hash_password
 
 logger = logging.getLogger("passion_mate")
 
@@ -96,6 +99,21 @@ def init_db():
             )
         """)
 
+        # 7. 선생님 계정 (원장 / 파트 담당 선생님)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS teachers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT NOT NULL UNIQUE,
+                password_hash TEXT NOT NULL,
+                password_salt TEXT NOT NULL,
+                display_name TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'teacher',
+                part TEXT,
+                status TEXT NOT NULL DEFAULT 'ACTIVE',
+                created_at TEXT NOT NULL
+            )
+        """)
+
         # students 테이블 컬럼 자동 마이그레이션 (age, mbti, status 추가)
         cursor.execute("PRAGMA table_info(students)")
         student_columns = [row["name"] for row in cursor.fetchall()]
@@ -127,6 +145,25 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_questions_created_at ON questions(created_at)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_students_status ON students(status)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ai_usage_student_date ON ai_usage_log(student_id, created_at)")
+        # username에는 UNIQUE 제약이 이미 인덱스를 만들어주므로 별도 인덱스 불필요.
+
+        # teachers 테이블이 비어있으면 .env의 기존 로그인 정보(TEACHER_PASSWORD)를
+        # 그대로 첫 원장 계정으로 부트스트랩 — 로그인 정보가 갑자기 안 되는 일이 없게.
+        cursor.execute("SELECT COUNT(*) as count FROM teachers")
+        teacher_row = cursor.fetchone()
+        if teacher_row and teacher_row["count"] == 0:
+            bootstrap_password = os.environ.get("TEACHER_PASSWORD")
+            if bootstrap_password:
+                pwd_hash, salt = hash_password(bootstrap_password)
+                cursor.execute(
+                    "INSERT INTO teachers (username, password_hash, password_salt, display_name, role, part, status, created_at) "
+                    "VALUES (?, ?, ?, ?, 'director', NULL, 'ACTIVE', ?)",
+                    ("선생님", pwd_hash, salt, "원장 선생님", datetime.now().isoformat())
+                )
+                print("[DB] Bootstrapped initial director account ('선생님') from .env TEACHER_PASSWORD.")
+            else:
+                print("[Warning] TEACHER_PASSWORD not set in .env - no director account created. "
+                      "Set TEACHER_PASSWORD and restart to bootstrap the first director login.")
 
         # 4. 더미 데이터 적재 (학생 테이블이 비어 있을 때만)
         cursor.execute("SELECT COUNT(*) as count FROM students")
@@ -313,29 +350,34 @@ def force_end_active_sessions_for_student(student_id, end_time_iso, duration_min
         conn.close()
 
 
-def get_active_sessions_with_students():
-    """현재 진행 중인 모든 세션 + 학생 정보 (대시보드용)."""
+def get_active_sessions_with_students(part=None):
+    """현재 진행 중인 모든 세션 + 학생 정보 (대시보드용). part 지정 시 해당 파트(instrument) 학생만."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("""
+        query = """
             SELECT s.id as student_id, s.name, s.instrument, sess.id as session_id, sess.start_time
             FROM sessions sess
             JOIN students s ON sess.student_id = s.id
             WHERE sess.status = 'ACTIVE'
-            ORDER BY sess.start_time DESC
-        """)
+        """
+        params = []
+        if part:
+            query += " AND s.instrument = ?"
+            params.append(part)
+        query += " ORDER BY sess.start_time DESC"
+        cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
 
 
-def get_daily_stats_since(since_iso):
-    """오늘 누적 연습시간 랭킹 (COMPLETED 세션 기준)."""
+def get_daily_stats_since(since_iso, part=None):
+    """오늘 누적 연습시간 랭킹 (COMPLETED 세션 기준). part 지정 시 해당 파트 학생만."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("""
+        query = """
             SELECT s.id as student_id, s.name, s.instrument,
                    COALESCE(SUM(sess.duration_minutes), 0) as total_minutes,
                    COUNT(sess.id) as session_count
@@ -343,26 +385,35 @@ def get_daily_stats_since(since_iso):
             LEFT JOIN sessions sess ON s.id = sess.student_id
               AND sess.status = 'COMPLETED'
               AND sess.end_time >= ?
-            GROUP BY s.id
-            ORDER BY total_minutes DESC
-        """, (since_iso,))
+        """
+        params = [since_iso]
+        if part:
+            query += " WHERE s.instrument = ?"
+            params.append(part)
+        query += " GROUP BY s.id ORDER BY total_minutes DESC"
+        cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
 
 
-def get_completed_timeline_since(since_iso):
-    """오늘 완료된 세션 타임라인 (대시보드용)."""
+def get_completed_timeline_since(since_iso, part=None):
+    """오늘 완료된 세션 타임라인 (대시보드용). part 지정 시 해당 파트 학생만."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("""
+        query = """
             SELECT s.name, s.instrument, sess.start_time, sess.end_time, sess.duration_minutes
             FROM sessions sess
             JOIN students s ON sess.student_id = s.id
             WHERE sess.status = 'COMPLETED' AND sess.end_time >= ?
-            ORDER BY sess.end_time DESC
-        """, (since_iso,))
+        """
+        params = [since_iso]
+        if part:
+            query += " AND s.instrument = ?"
+            params.append(part)
+        query += " ORDER BY sess.end_time DESC"
+        cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
@@ -504,18 +555,23 @@ def get_questions_for_student(student_id):
         conn.close()
 
 
-def get_recent_questions_with_student(limit=20):
-    """최근 질문 목록 + 학생 정보 (대시보드/분석 리포트용)."""
+def get_recent_questions_with_student(limit=20, part=None):
+    """최근 질문 목록 + 학생 정보 (대시보드/분석 리포트용). part 지정 시 해당 파트 학생 질문만."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
-        cursor.execute("""
+        query = """
             SELECT q.id, q.student_id, q.student_name, s.instrument, q.question_text, q.ai_answer, q.teacher_answer, q.created_at, q.status
             FROM questions q
             LEFT JOIN students s ON q.student_id = s.id
-            ORDER BY q.created_at DESC
-            LIMIT ?
-        """, (limit,))
+        """
+        params = []
+        if part:
+            query += " WHERE s.instrument = ?"
+            params.append(part)
+        query += " ORDER BY q.created_at DESC LIMIT ?"
+        params.append(limit)
+        cursor.execute(query, params)
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
@@ -703,6 +759,72 @@ def record_ai_usage(student_id, created_at_iso):
             "INSERT INTO ai_usage_log (student_id, created_at) VALUES (?, ?)",
             (student_id, created_at_iso)
         )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ==========================================
+# Teachers (원장 / 파트 담당 선생님 계정)
+# ==========================================
+
+def create_teacher(username, password_hash, password_salt, display_name, role, part, created_at_iso):
+    """새 선생님 계정을 만들고 새로 생성된 id를 반환. username 중복이면 sqlite3.IntegrityError."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO teachers (username, password_hash, password_salt, display_name, role, part, status, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'ACTIVE', ?)",
+            (username, password_hash, password_salt, display_name, role, part, created_at_iso)
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def get_teacher_by_username(username):
+    """로그인 시 사용 — 비밀번호 해시/salt를 포함한 전체 row 반환 (Service 계층에서 검증)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM teachers WHERE username = ? AND status = 'ACTIVE'", (username,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_teacher_by_id(teacher_id):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM teachers WHERE id = ?", (teacher_id,))
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def get_all_teachers():
+    """전체 선생님 계정 목록 (원장 관리 화면용) — 비밀번호 필드 제외."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, username, display_name, role, part, status, created_at FROM teachers ORDER BY created_at DESC"
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def set_teacher_status(teacher_id, status):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE teachers SET status = ? WHERE id = ?", (status, teacher_id))
         conn.commit()
     finally:
         conn.close()
