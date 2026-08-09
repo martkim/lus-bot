@@ -50,15 +50,44 @@
       <section id="view-timer" class="app-view active">
         <div class="glass-card welcome-card">
           <h2>오늘도 한 걸음 더 성장해봐요 🚀</h2>
-          <p>선생님이 지정해주신 본인의 이름을 입력하고 입장해 주세요.</p>
+          <p>아이디와 비밀번호를 입력해 입장해 주세요. 처음이시면 가입부터 진행해 주세요.</p>
           
-          <!-- 이름 입력 로그인 영역 -->
+          <!-- 아이디/비밀번호 로그인 영역 -->
           <div class="input-group select-student-container" id="login-form-container">
-            <label for="student-name-input"><i class="fa-solid fa-user-lock"></i> 입시생 이름 입력</label>
+            <label for="student-username-input"><i class="fa-solid fa-user-lock"></i> 아이디</label>
             <div class="login-input-wrapper">
-              <input type="text" id="student-name-input" class="custom-input-text" placeholder="이름을 입력하세요..." autocomplete="off">
+              <input type="text" id="student-username-input" class="custom-input-text" placeholder="아이디를 입력하세요..." autocomplete="off">
+            </div>
+            <label for="student-password-input" style="margin-top: 8px;"><i class="fa-solid fa-lock"></i> 비밀번호</label>
+            <div class="login-input-wrapper">
+              <input type="password" id="student-password-input" class="custom-input-text" placeholder="비밀번호를 입력하세요..." autocomplete="off">
               <button id="btn-student-login" class="btn btn-secondary btn-login-submit">입장</button>
             </div>
+            <p style="margin-top: 10px; font-size: 0.85rem;">
+              처음이신가요? <a href="#" id="btn-show-signup" style="color: var(--neon-mint); font-weight: 600;">가입하기</a>
+            </p>
+          </div>
+
+          <!-- 최초 가입(아이디/비밀번호 설정) 영역 -->
+          <div class="input-group select-student-container" id="signup-form-container" style="display: none;">
+            <label for="signup-student-select"><i class="fa-solid fa-user-plus"></i> 본인 이름 선택</label>
+            <div class="login-input-wrapper">
+              <select id="signup-student-select" class="custom-input-text">
+                <option value="">이름을 선택하세요...</option>
+              </select>
+            </div>
+            <label for="signup-username-input" style="margin-top: 8px;"><i class="fa-solid fa-user-lock"></i> 사용할 아이디</label>
+            <div class="login-input-wrapper">
+              <input type="text" id="signup-username-input" class="custom-input-text" placeholder="아이디를 입력하세요..." autocomplete="off">
+            </div>
+            <label for="signup-password-input" style="margin-top: 8px;"><i class="fa-solid fa-lock"></i> 사용할 비밀번호</label>
+            <div class="login-input-wrapper">
+              <input type="password" id="signup-password-input" class="custom-input-text" placeholder="비밀번호를 입력하세요... (4자 이상)" autocomplete="off">
+              <button id="btn-student-signup" class="btn btn-secondary btn-login-submit">가입하기</button>
+            </div>
+            <p style="margin-top: 10px; font-size: 0.85rem;">
+              이미 가입하셨나요? <a href="#" id="btn-back-to-login" style="color: var(--neon-mint); font-weight: 600;">로그인으로 돌아가기</a>
+            </p>
           </div>
         </div>
 

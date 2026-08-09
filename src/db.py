@@ -126,6 +126,15 @@ def init_db():
         if "status" not in student_columns:
             cursor.execute("ALTER TABLE students ADD COLUMN status TEXT DEFAULT 'ACTIVE'")
             print("[DB Migration] Added column 'status' to 'students' table.")
+        if "username" not in student_columns:
+            cursor.execute("ALTER TABLE students ADD COLUMN username TEXT")
+            print("[DB Migration] Added column 'username' to 'students' table.")
+        if "password_hash" not in student_columns:
+            cursor.execute("ALTER TABLE students ADD COLUMN password_hash TEXT")
+            print("[DB Migration] Added column 'password_hash' to 'students' table.")
+        if "password_salt" not in student_columns:
+            cursor.execute("ALTER TABLE students ADD COLUMN password_salt TEXT")
+            print("[DB Migration] Added column 'password_salt' to 'students' table.")
 
         # questions 테이블 컬럼 자동 마이그레이션 (ai_answer, teacher_answer 추가)
         cursor.execute("PRAGMA table_info(questions)")
@@ -146,6 +155,10 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_students_status ON students(status)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_ai_usage_student_date ON ai_usage_log(student_id, created_at)")
         # username에는 UNIQUE 제약이 이미 인덱스를 만들어주므로 별도 인덱스 불필요.
+        # 학생 아이디는 미가입 학생이 여러 명 NULL일 수 있으므로 partial unique index로 강제.
+        cursor.execute(
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_students_username ON students(username) WHERE username IS NOT NULL"
+        )
 
         # teachers 테이블이 비어있으면 .env의 기존 로그인 정보(TEACHER_PASSWORD)를
         # 그대로 첫 원장 계정으로 부트스트랩 — 로그인 정보가 갑자기 안 되는 일이 없게.
@@ -164,23 +177,6 @@ def init_db():
             else:
                 print("[Warning] TEACHER_PASSWORD not set in .env - no director account created. "
                       "Set TEACHER_PASSWORD and restart to bootstrap the first director login.")
-
-        # 4. 더미 데이터 적재 (학생 테이블이 비어 있을 때만)
-        cursor.execute("SELECT COUNT(*) as count FROM students")
-        row = cursor.fetchone()
-        if row and row["count"] == 0:
-            dummy_students = [
-                ("김지우", "피아노", 19, "ENFP"),
-                ("이민서", "바이올린", 18, "INTJ"),
-                ("박준형", "작곡", 20, "INTP"),
-                ("최윤아", "첼로", 19, "ISFP"),
-                ("정태현", "성악", 18, "ESFJ")
-            ]
-            cursor.executemany(
-                "INSERT INTO students (name, instrument, age, mbti) VALUES (?, ?, ?, ?)",
-                dummy_students
-            )
-            print("[DB] Initial dummy student data (5 persons) inserted.")
 
         conn.commit()
         print("[OK] SQLite table structures checked/created.")
@@ -284,6 +280,50 @@ def get_all_students():
         cursor = conn.cursor()
         cursor.execute("SELECT id, name, instrument, age, mbti FROM students")
         return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_unclaimed_students():
+    """아직 아이디/비밀번호를 설정하지 않은(미가입) 활성 학생 목록."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT id, name, instrument FROM students "
+            "WHERE status = 'ACTIVE' AND username IS NULL ORDER BY name ASC"
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def claim_student_account(student_id, username, password_hash, password_salt):
+    """미가입 학생 레코드에 아이디/비밀번호를 설정(가입). 이미 가입된 학생이면 영향받은 행이 0."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE students SET username = ?, password_hash = ?, password_salt = ? "
+            "WHERE id = ? AND username IS NULL",
+            (username, password_hash, password_salt, student_id)
+        )
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+def get_student_by_username(username):
+    """아이디로 학생을 조회 (로그인용)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM students WHERE username = ? AND status = 'ACTIVE'", (username,)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
     finally:
         conn.close()
 

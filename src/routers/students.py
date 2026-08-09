@@ -5,7 +5,10 @@ from fastapi import APIRouter, HTTPException, Depends
 from src.auth import require_director
 from src.errors import NotFoundError
 from src.services import student_service
-from src.dto.students import StudentCreateRequest, StudentListResponse, StudentCreateResponse
+from src.dto.students import (
+    StudentCreateRequest, StudentListResponse, StudentCreateResponse,
+    UnclaimedStudentListResponse, StudentClaimRequest, StudentLoginRequest, StudentAuthResponse,
+)
 from src.dto.common import MessageResponse
 
 logger = logging.getLogger("passion_mate")
@@ -51,3 +54,42 @@ async def delete_student(student_id: int):
     except Exception as e:
         logger.exception("원생 삭제 처리 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "원생 삭제 처리 중 오류 발생", "error": str(e)})
+
+
+@router.get("/api/students/unclaimed", response_model=UnclaimedStudentListResponse)
+async def get_unclaimed_students():
+    """아직 아이디/비밀번호를 설정하지 않은 학생 목록 (학생 가입 화면용, 인증 불필요)."""
+    try:
+        students = student_service.get_unclaimed_students()
+        return UnclaimedStudentListResponse(success=True, data=students)
+    except Exception as e:
+        logger.exception("미가입 학생 목록 조회 실패")
+        raise HTTPException(status_code=500, detail={"success": False, "message": "미가입 학생 목록 조회 중 오류 발생", "error": str(e)})
+
+
+@router.post("/api/students/claim", response_model=StudentAuthResponse)
+async def claim_student(payload: StudentClaimRequest):
+    """학생 최초 가입: 원장이 등록해 둔 학생 레코드에 본인이 아이디/비밀번호를 설정합니다."""
+    try:
+        student = student_service.claim_student(payload)
+        return StudentAuthResponse(success=True, message=f"{student.name} 학생, 가입이 완료되었습니다!", data=student)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail={"success": False, "message": str(e)})
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail={"success": False, "message": str(e)})
+    except Exception as e:
+        logger.exception("학생 가입 처리 실패")
+        raise HTTPException(status_code=500, detail={"success": False, "message": "학생 가입 처리 중 오류 발생", "error": str(e)})
+
+
+@router.post("/api/students/login", response_model=StudentAuthResponse)
+async def login_student(payload: StudentLoginRequest):
+    """학생 로그인: 아이디/비밀번호 검증."""
+    try:
+        student = student_service.login_student(payload)
+        return StudentAuthResponse(success=True, message=f"{student.name} 학생, 환영합니다!", data=student)
+    except PermissionError as e:
+        raise HTTPException(status_code=401, detail={"success": False, "message": str(e)})
+    except Exception as e:
+        logger.exception("학생 로그인 처리 실패")
+        raise HTTPException(status_code=500, detail={"success": False, "message": "학생 로그인 처리 중 오류 발생", "error": str(e)})

@@ -1,10 +1,15 @@
 import logging
+import sqlite3
 from datetime import datetime, timezone
 from typing import List
 
 from src import db
 from src.errors import NotFoundError
-from src.dto.students import StudentCreateRequest, StudentDTO, StudentCreatedDTO
+from src.password_utils import hash_password, verify_password
+from src.dto.students import (
+    StudentCreateRequest, StudentDTO, StudentCreatedDTO,
+    UnclaimedStudentDTO, StudentClaimRequest, StudentLoginRequest, StudentAuthDTO,
+)
 
 logger = logging.getLogger("passion_mate")
 
@@ -38,3 +43,40 @@ def delete_student(student_id: int) -> str:
     db.force_end_active_sessions_for_student(student_id, now_iso, duration_minutes=1)
     db.soft_delete_student(student_id)
     return student_name
+
+
+def get_unclaimed_students() -> List[UnclaimedStudentDTO]:
+    logger.info("[GET_UNCLAIMED_STUDENTS] 시작")
+    rows = db.get_unclaimed_students()
+    return [UnclaimedStudentDTO(**row) for row in rows]
+
+
+def claim_student(payload: StudentClaimRequest) -> StudentAuthDTO:
+    logger.info(f"[CLAIM_STUDENT] 시작 student_id={payload.studentId}")
+    username = payload.username.strip()
+    password = payload.password.strip()
+    if not username or not password:
+        raise ValueError("아이디와 비밀번호를 모두 입력해 주세요.")
+    if len(password) < 4:
+        raise ValueError("비밀번호는 4자 이상이어야 합니다.")
+
+    pwd_hash, salt = hash_password(password)
+    try:
+        affected = db.claim_student_account(payload.studentId, username, pwd_hash, salt)
+    except sqlite3.IntegrityError:
+        raise ValueError(f"이미 사용 중인 아이디입니다: {username}")
+
+    if affected == 0:
+        raise NotFoundError("존재하지 않거나 이미 가입 완료된 학생입니다.")
+
+    student_row = db.get_student_by_username(username)
+    return StudentAuthDTO(**student_row)
+
+
+def login_student(payload: StudentLoginRequest) -> StudentAuthDTO:
+    logger.info(f"[LOGIN_STUDENT] 시작 username={payload.username}")
+    student_row = db.get_student_by_username(payload.username.strip())
+    if not student_row or not verify_password(payload.password, student_row["password_hash"], student_row["password_salt"]):
+        raise PermissionError("아이디 또는 비밀번호가 올바르지 않습니다.")
+
+    return StudentAuthDTO(**student_row)

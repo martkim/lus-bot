@@ -35,9 +35,19 @@ const dom = {
 
   // 로그인/로그아웃 관련 DOM 요소
   loginFormContainer: document.getElementById('login-form-container'),
-  studentNameInput: document.getElementById('student-name-input'),
+  studentUsernameInput: document.getElementById('student-username-input'),
+  studentPasswordInput: document.getElementById('student-password-input'),
   btnStudentLogin: document.getElementById('btn-student-login'),
   btnStudentLogout: document.getElementById('btn-student-logout'),
+  btnShowSignup: document.getElementById('btn-show-signup'),
+
+  // 최초 가입 관련 DOM 요소
+  signupFormContainer: document.getElementById('signup-form-container'),
+  signupStudentSelect: document.getElementById('signup-student-select'),
+  signupUsernameInput: document.getElementById('signup-username-input'),
+  signupPasswordInput: document.getElementById('signup-password-input'),
+  btnStudentSignup: document.getElementById('btn-student-signup'),
+  btnBackToLogin: document.getElementById('btn-back-to-login'),
 
   // 추천 연습 계획 DOM 요소
   personalPlanSection: document.getElementById('personal-plan-section'),
@@ -69,18 +79,22 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
   await loadStudents();
 
-  // 로컬 스토리지에 이전에 로그인해 두었던 학생이 있는지 확인
-  const savedStudentId = localStorage.getItem('selected_student_id');
-  if (savedStudentId) {
-    // 내부 상태의 학생 목록이 로드된 후에 입장 처리 진행
-    const studentExists = state.students.some(s => s.id == savedStudentId);
-    if (studentExists) {
-      handleStudentSelection(savedStudentId);
+  // 로컬 스토리지에 저장된 로그인 정보(아이디/비밀번호)가 있으면 서버에 재검증 후 자동 입장
+  const savedUsername = localStorage.getItem('student_username');
+  const savedPassword = localStorage.getItem('student_password');
+  if (savedUsername && savedPassword) {
+    const student = await loginStudentRequest(savedUsername, savedPassword);
+    if (student) {
+      handleStudentSelection(student.id);
 
       // 로그인 입력창 숨김 처리
       if (dom.loginFormContainer) {
         dom.loginFormContainer.style.display = 'none';
       }
+    } else {
+      // 검증 실패(비밀번호 변경 등) - 잘못된 저장값 제거
+      localStorage.removeItem('student_username');
+      localStorage.removeItem('student_password');
     }
   }
 }
@@ -136,18 +150,39 @@ function setupEventListeners() {
     });
   }
 
-  // 학생 이름 입력 로그인 이벤트 등록
+  // 학생 아이디/비밀번호 로그인 이벤트 등록
   if (dom.btnStudentLogin) {
     dom.btnStudentLogin.addEventListener('click', () => {
       processStudentLogin();
     });
   }
 
-  if (dom.studentNameInput) {
-    dom.studentNameInput.addEventListener('keypress', (e) => {
+  if (dom.studentPasswordInput) {
+    dom.studentPasswordInput.addEventListener('keypress', (e) => {
       if (e.key === 'Enter') {
         processStudentLogin();
       }
+    });
+  }
+
+  // 로그인 <-> 가입 화면 전환 이벤트 등록
+  if (dom.btnShowSignup) {
+    dom.btnShowSignup.addEventListener('click', (e) => {
+      e.preventDefault();
+      showSignupForm();
+    });
+  }
+  if (dom.btnBackToLogin) {
+    dom.btnBackToLogin.addEventListener('click', (e) => {
+      e.preventDefault();
+      showLoginForm();
+    });
+  }
+
+  // 최초 가입 이벤트 등록
+  if (dom.btnStudentSignup) {
+    dom.btnStudentSignup.addEventListener('click', () => {
+      processStudentSignup();
     });
   }
 
@@ -671,25 +706,44 @@ function loadPersonalPlan(instrument) {
 }
 
 // ==========================================
-// 🔑 16. 학생 이름 입력 로그인 & 퇴장(로그아웃) 처리
+// 🔑 16. 학생 아이디/비밀번호 로그인, 최초 가입 & 퇴장(로그아웃) 처리
 // ==========================================
 
-// 학생 이름 입력 로그인 로직
-function processStudentLogin() {
-  if (!dom.studentNameInput) return;
+// 서버에 로그인 요청을 보내고, 성공 시 학생 정보를, 실패 시 null을 반환 (자동 재입장에도 재사용)
+async function loginStudentRequest(username, password) {
+  try {
+    const res = await fetch('/api/students/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const result = await res.json();
+    return result.success ? result.data : null;
+  } catch (err) {
+    console.error('loginStudentRequest Error:', err);
+    return null;
+  }
+}
 
-  const rawInput = dom.studentNameInput.value.trim();
-  if (!rawInput) {
-    showToast('이름을 입력해 주세요.', 'error');
+// 아이디/비밀번호 로그인 로직
+async function processStudentLogin() {
+  if (!dom.studentUsernameInput || !dom.studentPasswordInput) return;
+
+  const username = dom.studentUsernameInput.value.trim();
+  const password = dom.studentPasswordInput.value.trim();
+  if (!username || !password) {
+    showToast('아이디와 비밀번호를 모두 입력해 주세요.', 'error');
     return;
   }
 
-  // 데이터베이스에 등록된 전체 학생 목록에서 입력된 이름 찾기 (대소문자 및 양끝 공백 무시)
-  const student = state.students.find(s => s.name.trim().toLowerCase() === rawInput.toLowerCase());
+  dom.btnStudentLogin.disabled = true;
+  const student = await loginStudentRequest(username, password);
+  dom.btnStudentLogin.disabled = false;
 
   if (student) {
-    // 1. 로그인 상태 저장 (로컬스토리지 보존)
-    localStorage.setItem('selected_student_id', student.id);
+    // 1. 로그인 상태 저장 (로컬스토리지 보존 - 다음 방문 시 자동 재검증용)
+    localStorage.setItem('student_username', username);
+    localStorage.setItem('student_password', password);
 
     // 2. 학생 셋팅 및 타이머/계획 렌더링
     handleStudentSelection(student.id);
@@ -700,15 +754,95 @@ function processStudentLogin() {
     }
 
     // 4. 입력창 리셋
-    dom.studentNameInput.value = '';
+    dom.studentUsernameInput.value = '';
+    dom.studentPasswordInput.value = '';
     showToast(`${student.name} 학생, PASSION MATE 입장 성공! 🎹`, 'success');
   } else {
-    // 등록되지 않은 학생일 경우 경고 알림
-    showToast('등록되지 않은 이름입니다. 선생님께 등록을 요청하세요! ⚠️', 'error');
+    showToast('아이디 또는 비밀번호가 올바르지 않습니다. ⚠️', 'error');
+    dom.studentPasswordInput.value = '';
+    dom.studentPasswordInput.focus();
+  }
+}
 
-    // 포커스 및 선택
-    dom.studentNameInput.focus();
-    dom.studentNameInput.select();
+// 로그인 화면 <-> 최초 가입 화면 전환
+function showSignupForm() {
+  if (dom.loginFormContainer) dom.loginFormContainer.style.display = 'none';
+  if (dom.signupFormContainer) dom.signupFormContainer.style.display = 'block';
+  loadUnclaimedStudents();
+}
+
+function showLoginForm() {
+  if (dom.signupFormContainer) dom.signupFormContainer.style.display = 'none';
+  if (dom.loginFormContainer) dom.loginFormContainer.style.display = 'block';
+}
+
+// 가입 화면에 아직 아이디/비밀번호를 설정하지 않은 학생 목록을 채워 넣기
+async function loadUnclaimedStudents() {
+  if (!dom.signupStudentSelect) return;
+  try {
+    const res = await fetch('/api/students/unclaimed');
+    const result = await res.json();
+    dom.signupStudentSelect.innerHTML = '<option value="">이름을 선택하세요...</option>';
+    if (result.success) {
+      result.data.forEach(student => {
+        const opt = document.createElement('option');
+        opt.value = student.id;
+        opt.textContent = `${student.name} (${student.instrument})`;
+        dom.signupStudentSelect.appendChild(opt);
+      });
+    }
+  } catch (err) {
+    console.error('loadUnclaimedStudents Error:', err);
+  }
+}
+
+// 최초 가입(아이디/비밀번호 설정) 로직
+async function processStudentSignup() {
+  if (!dom.signupStudentSelect || !dom.signupUsernameInput || !dom.signupPasswordInput) return;
+
+  const studentId = dom.signupStudentSelect.value;
+  const username = dom.signupUsernameInput.value.trim();
+  const password = dom.signupPasswordInput.value.trim();
+
+  if (!studentId) {
+    showToast('본인의 이름을 선택해 주세요.', 'error');
+    return;
+  }
+  if (!username || !password) {
+    showToast('아이디와 비밀번호를 모두 입력해 주세요.', 'error');
+    return;
+  }
+
+  dom.btnStudentSignup.disabled = true;
+  try {
+    const res = await fetch('/api/students/claim', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: Number(studentId), username, password })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      // 새로 가입한 학생을 포함해 최신 명단을 다시 로드한 뒤 입장 처리
+      await loadStudents();
+
+      localStorage.setItem('student_username', username);
+      localStorage.setItem('student_password', password);
+
+      handleStudentSelection(result.data.id);
+
+      if (dom.signupFormContainer) dom.signupFormContainer.style.display = 'none';
+      dom.signupUsernameInput.value = '';
+      dom.signupPasswordInput.value = '';
+      showToast(result.message || '가입이 완료되었습니다!', 'success');
+    } else {
+      showToast(result.message || '가입에 실패했습니다.', 'error');
+    }
+  } catch (err) {
+    showToast('네트워크 오류가 발생했습니다.', 'error');
+    console.error('processStudentSignup Error:', err);
+  } finally {
+    dom.btnStudentSignup.disabled = false;
   }
 }
 
@@ -727,7 +861,8 @@ function processStudentLogout() {
   }
 
   // 1. 로컬스토리지 로그인 세션 정보 파괴
-  localStorage.removeItem('selected_student_id');
+  localStorage.removeItem('student_username');
+  localStorage.removeItem('student_password');
 
   // 2. 내부 선택 상태 파괴
   state.selectedStudent = null;
@@ -737,12 +872,13 @@ function processStudentLogout() {
   resetTimerUI();
 
   // 4. 로그인 입력 폼 다시 표시 및 포커스
-  if (dom.loginFormContainer) {
-    dom.loginFormContainer.style.display = 'block';
+  showLoginForm();
+  if (dom.studentUsernameInput) {
+    dom.studentUsernameInput.value = '';
+    dom.studentUsernameInput.focus();
   }
-  if (dom.studentNameInput) {
-    dom.studentNameInput.value = '';
-    dom.studentNameInput.focus();
+  if (dom.studentPasswordInput) {
+    dom.studentPasswordInput.value = '';
   }
 
   // 5. 개인 정보 배지 및 플랜 섹션 숨김

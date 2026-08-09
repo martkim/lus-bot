@@ -41,3 +41,39 @@ class StudentCreateResponse(BaseModel):
     success: bool
     message: str
     data: StudentCreatedDTO
+
+
+class UnclaimedStudentDTO(BaseModel):
+    id: int
+    name: str
+    instrument: str
+
+
+class UnclaimedStudentListResponse(BaseModel):
+    success: bool
+    data: List[UnclaimedStudentDTO]
+
+
+class StudentClaimRequest(BaseModel):
+    studentId: int
+    username: str
+    password: str
+
+
+class StudentLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class StudentAuthDTO(BaseModel):
+    id: int
+    name: str
+    instrument: str
+    age: Optional[int] = None
+    mbti: Optional[str] = None
+
+
+class StudentAuthResponse(BaseModel):
+    success: bool
+    message: str
+    data: StudentAuthDTO
