@@ -58,6 +58,7 @@ class StudentClaimRequest(BaseModel):
     studentId: int
     username: str
     password: str
+    mbti: str
 
 
 class StudentLoginRequest(BaseModel):

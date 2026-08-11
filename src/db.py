@@ -298,15 +298,15 @@ def get_unclaimed_students():
         conn.close()
 
 
-def claim_student_account(student_id, username, password_hash, password_salt):
-    """미가입 학생 레코드에 아이디/비밀번호를 설정(가입). 이미 가입된 학생이면 영향받은 행이 0."""
+def claim_student_account(student_id, username, password_hash, password_salt, mbti):
+    """미가입 학생 레코드에 아이디/비밀번호/MBTI를 설정(가입). 이미 가입된 학생이면 영향받은 행이 0."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE students SET username = ?, password_hash = ?, password_salt = ? "
+            "UPDATE students SET username = ?, password_hash = ?, password_salt = ?, mbti = ? "
             "WHERE id = ? AND username IS NULL",
-            (username, password_hash, password_salt, student_id)
+            (username, password_hash, password_salt, mbti, student_id)
         )
         conn.commit()
         return cursor.rowcount

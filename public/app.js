@@ -46,6 +46,7 @@ const dom = {
   signupStudentSelect: document.getElementById('signup-student-select'),
   signupUsernameInput: document.getElementById('signup-username-input'),
   signupPasswordInput: document.getElementById('signup-password-input'),
+  signupMbtiSelect: document.getElementById('signup-mbti-select'),
   btnStudentSignup: document.getElementById('btn-student-signup'),
   btnBackToLogin: document.getElementById('btn-back-to-login'),
 
@@ -798,11 +799,12 @@ async function loadUnclaimedStudents() {
 
 // 최초 가입(아이디/비밀번호 설정) 로직
 async function processStudentSignup() {
-  if (!dom.signupStudentSelect || !dom.signupUsernameInput || !dom.signupPasswordInput) return;
+  if (!dom.signupStudentSelect || !dom.signupUsernameInput || !dom.signupPasswordInput || !dom.signupMbtiSelect) return;
 
   const studentId = dom.signupStudentSelect.value;
   const username = dom.signupUsernameInput.value.trim();
   const password = dom.signupPasswordInput.value.trim();
+  const mbti = dom.signupMbtiSelect.value;
 
   if (!studentId) {
     showToast('본인의 이름을 선택해 주세요.', 'error');
@@ -818,7 +820,7 @@ async function processStudentSignup() {
     const res = await fetch('/api/students/claim', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId: Number(studentId), username, password })
+      body: JSON.stringify({ studentId: Number(studentId), username, password, mbti })
     });
     const result = await res.json();
 

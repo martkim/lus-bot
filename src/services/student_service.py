@@ -13,6 +13,13 @@ from src.dto.students import (
 
 logger = logging.getLogger("passion_mate")
 
+VALID_MBTI_TYPES = [
+    "ISTJ", "ISFJ", "INFJ", "INTJ",
+    "ISTP", "ISFP", "INFP", "INTP",
+    "ESTP", "ESFP", "ENFP", "ENTP",
+    "ESTJ", "ESFJ", "ENFJ", "ENTJ",
+]
+
 
 def get_active_students() -> List[StudentDTO]:
     logger.info("[GET_ACTIVE_STUDENTS] 시작")
@@ -55,14 +62,17 @@ def claim_student(payload: StudentClaimRequest) -> StudentAuthDTO:
     logger.info(f"[CLAIM_STUDENT] 시작 student_id={payload.studentId}")
     username = payload.username.strip()
     password = payload.password.strip()
+    mbti = payload.mbti.strip().upper()
     if not username or not password:
         raise ValueError("아이디와 비밀번호를 모두 입력해 주세요.")
     if len(password) < 4:
         raise ValueError("비밀번호는 4자 이상이어야 합니다.")
+    if mbti not in VALID_MBTI_TYPES:
+        raise ValueError("올바른 MBTI 유형을 선택해 주세요.")
 
     pwd_hash, salt = hash_password(password)
     try:
-        affected = db.claim_student_account(payload.studentId, username, pwd_hash, salt)
+        affected = db.claim_student_account(payload.studentId, username, pwd_hash, salt, mbti)
     except sqlite3.IntegrityError:
         raise ValueError(f"이미 사용 중인 아이디입니다: {username}")
 
