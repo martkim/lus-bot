@@ -40,24 +40,22 @@ function setupDashboardListeners() {
       e.preventDefault();
       
       const ageInput = document.getElementById('reg-age');
-      const mbtiSelect = document.getElementById('reg-mbti');
-      
+
       const name = dashDom.regName.value.trim ? dashDom.regName.value.trim() : dashDom.regName.value;
       const instrument = dashDom.regInstrument.value.trim ? dashDom.regInstrument.value.trim() : dashDom.regInstrument.value;
       const age = ageInput ? parseInt(ageInput.value) : 19;
-      const mbti = mbtiSelect ? mbtiSelect.value : 'ENFP';
-      
+
       if (!name || !instrument) return;
- 
+
       try {
         const res = await fetch('/api/students', {
           method: 'POST',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
             'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
             'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
           },
-          body: JSON.stringify({ name, instrument, age, mbti })
+          body: JSON.stringify({ name, instrument, age })
         });
         const result = await res.json();
  
@@ -68,7 +66,6 @@ function setupDashboardListeners() {
           dashDom.regName.value = '';
           dashDom.regInstrument.value = '';
           if (ageInput) ageInput.value = '19';
-          if (mbtiSelect) mbtiSelect.value = 'ENFP';
           
           // 학생 타이머용 셀렉트 박스 리로드 (app.js 전역 함수 호출)
           if (typeof loadStudents === 'function') {
@@ -489,7 +486,7 @@ async function loadAllStudentsForManagement() {
           <td><strong>${s.name}</strong></td>
           <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.2);">${s.instrument}</span></td>
           <td>${s.age || 19}세</td>
-          <td><span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.2); font-weight: bold;">${s.mbti || 'ENFP'}</span></td>
+          <td><span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.2); font-weight: bold;">${s.mbti || '미가입'}</span></td>
           <td style="font-size: 0.8rem; color: var(--text-muted);">${regDate}</td>
           <td style="text-align: center;">
             <button class="btn-table-action" onclick="deleteStudent(${s.id})">

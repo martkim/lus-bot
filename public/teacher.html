@@ -321,7 +321,7 @@
             </div>
           </div>
 
-          <!-- 신규 학생 등록 카드 (나이 및 MBTI 필드 확장) -->
+          <!-- 신규 학생 등록 카드 (MBTI는 학생 본인이 최초 가입 시 직접 선택하므로 여기서는 입력받지 않음) -->
           <div class="glass-card dashboard-card admin-card" style="margin-top: 20px;">
             <h3><i class="fa-solid fa-user-plus"></i> 신규 입시생 등록</h3>
             <form id="form-register-student" class="admin-form" style="display: flex; flex-direction: column; gap: 15px;">
@@ -337,27 +337,6 @@
                 <div class="form-group" style="margin: 0; width: 100%;">
                   <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">나이</label>
                   <input type="number" id="reg-age" placeholder="나이 (예: 19)" min="1" max="100" value="19" required style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
-                </div>
-                <div class="form-group" style="margin: 0; width: 100%;">
-                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">MBTI</label>
-                  <select id="reg-mbti" required style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
-                    <option value="ENFP" selected>ENFP</option>
-                    <option value="ENFJ">ENFJ</option>
-                    <option value="ENTP">ENTP</option>
-                    <option value="ENTJ">ENTJ</option>
-                    <option value="ESFP">ESFP</option>
-                    <option value="ESFJ">ESFJ</option>
-                    <option value="ESTP">ESTP</option>
-                    <option value="ESTJ">ESTJ</option>
-                    <option value="INFP">INFP</option>
-                    <option value="INFJ">INFJ</option>
-                    <option value="INTP">INTP</option>
-                    <option value="INTJ">INTJ</option>
-                    <option value="ISFP">ISFP</option>
-                    <option value="ISFJ">ISFJ</option>
-                    <option value="ISTP">ISTP</option>
-                    <option value="ISTJ">ISTJ</option>
-                  </select>
                 </div>
               </div>
               <button type="submit" class="btn btn-secondary" style="align-self: flex-end; padding: 10px 30px; font-weight: bold;">등록 완료</button>

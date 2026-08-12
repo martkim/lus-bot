@@ -211,14 +211,15 @@ def get_active_students_with_session():
         conn.close()
 
 
-def create_student(name, instrument, age, mbti):
-    """새 학생을 등록하고 새로 생성된 id를 반환."""
+def create_student(name, instrument, age):
+    """새 학생을 등록하고 새로 생성된 id를 반환. MBTI는 학생이 최초 가입(claim) 시 직접 선택하므로
+    등록 시점에는 NULL로 남겨둔다 (컬럼 기본값 'ENFP'를 명시적으로 덮어씀)."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO students (name, instrument, age, mbti) VALUES (?, ?, ?, ?)",
-            (name, instrument, age, mbti)
+            "INSERT INTO students (name, instrument, age, mbti) VALUES (?, ?, ?, NULL)",
+            (name, instrument, age)
         )
         conn.commit()
         return cursor.lastrowid

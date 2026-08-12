@@ -6,7 +6,6 @@ class StudentCreateRequest(BaseModel):
     name: str
     instrument: str
     age: int = 19
-    mbti: str = "ENFP"
 
 
 class StudentDTO(BaseModel):
@@ -34,7 +33,7 @@ class StudentCreatedDTO(BaseModel):
     name: str
     instrument: str
     age: int
-    mbti: str
+    mbti: Optional[str] = None
 
 
 class StudentCreateResponse(BaseModel):

@@ -34,9 +34,8 @@ def create_student(payload: StudentCreateRequest) -> StudentCreatedDTO:
     if not name or not instrument:
         raise ValueError("이름과 전공 악기를 모두 입력해 주세요.")
 
-    mbti = payload.mbti.strip().upper()
-    new_id = db.create_student(name, instrument, payload.age, mbti)
-    return StudentCreatedDTO(id=new_id, name=name, instrument=instrument, age=payload.age, mbti=mbti)
+    new_id = db.create_student(name, instrument, payload.age)
+    return StudentCreatedDTO(id=new_id, name=name, instrument=instrument, age=payload.age, mbti=None)
 
 
 def delete_student(student_id: int) -> str:

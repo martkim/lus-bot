@@ -90,7 +90,8 @@ async def generate_ai_analysis_report_logic() -> str:
             age_sum = 0
             for s in students:
                 instr_counts[s["instrument"]] = instr_counts.get(s["instrument"], 0) + 1
-                mbti_counts[s["mbti"]] = mbti_counts.get(s["mbti"], 0) + 1
+                mbti_key = s["mbti"] or "미가입"
+                mbti_counts[mbti_key] = mbti_counts.get(mbti_key, 0) + 1
                 age_sum += s["age"]
             avg_age = round(age_sum / len(students), 1)
 
