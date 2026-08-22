@@ -53,6 +53,10 @@
       display: block;
       animation: fadeIn 0.4s ease;
     }
+
+    /* 원장 전용 UI 토글 — body에 role-is-director 클래스가 있을 때만 노출 */
+    .director-only { display: none !important; }
+    body.role-is-director .director-only { display: revert !important; }
     
     /* 원생 관리 테이블 스타일 */
     .mgmt-table-container {
@@ -180,6 +184,7 @@
       </div>
       <div class="status-indicator">
         <span id="header-connection-status"><span class="dot live"></span> 보안 게이트 작동중</span>
+        <span id="teacher-identity-badge" style="margin-left: 10px; font-size: 0.8rem; color: var(--text-muted);"></span>
       </div>
     </header>
 
@@ -216,7 +221,7 @@
           <button class="teacher-tab-btn active" data-target="teacher-sub-dash">
             <i class="fa-solid fa-chart-line"></i> 실시간 대시보드
           </button>
-          <button class="teacher-tab-btn" data-target="teacher-sub-mgmt" id="btn-tab-mgmt">
+          <button class="teacher-tab-btn director-only" data-target="teacher-sub-mgmt" id="btn-tab-mgmt">
             <i class="fa-solid fa-users-gear"></i> 원생 관리
           </button>
           <button class="teacher-tab-btn" data-target="teacher-sub-ai">
@@ -224,6 +229,9 @@
           </button>
           <button class="teacher-tab-btn" data-target="teacher-sub-curriculum">
             <i class="fa-solid fa-book-open-reader"></i> AI 커리큘럼 학습 관리
+          </button>
+          <button class="teacher-tab-btn director-only" data-target="teacher-sub-accounts" id="btn-tab-accounts">
+            <i class="fa-solid fa-user-gear"></i> 선생님 계정 관리
           </button>
         </div>
 
@@ -296,8 +304,8 @@
           </div>
         </div>
 
-        <!-- 2. [서브 뷰] 원생 관리 -->
-        <div id="teacher-sub-mgmt" class="teacher-sub-view">
+        <!-- 2. [서브 뷰] 원생 관리 (원장 전용) -->
+        <div id="teacher-sub-mgmt" class="teacher-sub-view director-only">
           <!-- 원생 목록 카드 -->
           <div class="glass-card dashboard-card">
             <h3><i class="fa-solid fa-id-card"></i> 등록 원생 명부</h3>
@@ -431,6 +439,65 @@
                 </form>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- 5. [서브 뷰] 선생님 계정 관리 (원장 전용) -->
+        <div id="teacher-sub-accounts" class="teacher-sub-view director-only">
+          <!-- 선생님 계정 목록 카드 -->
+          <div class="glass-card dashboard-card">
+            <h3><i class="fa-solid fa-users-viewfinder"></i> 등록 선생님 계정</h3>
+            <p class="section-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">원장 및 파트 담당 선생님 계정을 통합 관리합니다. 파트 선생님 계정은 비활성화하면 로그인이 차단됩니다.</p>
+            <div class="mgmt-table-container">
+              <table class="mgmt-table">
+                <thead>
+                  <tr>
+                    <th>아이디</th>
+                    <th>이름</th>
+                    <th>파트</th>
+                    <th>상태</th>
+                    <th>생성 일자</th>
+                    <th style="text-align: center;">작업</th>
+                  </tr>
+                </thead>
+                <tbody id="mgmt-teacher-list">
+                  <!-- JS로 목록 동적 생성 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- 신규 선생님 등록 카드 -->
+          <div class="glass-card dashboard-card admin-card" style="margin-top: 20px;">
+            <h3><i class="fa-solid fa-user-plus"></i> 신규 파트 선생님 등록</h3>
+            <form id="form-register-teacher" class="admin-form" style="display: flex; flex-direction: column; gap: 15px;">
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; width: 100%;">
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">아이디</label>
+                  <input type="text" id="teacher-reg-username" placeholder="로그인 아이디" required style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">비밀번호</label>
+                  <input type="password" id="teacher-reg-password" placeholder="비밀번호" required style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">이름</label>
+                  <input type="text" id="teacher-reg-name" placeholder="이름 입력 (예: 김선생)" required style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">담당 파트</label>
+                  <select id="teacher-reg-part" required style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
+                    <option value="일렉기타">일렉기타</option>
+                    <option value="베이스">베이스</option>
+                    <option value="작곡">작곡</option>
+                    <option value="보컬">보컬</option>
+                    <option value="미디">미디</option>
+                    <option value="드럼">드럼</option>
+                  </select>
+                </div>
+              </div>
+              <button type="submit" class="btn btn-secondary" style="align-self: flex-end; padding: 10px 30px; font-weight: bold;">계정 생성</button>
+            </form>
           </div>
         </div>
 

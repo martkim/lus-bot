@@ -2,15 +2,22 @@ import logging
 
 from fastapi import APIRouter, HTTPException, Depends
 
-from src.auth import require_director
+from src.auth import require_director, verify_teacher_auth
 from src.errors import NotFoundError
 from src.services import teacher_service
 from src.dto.teachers import (
     TeacherCreateRequest, TeacherCreateResponse, TeacherListResponse, TeacherStatusToggleResponse,
+    TeacherDTO, TeacherMeResponse,
 )
 
 logger = logging.getLogger("passion_mate")
 router = APIRouter()
+
+
+@router.get("/api/teachers/me", response_model=TeacherMeResponse)
+async def get_my_teacher_info(teacher: TeacherDTO = Depends(verify_teacher_auth)):
+    """로그인한 선생님 본인의 role/part 정보. 프런트가 원장/파트 선생님 UI를 분기하는 데 사용."""
+    return TeacherMeResponse(success=True, data=teacher)
 
 
 @router.post("/api/teachers", response_model=TeacherCreateResponse, dependencies=[Depends(require_director)])

@@ -4,6 +4,7 @@
 
 let dashboardPolling = null;
 let activeTimer = null;
+let currentTeacher = null;
 
 const authDom = {
   loginView: document.getElementById('view-teacher-login'),
@@ -12,7 +13,8 @@ const authDom = {
   passwordInput: document.getElementById('teacher-password-input'),
   loginBtn: document.getElementById('btn-teacher-login'),
   logoutBtn: document.getElementById('btn-teacher-logout'),
-  toastContainer: document.getElementById('toast-container')
+  toastContainer: document.getElementById('toast-container'),
+  identityBadge: document.getElementById('teacher-identity-badge')
 };
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -80,8 +82,8 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
   if (authDom.loginBtn) authDom.loginBtn.disabled = true;
 
   try {
-    // API 검증 호출 (X-Teacher-Name, X-Teacher-Password 헤더 실어 보내기)
-    const res = await fetch('/api/dashboard/status', {
+    // API 검증 호출 (X-Teacher-Name, X-Teacher-Password 헤더 실어 보내기) — /me가 role/part까지 함께 반환
+    const res = await fetch('/api/teachers/me', {
       method: 'GET',
       headers: {
         'X-Teacher-Name': encodeURIComponent(name),
@@ -96,7 +98,11 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
         sessionStorage.setItem('teacher_name', name);
         sessionStorage.setItem('teacher_password', password);
 
-        // 2. 로그인 창 숨기고 대시보드 본 화면 개방
+        // 2. 로그인한 선생님의 신원(원장/파트) 저장 및 화면 분기 적용
+        currentTeacher = result.data;
+        applyRoleBasedUI(currentTeacher);
+
+        // 3. 로그인 창 숨기고 대시보드 본 화면 개방
         if (authDom.loginView) authDom.loginView.classList.remove('active');
         if (authDom.dashboardView) authDom.dashboardView.classList.add('active');
 
@@ -105,12 +111,12 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
 
         showToast(`${name} 선생님, 인증 성공! 대시보드가 연결되었습니다. 🎓`, 'success');
 
-        // 3. dashboard.js 내의 전역 대시보드 리프레시 즉시 구동
+        // 4. dashboard.js 내의 전역 대시보드 리프레시 즉시 구동
         if (typeof refreshDashboard === 'function') {
           refreshDashboard();
         }
 
-        // 4. 5초 주기의 실시간 백그라운드 데이터 폴링 기동
+        // 5. 5초 주기의 실시간 백그라운드 데이터 폴링 기동
         if (dashboardPolling) clearInterval(dashboardPolling);
         dashboardPolling = setInterval(() => {
           if (authDom.dashboardView && authDom.dashboardView.classList.contains('active')) {
@@ -118,7 +124,7 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
           }
         }, 5000);
 
-        // 5. 1초 주기의 초 단위 흘러가는 경과 타이머 기동
+        // 6. 1초 주기의 초 단위 흘러가는 경과 타이머 기동
         if (activeTimer) clearInterval(activeTimer);
         if (typeof updateActiveStudentsElapsedTime === 'function') {
           activeTimer = setInterval(updateActiveStudentsElapsedTime, 1000);
@@ -145,11 +151,25 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
   }
 }
 
+// 로그인한 선생님의 role에 따라 원장 전용 UI(원생 관리, 선생님 계정 관리 탭)를 노출/차단
+function applyRoleBasedUI(teacher) {
+  document.body.classList.toggle('role-is-director', teacher.role === 'director');
+
+  if (authDom.identityBadge) {
+    authDom.identityBadge.textContent = teacher.role === 'director'
+      ? '원장 선생님'
+      : `${teacher.part} 파트 담당`;
+  }
+}
+
 // 교사용 로그아웃(인증 해제) 처리
 function processTeacherLogout() {
   // 1. 세션 파괴
   sessionStorage.removeItem('teacher_name');
   sessionStorage.removeItem('teacher_password');
+  currentTeacher = null;
+  document.body.classList.remove('role-is-director');
+  if (authDom.identityBadge) authDom.identityBadge.textContent = '';
 
   // 2. 주기적인 동기화 타이머 전면 파괴
   if (dashboardPolling) clearInterval(dashboardPolling);
@@ -236,6 +256,8 @@ function initTeacherSubTabs() {
       loadCurriculumContent();
       // AI 꿀팁 관리 패널도 함께 로드
       if (typeof loadInsightManager === 'function') loadInsightManager();
+    } else if (targetId === 'teacher-sub-accounts' && typeof loadTeacherAccounts === 'function') {
+      loadTeacherAccounts();
     }
   }
 }

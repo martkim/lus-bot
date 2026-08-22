@@ -23,7 +23,8 @@ const dashDom = {
   timelineList: document.getElementById('timeline-list'),
   registerForm: document.getElementById('form-register-student'),
   regName: document.getElementById('reg-name'),
-  regInstrument: document.getElementById('reg-instrument')
+  regInstrument: document.getElementById('reg-instrument'),
+  registerTeacherForm: document.getElementById('form-register-teacher')
 };
 
 // 페이지 로드 시 대시보드 리스너 연동
@@ -85,6 +86,55 @@ function setupDashboardListeners() {
       } catch (err) {
         showToast('서버 통신 중 오류가 발생했습니다.', 'error');
         console.error('Register Student Error:', err);
+      }
+    });
+  }
+
+  // 신규 파트 선생님 계정 등록 폼 처리 (원장 전용)
+  if (dashDom.registerTeacherForm) {
+    dashDom.registerTeacherForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const usernameInput = document.getElementById('teacher-reg-username');
+      const passwordInput = document.getElementById('teacher-reg-password');
+      const nameInput = document.getElementById('teacher-reg-name');
+      const partSelect = document.getElementById('teacher-reg-part');
+
+      const username = usernameInput.value.trim();
+      const password = passwordInput.value.trim();
+      const display_name = nameInput.value.trim();
+      const part = partSelect.value;
+
+      if (!username || !password || !display_name) return;
+
+      try {
+        const res = await fetch('/api/teachers', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
+            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+          },
+          body: JSON.stringify({ username, password, display_name, part })
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          showToast(`선생님 계정 ${display_name} (${part}) 생성이 완료되었습니다! 🎓`, 'success');
+
+          usernameInput.value = '';
+          passwordInput.value = '';
+          nameInput.value = '';
+
+          if (typeof loadTeacherAccounts === 'function') {
+            loadTeacherAccounts();
+          }
+        } else {
+          showToast(result.message || '선생님 계정 생성에 실패했습니다.', 'error');
+        }
+      } catch (err) {
+        showToast('서버 통신 중 오류가 발생했습니다.', 'error');
+        console.error('Register Teacher Error:', err);
       }
     });
   }
@@ -536,6 +586,102 @@ async function deleteStudent(studentId) {
   } catch (err) {
     showToast('서버 연결 실패', 'error');
     console.error('deleteStudent Error:', err);
+  }
+}
+
+// 👔 [선생님 계정 관리] 전체 선생님 계정 목록 조회 및 렌더링 (원장 전용)
+async function loadTeacherAccounts() {
+  const tbody = document.getElementById('mgmt-teacher-list');
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="6" style="text-align: center; padding: 30px 0;">
+        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--neon-mint); margin-bottom: 10px;"></i>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">선생님 계정을 조회 중입니다...</p>
+      </td>
+    </tr>
+  `;
+
+  try {
+    const res = await fetch('/api/teachers', {
+      headers: {
+        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
+        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+      }
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      tbody.innerHTML = '';
+      const teachers = result.data;
+
+      if (teachers.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 30px 0; color: var(--text-muted);">
+              등록된 선생님 계정이 없습니다.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      teachers.forEach(t => {
+        const regDate = t.created_at ? new Date(t.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '미지정';
+        const isDirector = t.role === 'director';
+        const statusBadge = t.status === 'ACTIVE'
+          ? '<span class="badge" style="background: rgba(34, 197, 94, 0.1); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.2);">활성</span>'
+          : '<span class="badge" style="background: rgba(239, 68, 68, 0.1); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.2);">비활성</span>';
+        const actionCell = isDirector
+          ? '<span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.2);">원장</span>'
+          : `<button class="btn-table-action" onclick="toggleTeacherStatus(${t.id})">
+               <i class="fa-solid fa-power-off"></i> ${t.status === 'ACTIVE' ? '비활성화' : '활성화'}
+             </button>`;
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${t.username}</strong></td>
+          <td>${t.display_name}</td>
+          <td>${t.part || '-'}</td>
+          <td>${statusBadge}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${regDate}</td>
+          <td style="text-align: center;">${actionCell}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  } catch (err) {
+    showToast('선생님 계정 목록을 가져오는 데 실패했습니다.', 'error');
+    console.error('loadTeacherAccounts Error:', err);
+  }
+}
+
+// 👔 [선생님 계정 관리] 파트 선생님 계정 활성/비활성 토글 (원장 전용)
+async function toggleTeacherStatus(teacherId) {
+  if (!confirm('이 선생님 계정의 활성 상태를 전환하시겠습니까?\n비활성화하면 해당 계정으로 로그인이 즉시 차단됩니다.')) {
+    return;
+  }
+
+  try {
+    const res = await fetch(`/api/teachers/${teacherId}/toggle-status`, {
+      method: 'PATCH',
+      headers: {
+        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
+        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+      }
+    });
+
+    const result = await res.json();
+    if (result.success) {
+      showToast(`계정 상태가 '${result.status === 'ACTIVE' ? '활성' : '비활성'}'(으)로 변경되었습니다.`, 'success');
+      loadTeacherAccounts();
+    } else {
+      showToast(result.message || '상태 변경에 실패했습니다.', 'error');
+    }
+  } catch (err) {
+    showToast('서버 연결 실패', 'error');
+    console.error('toggleTeacherStatus Error:', err);
   }
 }
 

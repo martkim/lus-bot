@@ -42,3 +42,8 @@ class TeacherCreateResponse(BaseModel):
 class TeacherStatusToggleResponse(BaseModel):
     success: bool
     status: str
+
+
+class TeacherMeResponse(BaseModel):
+    success: bool
+    data: TeacherDTO
