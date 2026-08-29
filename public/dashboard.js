@@ -196,6 +196,52 @@ function setupDashboardListeners() {
       }
     });
   }
+
+  // 원장 통계 엑셀 다운로드 버튼
+  const exportStatsBtn = document.getElementById('btn-export-stats');
+  if (exportStatsBtn) {
+    exportStatsBtn.addEventListener('click', () => {
+      exportStatsExcel();
+    });
+  }
+}
+
+// 👔 [원장 통계] 엑셀 다운로드 — 인증 헤더가 필요해 링크로 못 열고 fetch+blob으로 받아서 다운로드 트리거
+async function exportStatsExcel() {
+  const btn = document.getElementById('btn-export-stats');
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/director/stats/export', {
+      headers: {
+        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
+        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+      }
+    });
+
+    if (!res.ok) {
+      const result = await res.json().catch(() => ({}));
+      showToast((result.detail && result.detail.message) || '통계 엑셀 생성에 실패했습니다.', 'error');
+      return;
+    }
+
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'passion_mate_stats.xlsx';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
+
+    showToast('통계 엑셀 파일을 다운로드했습니다! 📊', 'success');
+  } catch (err) {
+    showToast('서버 통신 중 오류가 발생했습니다.', 'error');
+    console.error('exportStatsExcel Error:', err);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
 }
 
 // 🔄 대시보드 데이터 총 리프레시 함수 (선생님 Q&A 타이핑 시 IME 보호 락 연동)

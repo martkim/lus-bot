@@ -937,3 +937,41 @@ def get_homework_for_teacher(teacher_id):
         return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
+
+
+# ==========================================
+# Director stats (원장 통계 엑셀 다운로드)
+# ==========================================
+
+def get_teacher_student_counts():
+    """활성 파트 담당 선생님별 담당 원생 수 (원장 통계 요약 시트용)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT t.id as teacher_id, t.display_name, t.part,
+                   COUNT(s.id) as student_count
+            FROM teachers t
+            LEFT JOIN students s ON s.instrument = t.part AND s.status = 'ACTIVE'
+            WHERE t.role = 'teacher' AND t.status = 'ACTIVE'
+            GROUP BY t.id
+            ORDER BY t.part
+        """)
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_all_active_students_for_export():
+    """전체 재적생 상세 (원장 통계 상세 시트용, 파트순 정렬)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT name, instrument, age, mbti, username
+            FROM students WHERE status = 'ACTIVE'
+            ORDER BY instrument, name
+        """)
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()

@@ -14,7 +14,7 @@ load_dotenv()
 
 from src import db, background
 from src.curriculum_store import load_curriculum
-from src.routers import students, sessions, dashboard, qa, ai, insights, curriculum, teachers, homework, pages
+from src.routers import students, sessions, dashboard, qa, ai, insights, curriculum, teachers, homework, director, pages
 
 # ==========================================
 # 📝 로깅 설정 — 핸들링된 예외도 logs/app.log에 스택트레이스까지 남긴다.
@@ -72,6 +72,7 @@ app.include_router(insights.router)
 app.include_router(curriculum.router)
 app.include_router(teachers.router)
 app.include_router(homework.router)
+app.include_router(director.router)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")

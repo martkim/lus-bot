@@ -4,3 +4,4 @@ pydantic
 google-genai
 python-multipart
 python-dotenv
+openpyxl

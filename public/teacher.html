@@ -504,8 +504,17 @@
 
         <!-- 6. [서브 뷰] 선생님 계정 관리 (원장 전용) -->
         <div id="teacher-sub-accounts" class="teacher-sub-view director-only">
-          <!-- 선생님 계정 목록 카드 -->
+          <!-- 원장 통계 엑셀 다운로드 카드 -->
           <div class="glass-card dashboard-card">
+            <h3><i class="fa-solid fa-file-excel"></i> 원생 통계 엑셀 다운로드</h3>
+            <p class="section-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">선생님별 담당 원생 수(막대그래프 포함)와 전체 재적생 상세를 엑셀 파일로 받습니다.</p>
+            <button id="btn-export-stats" class="btn btn-secondary">
+              <i class="fa-solid fa-download"></i> 📊 선생님별 원생 통계 다운로드 (Excel)
+            </button>
+          </div>
+
+          <!-- 선생님 계정 목록 카드 -->
+          <div class="glass-card dashboard-card" style="margin-top: 20px;">
             <h3><i class="fa-solid fa-users-viewfinder"></i> 등록 선생님 계정</h3>
             <p class="section-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">원장 및 파트 담당 선생님 계정을 통합 관리합니다. 파트 선생님 계정은 비활성화하면 로그인이 차단됩니다.</p>
             <div class="mgmt-table-container">
