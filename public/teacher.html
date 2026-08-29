@@ -224,6 +224,9 @@
           <button class="teacher-tab-btn director-only" data-target="teacher-sub-mgmt" id="btn-tab-mgmt">
             <i class="fa-solid fa-users-gear"></i> 원생 관리
           </button>
+          <button class="teacher-tab-btn" data-target="teacher-sub-homework" id="btn-tab-homework">
+            <i class="fa-solid fa-book"></i> 숙제 관리
+          </button>
           <button class="teacher-tab-btn" data-target="teacher-sub-ai">
             <i class="fa-solid fa-brain"></i> AI 딥 러닝 분석
           </button>
@@ -352,7 +355,64 @@
           </div>
         </div>
 
-        <!-- 3. [서브 뷰] AI 딥 러닝 분석 -->
+        <!-- 3. [서브 뷰] 숙제 관리 (원장/파트 선생님 공통) -->
+        <div id="teacher-sub-homework" class="teacher-sub-view">
+          <!-- 숙제 등록 카드 -->
+          <div class="glass-card dashboard-card admin-card">
+            <h3><i class="fa-solid fa-book"></i> 개인 숙제 내주기</h3>
+            <p class="section-desc" style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">파트 담당 선생님은 자기 파트 학생에게만, 원장은 모든 학생에게 숙제를 낼 수 있습니다.</p>
+            <form id="form-assign-homework" class="admin-form" style="display: flex; flex-direction: column; gap: 15px;">
+              <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; width: 100%;">
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">학생 선택</label>
+                  <select id="homework-student-select" required style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
+                    <option value="">학생을 선택하세요...</option>
+                  </select>
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">제목</label>
+                  <input type="text" id="homework-title" placeholder="숙제 제목" required style="width: 100%; box-sizing: border-box;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">마감일</label>
+                  <input type="date" id="homework-due-date" style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
+                </div>
+                <div class="form-group" style="margin: 0; width: 100%;">
+                  <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">첨부파일 (선택, 최대 20MB)</label>
+                  <input type="file" id="homework-file" style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px dashed var(--glass-border); color: #fff; padding: 8px; border-radius: 8px;">
+                </div>
+              </div>
+              <div class="form-group" style="margin: 0; width: 100%;">
+                <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">설명</label>
+                <textarea id="homework-description" placeholder="숙제 상세 내용..." rows="3" style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; font-family: 'Noto Sans KR', sans-serif; resize: vertical;"></textarea>
+              </div>
+              <button type="submit" class="btn btn-secondary" style="align-self: flex-end; padding: 10px 30px; font-weight: bold;">숙제 등록</button>
+            </form>
+          </div>
+
+          <!-- 내가 낸 숙제 목록 카드 -->
+          <div class="glass-card dashboard-card" style="margin-top: 20px;">
+            <h3><i class="fa-solid fa-list-check"></i> 내가 낸 숙제</h3>
+            <div class="mgmt-table-container">
+              <table class="mgmt-table">
+                <thead>
+                  <tr>
+                    <th>학생</th>
+                    <th>제목</th>
+                    <th>마감일</th>
+                    <th>첨부</th>
+                    <th>등록 일자</th>
+                  </tr>
+                </thead>
+                <tbody id="homework-teacher-list">
+                  <!-- JS로 목록 동적 생성 -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. [서브 뷰] AI 딥 러닝 분석 -->
         <div id="teacher-sub-ai" class="teacher-sub-view">
           <div class="glass-card dashboard-card">
             <h3><i class="fa-solid fa-robot"></i> Gemini AI 딥 러닝 패턴 분석 엔진</h3>
@@ -387,7 +447,7 @@
           </div>
         </div>
 
-        <!-- 4. [서브 뷰] AI 커리큘럼 학습 관리 -->
+        <!-- 5. [서브 뷰] AI 커리큘럼 학습 관리 -->
         <div id="teacher-sub-curriculum" class="teacher-sub-view">
           <div class="glass-card dashboard-card">
             <h3><i class="fa-solid fa-book-open-reader"></i> AI 튜터 커리큘럼 학습소</h3>
@@ -442,7 +502,7 @@
           </div>
         </div>
 
-        <!-- 5. [서브 뷰] 선생님 계정 관리 (원장 전용) -->
+        <!-- 6. [서브 뷰] 선생님 계정 관리 (원장 전용) -->
         <div id="teacher-sub-accounts" class="teacher-sub-view director-only">
           <!-- 선생님 계정 목록 카드 -->
           <div class="glass-card dashboard-card">

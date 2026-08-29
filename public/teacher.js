@@ -250,6 +250,8 @@ function initTeacherSubTabs() {
     // 특정 서브 뷰 활성화 시 추가 동적 로드
     if (targetId === 'teacher-sub-mgmt' && typeof loadAllStudentsForManagement === 'function') {
       loadAllStudentsForManagement();
+    } else if (targetId === 'teacher-sub-homework' && typeof loadHomeworkTab === 'function') {
+      loadHomeworkTab();
     } else if (targetId === 'teacher-sub-ai' && typeof generateAiReport === 'function') {
       generateAiReport(false); // 0초 딜레이 백그라운드 캐시 리포트 즉시 로드!
     } else if (targetId === 'teacher-sub-curriculum' && typeof loadCurriculumContent === 'function') {

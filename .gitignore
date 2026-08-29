@@ -13,6 +13,7 @@ backups/
 logs/
 latest_url.txt
 query
+uploads/
 
 # node
 node_modules/

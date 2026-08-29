@@ -64,7 +64,11 @@ const dom = {
   personalQaSection: document.getElementById('personal-qa-section'),
   studentQaInput: document.getElementById('student-qa-input'),
   btnStudentQaSubmit: document.getElementById('btn-student-qa-submit'),
-  studentQaList: document.getElementById('student-qa-list')
+  studentQaList: document.getElementById('student-qa-list'),
+
+  // 개인 숙제 관련 DOM 요소
+  personalHomeworkSection: document.getElementById('personal-homework-section'),
+  personalHomeworkList: document.getElementById('personal-homework-list')
 };
 
 // 2. 초기 기동 함수
@@ -275,6 +279,12 @@ function handleStudentSelection(studentId) {
         loadStudentQuestions(state.selectedStudent.id);
       }
     }, 5000);
+  }
+
+  // 내 숙제 섹션 노출 및 목록 조회
+  if (dom.personalHomeworkSection) {
+    dom.personalHomeworkSection.style.display = 'block';
+    loadStudentHomework(studentId);
   }
 }
 
@@ -893,6 +903,9 @@ function processStudentLogout() {
   if (dom.personalQaSection) {
     dom.personalQaSection.style.display = 'none';
   }
+  if (dom.personalHomeworkSection) {
+    dom.personalHomeworkSection.style.display = 'none';
+  }
 
   showToast('연습실에서 안전하게 퇴장(로그아웃)되었습니다! 🌟', 'success');
 }
@@ -1048,6 +1061,41 @@ async function loadStudentQuestions(studentId) {
     }
   } catch (err) {
     console.error('loadStudentQuestions Error:', err);
+  }
+}
+
+// 선생님이 내주신 개인 숙제 목록 조회 및 렌더링
+async function loadStudentHomework(studentId) {
+  if (!dom.personalHomeworkList) return;
+
+  try {
+    const res = await fetch(`/api/homework/student/${studentId}`);
+    const result = await res.json();
+
+    if (!result.success) return;
+
+    const list = result.data;
+    if (list.length === 0) {
+      dom.personalHomeworkList.innerHTML = `
+        <div class="empty-placeholder" style="padding: 15px 0;">
+          <p style="font-size: 0.8rem; color: var(--text-muted);">아직 등록된 숙제가 없습니다.</p>
+        </div>
+      `;
+      return;
+    }
+
+    dom.personalHomeworkList.innerHTML = list.map(hw => `
+      <div class="glass-card" style="padding: 14px 16px; margin-bottom: 10px; background: rgba(255,255,255,0.03);">
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
+          <strong style="font-size: 0.95rem;">${hw.title}</strong>
+          ${hw.dueDate ? `<span style="font-size: 0.78rem; color: var(--neon-coral);">마감: ${hw.dueDate}</span>` : ''}
+        </div>
+        ${hw.description ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 6px 0 0;">${hw.description}</p>` : ''}
+        ${hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" rel="noopener" style="display: inline-block; margin-top: 8px; font-size: 0.82rem; color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${hw.attachmentFilename}</a>` : ''}
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('loadStudentHomework Error:', err);
   }
 }
 

@@ -114,6 +114,25 @@ def init_db():
             )
         """)
 
+        # 8. 개인 숙제 (선생님이 학생에게 부여, 파일 첨부 선택)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS homework (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                teacher_id INTEGER NOT NULL,
+                title TEXT NOT NULL,
+                description TEXT,
+                due_date TEXT,
+                attachment_filename TEXT,
+                attachment_path TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (student_id) REFERENCES students(id),
+                FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+            )
+        """)
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_homework_student_id ON homework(student_id)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_homework_teacher_id ON homework(teacher_id)")
+
         # students 테이블 컬럼 자동 마이그레이션 (age, mbti, status 추가)
         cursor.execute("PRAGMA table_info(students)")
         student_columns = [row["name"] for row in cursor.fetchall()]
@@ -867,5 +886,54 @@ def set_teacher_status(teacher_id, status):
         cursor = conn.cursor()
         cursor.execute("UPDATE teachers SET status = ? WHERE id = ?", (status, teacher_id))
         conn.commit()
+    finally:
+        conn.close()
+
+
+# ==========================================
+# Homework (선생님이 학생에게 부여하는 개인 숙제)
+# ==========================================
+
+def create_homework(student_id, teacher_id, title, description, due_date, attachment_filename, attachment_path, created_at_iso):
+    """새 숙제를 등록하고 새로 생성된 id를 반환."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO homework (student_id, teacher_id, title, description, due_date, attachment_filename, attachment_path, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (student_id, teacher_id, title, description, due_date, attachment_filename, attachment_path, created_at_iso)
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def get_homework_for_student(student_id):
+    """특정 학생 앞으로 등록된 숙제 목록 (학생용, 최신순)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM homework WHERE student_id = ? ORDER BY created_at DESC", (student_id,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_homework_for_teacher(teacher_id):
+    """특정 선생님이 낸 숙제 목록 (학생 이름 포함, 교사용, 최신순)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT h.*, s.name as student_name FROM homework h "
+            "JOIN students s ON h.student_id = s.id "
+            "WHERE h.teacher_id = ? ORDER BY h.created_at DESC",
+            (teacher_id,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()

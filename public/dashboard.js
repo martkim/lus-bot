@@ -24,7 +24,8 @@ const dashDom = {
   registerForm: document.getElementById('form-register-student'),
   regName: document.getElementById('reg-name'),
   regInstrument: document.getElementById('reg-instrument'),
-  registerTeacherForm: document.getElementById('form-register-teacher')
+  registerTeacherForm: document.getElementById('form-register-teacher'),
+  assignHomeworkForm: document.getElementById('form-assign-homework')
 };
 
 // 페이지 로드 시 대시보드 리스너 연동
@@ -135,6 +136,63 @@ function setupDashboardListeners() {
       } catch (err) {
         showToast('서버 통신 중 오류가 발생했습니다.', 'error');
         console.error('Register Teacher Error:', err);
+      }
+    });
+  }
+
+  // 개인 숙제 등록 폼 처리
+  if (dashDom.assignHomeworkForm) {
+    dashDom.assignHomeworkForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const studentSelect = document.getElementById('homework-student-select');
+      const titleInput = document.getElementById('homework-title');
+      const dueDateInput = document.getElementById('homework-due-date');
+      const descriptionInput = document.getElementById('homework-description');
+      const fileInput = document.getElementById('homework-file');
+
+      const studentId = studentSelect.value;
+      const title = titleInput.value.trim();
+      if (!studentId || !title) return;
+
+      const formData = new FormData();
+      formData.append('studentId', studentId);
+      formData.append('title', title);
+      formData.append('description', descriptionInput.value.trim());
+      formData.append('dueDate', dueDateInput.value);
+      if (fileInput.files[0]) {
+        formData.append('file', fileInput.files[0]);
+      }
+
+      try {
+        // multipart/form-data라 Content-Type은 지정하지 않음 (브라우저가 boundary 포함해 자동 설정)
+        const res = await fetch('/api/homework', {
+          method: 'POST',
+          headers: {
+            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
+            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+          },
+          body: formData
+        });
+        const result = await res.json();
+
+        if (result.success) {
+          showToast(`${result.data.studentName} 학생에게 숙제 "${title}"을(를) 냈습니다! 📚`, 'success');
+
+          titleInput.value = '';
+          dueDateInput.value = '';
+          descriptionInput.value = '';
+          fileInput.value = '';
+
+          if (typeof loadTeacherHomeworkList === 'function') {
+            loadTeacherHomeworkList();
+          }
+        } else {
+          showToast(result.message || '숙제 등록에 실패했습니다.', 'error');
+        }
+      } catch (err) {
+        showToast('서버 통신 중 오류가 발생했습니다.', 'error');
+        console.error('Assign Homework Error:', err);
       }
     });
   }
@@ -682,6 +740,99 @@ async function toggleTeacherStatus(teacherId) {
   } catch (err) {
     showToast('서버 연결 실패', 'error');
     console.error('toggleTeacherStatus Error:', err);
+  }
+}
+
+// 👔 [숙제 관리] 탭 진입 시 학생 선택창 + 내가 낸 숙제 목록을 함께 로드
+async function loadHomeworkTab() {
+  await populateHomeworkStudentSelect();
+  await loadTeacherHomeworkList();
+}
+
+// 👔 [숙제 관리] 학생 선택 드롭다운 채우기 — 파트 선생님은 자기 파트 학생만(서버가 최종 검증하므로 여긴 UX용)
+async function populateHomeworkStudentSelect() {
+  const select = document.getElementById('homework-student-select');
+  if (!select) return;
+
+  try {
+    const res = await fetch('/api/students');
+    const result = await res.json();
+    if (!result.success) return;
+
+    let students = result.data;
+    if (typeof currentTeacher !== 'undefined' && currentTeacher && currentTeacher.role !== 'director') {
+      students = students.filter(s => s.instrument === currentTeacher.part);
+    }
+
+    select.innerHTML = '<option value="">학생을 선택하세요...</option>';
+    students.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id;
+      opt.textContent = `${s.name} (${s.instrument})`;
+      select.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('populateHomeworkStudentSelect Error:', err);
+  }
+}
+
+// 👔 [숙제 관리] 내가 낸 숙제 목록 조회 및 렌더링
+async function loadTeacherHomeworkList() {
+  const tbody = document.getElementById('homework-teacher-list');
+  if (!tbody) return;
+
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="5" style="text-align: center; padding: 30px 0;">
+        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--neon-mint); margin-bottom: 10px;"></i>
+        <p style="font-size: 0.8rem; color: var(--text-muted);">숙제 목록을 조회 중입니다...</p>
+      </td>
+    </tr>
+  `;
+
+  try {
+    const res = await fetch('/api/homework/teacher', {
+      headers: {
+        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
+        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+      }
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      tbody.innerHTML = '';
+      const homeworkList = result.data;
+
+      if (homeworkList.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; padding: 30px 0; color: var(--text-muted);">
+              아직 낸 숙제가 없습니다. 위 양식에서 첫 숙제를 등록해 보세요!
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      homeworkList.forEach(hw => {
+        const regDate = hw.createdAt ? new Date(hw.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '미지정';
+        const attachmentCell = hw.attachmentUrl
+          ? `<a href="${hw.attachmentUrl}" target="_blank" rel="noopener" style="color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${hw.attachmentFilename}</a>`
+          : '-';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>${hw.studentName}</strong></td>
+          <td>${hw.title}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${hw.dueDate || '-'}</td>
+          <td>${attachmentCell}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${regDate}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  } catch (err) {
+    showToast('숙제 목록을 가져오는 데 실패했습니다.', 'error');
+    console.error('loadTeacherHomeworkList Error:', err);
   }
 }
 
