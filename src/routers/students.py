@@ -71,7 +71,7 @@ async def get_unclaimed_students():
 async def claim_student(payload: StudentClaimRequest):
     """학생 최초 가입: 원장이 등록해 둔 학생 레코드에 본인이 아이디/비밀번호를 설정합니다."""
     try:
-        student = student_service.claim_student(payload)
+        student = await student_service.claim_student(payload)
         return StudentAuthResponse(success=True, message=f"{student.name} 학생, 가입이 완료되었습니다!", data=student)
     except NotFoundError as e:
         raise HTTPException(status_code=404, detail={"success": False, "message": str(e)})
@@ -86,7 +86,7 @@ async def claim_student(payload: StudentClaimRequest):
 async def login_student(payload: StudentLoginRequest):
     """학생 로그인: 아이디/비밀번호 검증."""
     try:
-        student = student_service.login_student(payload)
+        student = await student_service.login_student(payload)
         return StudentAuthResponse(success=True, message=f"{student.name} 학생, 환영합니다!", data=student)
     except PermissionError as e:
         raise HTTPException(status_code=401, detail={"success": False, "message": str(e)})

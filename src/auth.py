@@ -1,3 +1,4 @@
+import asyncio
 import urllib.parse
 import logging
 
@@ -10,11 +11,16 @@ from src.dto.teachers import TeacherDTO
 logger = logging.getLogger("passion_mate")
 
 
-def verify_teacher_auth(request: Request) -> TeacherDTO:
+async def verify_teacher_auth(request: Request) -> TeacherDTO:
     """
     요청 헤더의 X-Teacher-Name(아이디)/X-Teacher-Password 값으로 teachers 테이블을 조회해
     인증합니다. 성공하면 인증된 선생님 정보(TeacherDTO, role/part 포함)를 반환 —
     원장/파트 담당 선생님 권한 분기는 이 반환값을 기준으로 한다.
+
+    이 의존성은 선생님 인증이 필요한 거의 모든 엔드포인트에 물려 있어 요청마다 호출된다.
+    pbkdf2(260,000회 반복)는 CPU 바운드라 실측 ~236ms 걸리는데, 그냥 호출하면 그 시간만큼
+    이벤트 루프 전체(다른 모든 요청)가 멈춘다 — asyncio.to_thread로 스레드풀에 위임해서
+    이벤트 루프를 막지 않는다 (hashlib의 OpenSSL 구현은 연산 중 GIL을 놓아주므로 실제 병렬 처리도 됨).
 
     FastAPI Depends()로 라우터에 연결해서 사용합니다.
     """
@@ -27,7 +33,10 @@ def verify_teacher_auth(request: Request) -> TeacherDTO:
     password = urllib.parse.unquote(auth_pwd_encoded)  # 🔐 URL 디코딩 비밀번호 복원!
 
     teacher_row = db.get_teacher_by_username(username) if username else None
-    if not teacher_row or not verify_password(password, teacher_row["password_hash"], teacher_row["password_salt"]):
+    is_valid = teacher_row and await asyncio.to_thread(
+        verify_password, password, teacher_row["password_hash"], teacher_row["password_salt"]
+    )
+    if not is_valid:
         raise HTTPException(status_code=401, detail="아이디 또는 비밀번호가 올바르지 않습니다. 정확히 입력해 주세요.")
 
     return TeacherDTO(

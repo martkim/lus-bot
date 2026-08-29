@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from datetime import datetime
 from sqlite3 import IntegrityError
@@ -13,7 +14,7 @@ logger = logging.getLogger("passion_mate")
 VALID_PARTS = ["일렉기타", "베이스", "작곡", "보컬", "미디", "드럼"]
 
 
-def create_teacher(payload: TeacherCreateRequest) -> TeacherSummaryDTO:
+async def create_teacher(payload: TeacherCreateRequest) -> TeacherSummaryDTO:
     logger.info(f"[CREATE_TEACHER] 시작 username={payload.username}")
     username = payload.username.strip()
     display_name = payload.display_name.strip()
@@ -24,7 +25,8 @@ def create_teacher(payload: TeacherCreateRequest) -> TeacherSummaryDTO:
     if part not in VALID_PARTS:
         raise ValueError(f"파트는 다음 중 하나여야 합니다: {', '.join(VALID_PARTS)}")
 
-    pwd_hash, salt = hash_password(payload.password)
+    # pbkdf2(260,000회)는 CPU 바운드 ~236ms — 스레드풀로 넘겨 이벤트 루프를 막지 않는다.
+    pwd_hash, salt = await asyncio.to_thread(hash_password, payload.password)
     now_iso = datetime.now().isoformat()
     try:
         new_id = db.create_teacher(username, pwd_hash, salt, display_name, "teacher", part, now_iso)

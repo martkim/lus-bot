@@ -15,9 +15,15 @@ def get_db_connection():
     """
     데이터베이스 연결을 생성하고 Row 팩토리를 설정하여
     딕셔너리 형태로 결과를 읽어올 수 있도록 반환합니다.
+
+    journal_mode=WAL: 기본 롤백 저널(delete) 모드는 쓰기 트랜잭션 커밋 순간 읽기까지
+    잠깐 막히는데, WAL은 쓰기 1개 + 읽기 여러 개가 동시에 진행될 수 있어 이 앱의
+    트래픽 패턴(선생님 대시보드가 몇 초 주기로 계속 읽는 동안 학생들이 가끔 씀)에 더 맞다.
+    한번 설정되면 DB 파일에 영구 저장되지만, 매 연결마다 걸어도 이미 WAL이면 비용이 없다.
     """
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode=WAL")
     return conn
 
 

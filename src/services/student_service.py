@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import sqlite3
 from datetime import datetime, timezone
@@ -57,7 +58,7 @@ def get_unclaimed_students() -> List[UnclaimedStudentDTO]:
     return [UnclaimedStudentDTO(**row) for row in rows]
 
 
-def claim_student(payload: StudentClaimRequest) -> StudentAuthDTO:
+async def claim_student(payload: StudentClaimRequest) -> StudentAuthDTO:
     logger.info(f"[CLAIM_STUDENT] 시작 student_id={payload.studentId}")
     username = payload.username.strip()
     password = payload.password.strip()
@@ -69,7 +70,8 @@ def claim_student(payload: StudentClaimRequest) -> StudentAuthDTO:
     if mbti not in VALID_MBTI_TYPES:
         raise ValueError("올바른 MBTI 유형을 선택해 주세요.")
 
-    pwd_hash, salt = hash_password(password)
+    # pbkdf2(260,000회)는 CPU 바운드 ~236ms — 스레드풀로 넘겨 이벤트 루프를 막지 않는다.
+    pwd_hash, salt = await asyncio.to_thread(hash_password, password)
     try:
         affected = db.claim_student_account(payload.studentId, username, pwd_hash, salt, mbti)
     except sqlite3.IntegrityError:
@@ -82,10 +84,13 @@ def claim_student(payload: StudentClaimRequest) -> StudentAuthDTO:
     return StudentAuthDTO(**student_row)
 
 
-def login_student(payload: StudentLoginRequest) -> StudentAuthDTO:
+async def login_student(payload: StudentLoginRequest) -> StudentAuthDTO:
     logger.info(f"[LOGIN_STUDENT] 시작 username={payload.username}")
     student_row = db.get_student_by_username(payload.username.strip())
-    if not student_row or not verify_password(payload.password, student_row["password_hash"], student_row["password_salt"]):
+    is_valid = student_row and await asyncio.to_thread(
+        verify_password, payload.password, student_row["password_hash"], student_row["password_salt"]
+    )
+    if not is_valid:
         raise PermissionError("아이디 또는 비밀번호가 올바르지 않습니다.")
 
     return StudentAuthDTO(**student_row)

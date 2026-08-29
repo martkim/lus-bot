@@ -9,6 +9,8 @@ src/__pycache__/
 
 # runtime data
 database.db
+database.db-wal
+database.db-shm
 backups/
 logs/
 latest_url.txt

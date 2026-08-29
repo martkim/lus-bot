@@ -24,7 +24,7 @@ async def get_my_teacher_info(teacher: TeacherDTO = Depends(verify_teacher_auth)
 async def create_teacher(payload: TeacherCreateRequest):
     """원장 전용: 파트 담당 선생님 계정을 새로 만듭니다."""
     try:
-        teacher = teacher_service.create_teacher(payload)
+        teacher = await teacher_service.create_teacher(payload)
         return TeacherCreateResponse(success=True, message="선생님 계정이 생성되었습니다.", data=teacher)
     except ValueError as e:
         raise HTTPException(status_code=400, detail={"success": False, "message": str(e)})
