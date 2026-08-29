@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from datetime import datetime
 from typing import List, Optional
@@ -10,82 +11,110 @@ from src.dto.insights import InsightDTO, InsightSummaryDTO
 
 logger = logging.getLogger("passion_mate")
 
-# 매일 다양하게 바뀌는 주제 리스트 (서울예대 기타 입시생 특화 및 딥러닝 멘탈 도서 기반)
-INSIGHT_TOPICS = [
-    ("guitar_timeplan", "⏱️ 서울예대 기타 맞춤형 시간 계획표",
-     "서울예술대학교 실용음악과 기타 전공 입시생을 위한 '오늘의 딥워크 타임라인'을 작성해줘. 하루 단위로 크로매틱, 초견, 자유곡, 즉흥연주(Improvisation) 시간 배분을 과학적으로 제시하고, 구체적인 연습 목표를 정리한 세련된 HTML 카드를 만들어줘."),
+# 매일 다양하게 바뀌는 공통 테마 (딥워크 타임라인 / 멘탈 도서 / 합격 마인드 / 근육 릴렉스) —
+# day-of-year 기준으로 하나를 골라, 아래 6개 파트 전부에 그 테마를 각자 특성에 맞게 변주해서 적용한다.
+INSIGHT_THEMES = [
+    ("timeplan", "⏱️ 오늘의 딥워크 타임라인",
+     "오늘 하루 연습/작업 시간을 어떻게 배분하면 좋을지 딥워크 타임라인을 제시해줘."),
     ("mental_book_review", "📚 딥러닝 라이브러리: 멘탈 도서 리뷰",
-     "당신의 뇌(Brain)가 오늘 학습한 심리학 도서나 자기계발서 1권(예: 아웃라이어, 미움받을 용기, 아토믹 해빗 등)을 선정해, 그 책의 핵심 철학을 기타 입시생의 슬럼프 극복이나 마인드 세팅에 어떻게 직접 적용할 수 있는지 요약해주는 HTML 카드를 만들어줘."),
-    ("seoul_arts_mindset", "🧠 서울예대 합격 마인드 세팅",
-     "서울예대 기타 전공 실기고사장 특유의 분위기, 교수님들의 평가 기준(테크닉보다는 톤, 리듬감, 음악성 등), 그리고 실기장에서 압박감을 이겨내는 스포츠 심리학 기반의 멘탈 컨트롤 비법을 정리한 HTML 카드를 만들어줘."),
-    ("deep_work_practice", "💪 딥워크(Deep Work)와 근육 릴렉스",
-     "신체 피로도 관리, 손목 및 어깨 근육의 릴렉스 비법, 호흡법 등 신체적 한계를 극복하고 연습의 질(Quality)을 높이는 효율적인 딥워크 연습법을 과학적 근거와 함께 제시하는 HTML 카드를 만들어줘."),
+     "심리학 도서나 자기계발서 1권(예: 아웃라이어, 미움받을 용기, 아토믹 해빗 등)을 선정해, 그 책의 핵심 철학을 입시생의 슬럼프 극복이나 마인드 세팅에 어떻게 적용할 수 있는지 요약해줘."),
+    ("audition_mindset", "🧠 실기고사 합격 마인드 세팅",
+     "실기고사장 특유의 분위기, 평가 기준, 그리고 실기장에서 압박감을 이겨내는 스포츠 심리학 기반 멘탈 컨트롤 비법을 정리해줘."),
+    ("deep_work_practice", "💪 딥워크(Deep Work)와 신체 관리",
+     "신체 피로도 관리, 근육 릴렉스 비법, 호흡법 등 신체적 한계를 극복하고 연습의 질(Quality)을 높이는 딥워크 연습법을 과학적 근거와 함께 제시해줘."),
 ]
+
+# 파트별 소재 힌트 — 같은 날 같은 테마라도 파트 특성에 맞게 변주하도록 Gemini에 전달
+PART_FOCUS = {
+    "일렉기타": "코드 보이싱, 톤 메이킹, 크로매틱/초견 연습",
+    "베이스": "워킹베이스 라인, 그루브와 리듬 정확도, 슬랩 테크닉",
+    "작곡": "화성학 진행, 코드 보이싱, 편곡 아이디어",
+    "보컬": "발성/호흡법, 음정 안정성, 곡 해석력",
+    "미디": "DAW 워크플로우, 사운드 디자인, 편곡/믹싱 기초",
+    "드럼": "리듬감, 그루브, 필인(Fill-in) 및 다이내믹 컨트롤",
+}
+
+
+def _strip_code_fence(text: str) -> str:
+    text = text.strip()
+    if text.startswith("```"):
+        lines = text.split("\n")
+        # 첫 줄이 ```json 같은 펜스 표시일 수 있으므로 통째로 제거
+        text = "\n".join(lines[1:])
+    if text.endswith("```"):
+        lines = text.split("\n")
+        text = "\n".join(lines[:-1])
+    return text.strip()
 
 
 async def auto_generate_daily_insight():
     """
-    Gemini AI가 매일 인터넷 지식 기반으로 서울예대 입시생에게 도움이 되는
-    꿀팁/화성학 퀴즈/추천 도서/전공 비법 등 HTML 카드를 자동 생성하고 DB에 저장합니다.
+    Gemini AI가 매일 6개 파트(일렉기타/베이스/작곡/보컬/미디/드럼) 각각에 맞는
+    꿀팁 HTML 카드를 생성해 DB에 저장합니다. Gemini 무료 티어 일일 한도가 빠듯해서
+    (배경 루프만으로 하루 6회 고정 소진, ai_chat_service.py 참고) 파트당 별도 호출하지
+    않고 **한 번의 호출로 6개 파트 콘텐츠를 구조화된 JSON으로 한꺼번에 받는다.**
     """
     if not GEMINI_API_KEY:
         print("[AI Insight] Skipped. No GEMINI_API_KEY.")
         return
 
     try:
-        # 오늘 이미 생성된 인사이트가 있으면 스킵
+        # 오늘 이미 생성된 인사이트가 있으면 스킵 (6개 파트 배치가 통째로 하루 1회만 생성됨)
         today_str = datetime.now().strftime("%Y-%m-%d")
         if db.has_todays_insight(today_str):
             print("[AI Insight] Today's insight already exists. Skipping generation.")
             return
 
-        # 오늘 날짜 기준으로 주제 순환 선택 (day_of_year % 주제수)
-        day_index = datetime.now().timetuple().tm_yday % len(INSIGHT_TOPICS)
-        insight_type, title, topic_prompt = INSIGHT_TOPICS[day_index]
+        # 오늘 날짜 기준으로 공통 테마 순환 선택 (day_of_year % 테마수)
+        day_index = datetime.now().timetuple().tm_yday % len(INSIGHT_THEMES)
+        insight_type, theme_title, theme_prompt = INSIGHT_THEMES[day_index]
+
+        parts_hint = "\n".join(f'- "{part}": {focus}' for part, focus in PART_FOCUS.items())
 
         system_prompt = (
-            "당신은 서울예술대학교(서울예대) 입시를 전문으로 하는 최고의 예술 입시 코치이자 UI 개발자입니다.\n"
-            "다음 주제에 맞는 내용을 담은 아름다운 HTML+CSS 카드 위젯을 만들어주세요.\n\n"
-            f"주제: {topic_prompt}\n\n"
+            "당신은 실용음악 입시를 전문으로 하는 최고의 예술 입시 코치이자 UI 개발자입니다.\n"
+            f"오늘의 공통 주제: {theme_prompt}\n\n"
+            "아래 6개 전공 파트 각각에 대해, 위 주제를 그 파트 특성에 맞게 변형한 HTML 카드를 만들어주세요:\n"
+            f"{parts_hint}\n\n"
             "⚠️ 중요한 규칙:\n"
-            "1. 반드시 완성된 HTML 코드만 반환하세요. (코드 블록 백틱(```) 절대 금지)\n"
-            "2. <style> 태그에 CSS를 인라인으로 포함하세요.\n"
-            "3. 전체 배경은 투명(transparent)으로, 카드 내부만 다크 글래스 스타일로 꾸며주세요.\n"
-            "   예: background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px;\n"
-            "4. 텍스트 색상은 흰색 계열(#fff, #e0e0e0 등)을 사용하세요.\n"
-            "5. 강조 색상은 보라색(#a78bfa), 민트(#00f2fe), 노랑(#ffd60a) 계열을 사용하세요.\n"
+            "1. 반드시 아래 형식의 JSON 배열만 반환하세요. 다른 설명 텍스트나 코드펜스(```) 절대 금지:\n"
+            '   [{"part": "일렉기타", "html_content": "<div>...</div>"}, {"part": "베이스", "html_content": "..."}, ...]\n'
+            "2. 배열은 반드시 6개 항목이어야 하고, part 값은 위에 나열된 6개 이름을 정확히 그대로 써야 합니다.\n"
+            "3. html_content 안에는 <style> 태그로 CSS를 인라인 포함하세요.\n"
+            "4. 전체 배경은 투명(transparent), 카드 내부만 다크 글래스 스타일: "
+            "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px;\n"
+            "5. 텍스트는 흰색 계열(#fff, #e0e0e0), 강조색은 보라(#a78bfa)/민트(#00f2fe)/노랑(#ffd60a) 계열.\n"
             "6. 모바일 화면에 맞게 max-width: 100%를 유지하세요.\n"
-            "7. 내용은 실제로 서울예대 입시생에게 도움이 되는 진짜 정보로 채워주세요.\n"
-            "8. 인터랙티브 요소(퀴즈, 버튼, 토글 등)가 포함된 경우 <script> 태그도 포함하세요."
+            "7. 내용은 각 파트 학생에게 실제로 도움이 되는 진짜 정보로 채우세요.\n"
+            "8. html_content 문자열 안의 큰따옴표는 JSON 규격에 맞게 이스케이프하세요."
         )
 
-        try:
-            print(f"[AI Insight] Generating today's insight: [{title}]...")
-        except Exception:
-            print(f"[AI Insight] Generating today's insight of type: {insight_type}...")
+        print(f"[AI Insight] Generating today's insight batch (theme: {theme_title}) for 6 parts...")
         response = await asyncio.to_thread(
             get_client().models.generate_content,
             model='gemini-2.5-flash',
             contents=system_prompt
         )
-        html_content = response.text.strip()
+        raw_text = _strip_code_fence(response.text)
 
-        # 불필요한 코드 펜스 제거
-        if html_content.startswith("```"):
-            lines = html_content.split("\n")
-            html_content = "\n".join(lines[1:])
-        if html_content.endswith("```"):
-            lines = html_content.split("\n")
-            html_content = "\n".join(lines[:-1])
-        html_content = html_content.strip()
-
-        # DB에 저장
-        now_iso = datetime.now().isoformat()
-        db.create_daily_insight(insight_type, title, html_content, now_iso)
         try:
-            print(f"[AI Insight] Today's insight [{title}] saved successfully.")
-        except Exception:
-            print("[AI Insight] Today's insight saved successfully.")
+            items = json.loads(raw_text)
+        except json.JSONDecodeError:
+            logger.exception("오늘의 인사이트 JSON 파싱 실패")
+            print("[AI Insight Error] Gemini response was not valid JSON. Skipping today's batch (will retry tomorrow).")
+            return
+
+        now_iso = datetime.now().isoformat()
+        saved_count = 0
+        for item in items:
+            part = item.get("part")
+            html_content = item.get("html_content")
+            if not part or not html_content or part not in PART_FOCUS:
+                continue
+            db.create_daily_insight(insight_type, theme_title, html_content, now_iso, part)
+            saved_count += 1
+
+        print(f"[AI Insight] Today's insight batch saved: {saved_count}/{len(PART_FOCUS)} parts.")
 
     except Exception as e:
         logger.exception("오늘의 AI 인사이트 생성 실패")
@@ -95,15 +124,15 @@ async def auto_generate_daily_insight():
             print("[AI Insight Error] Failed to generate daily insight due to encoding/unicode error.")
 
 
-def get_latest_active_insight() -> Optional[InsightDTO]:
-    logger.info("[GET_LATEST_ACTIVE_INSIGHT] 시작")
-    row = db.get_latest_active_insight()
+def get_latest_active_insight(part: str) -> Optional[InsightDTO]:
+    logger.info(f"[GET_LATEST_ACTIVE_INSIGHT] 시작 part={part}")
+    row = db.get_latest_active_insight(part)
     return InsightDTO(**row) if row else None
 
 
 def get_all_insights() -> List[InsightSummaryDTO]:
     logger.info("[GET_ALL_INSIGHTS] 시작")
-    rows = db.get_all_insights(limit=30)
+    rows = db.get_all_insights(limit=60)
     return [InsightSummaryDTO(**row) for row in rows]
 
 

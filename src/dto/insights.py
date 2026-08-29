@@ -9,6 +9,7 @@ class InsightDTO(BaseModel):
     html_content: str
     is_active: int
     created_at: str
+    part: Optional[str] = None
 
 
 class DailyInsightResponse(BaseModel):
@@ -23,6 +24,7 @@ class InsightSummaryDTO(BaseModel):
     title: str
     is_active: int
     created_at: str
+    part: Optional[str] = None
 
 
 class InsightListResponse(BaseModel):

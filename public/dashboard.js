@@ -1266,19 +1266,22 @@ async function loadInsightManager() {
         const date = new Date(item.created_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
         const isOn = item.is_active === 1;
         const typeLabel = {
-          book_recommendation: '📚 추천 도서',
-          harmony_quiz: '🎵 화성학 퀴즈',
-          seoul_arts_tip: '🏫 서울예대 꿀팁',
-          practice_tip: '🎯 연습 비법',
-          mental_tip: '💪 멘탈 꿀팁',
-          audition_tip: '🎤 시험 체크리스트',
-          music_theory_tip: '📖 음악이론 개념'
+          timeplan: '⏱️ 딥워크 타임라인',
+          mental_book_review: '📚 멘탈 도서 리뷰',
+          audition_mindset: '🧠 합격 마인드 세팅',
+          deep_work_practice: '💪 딥워크·신체 관리',
+          // 파트별 분리 이전(구버전)에 생성된 행 호환용
+          guitar_timeplan: '⏱️ 딥워크 타임라인',
+          seoul_arts_mindset: '🧠 합격 마인드 세팅',
         }[item.insight_type] || '🤖 AI 콘텐츠';
+        const partBadge = item.part
+          ? `<span class="badge" style="background: rgba(139, 92, 246, 0.12); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.25); font-size: 0.68rem; padding: 2px 8px; border-radius: 6px; margin-left: 6px;">${escapeHtml(item.part)}</span>`
+          : '';
 
         return `
           <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; background: rgba(0,0,0,0.2); border-radius: 10px; margin-bottom: 8px; border: 1px solid var(--glass-border);">
             <div>
-              <div style="font-weight: 600; color: #fff; font-size: 0.9rem;">${item.title}</div>
+              <div style="font-weight: 600; color: #fff; font-size: 0.9rem;">${escapeHtml(item.title)}${partBadge}</div>
               <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 3px;">${typeLabel} · ${date}</div>
             </div>
             <button onclick="toggleInsight(${item.id}, this)"

@@ -128,6 +128,12 @@ function setupEventListeners() {
         return;
       }
 
+      // 🔒 오늘의 꿀팁은 학생의 전공 파트를 알아야 맞춤 콘텐츠를 고를 수 있어 로그인 필요
+      if (targetId === 'view-daily-tip' && !state.selectedStudent) {
+        showToast('먼저 본인의 이름을 입력해 입장해 주세요! 🎓', 'error');
+        return;
+      }
+
       // 탭 액티브 상태 전환
       dom.tabItems.forEach(t => t.classList.remove('active'));
       item.classList.add('active');
@@ -151,8 +157,8 @@ function setupEventListeners() {
         scrollChatToBottom();
       }
 
-      // 교욕 꿀팁 탭으로 전환되었을 때 데이터 로드
-      if (targetId === 'view-daily-tip') {
+      // 오늘의 꿀팁 탭으로 전환되었을 때 데이터 로드 (본인 파트 기준)
+      if (targetId === 'view-daily-tip' && state.selectedStudent) {
         loadDailyInsight();
       }
     });
@@ -1162,7 +1168,7 @@ window.addEventListener('online', async () => {
 // ==========================================
 async function loadDailyInsight() {
   const container = document.getElementById('daily-tip-content');
-  if (!container) return;
+  if (!container || !state.selectedStudent) return;
 
   // 로딩 스피너 표시
   container.innerHTML = `
@@ -1173,7 +1179,7 @@ async function loadDailyInsight() {
   `;
 
   try {
-    const res = await fetch('/api/daily-insight');
+    const res = await fetch(`/api/daily-insight?part=${encodeURIComponent(state.selectedStudent.instrument)}`);
     const result = await res.json();
 
     if (result.success && result.data) {

@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Depends
 
@@ -12,10 +13,12 @@ router = APIRouter()
 
 
 @router.get("/api/daily-insight", response_model=DailyInsightResponse)
-async def get_daily_insight():
-    """오늘 생성된 최신 AI 꿀팁/퀴즈/추천 카드를 학생 화면으로 반환합니다."""
+async def get_daily_insight(part: Optional[str] = None):
+    """오늘 생성된 최신 AI 꿀팁 카드를 학생 화면으로 반환합니다. 학생의 전공 파트에 맞는 콘텐츠만 반환."""
     try:
-        insight = insight_service.get_latest_active_insight()
+        if not part:
+            return DailyInsightResponse(success=False, message="아직 오늘의 꿀팁이 준비 중입니다.")
+        insight = insight_service.get_latest_active_insight(part)
         if insight:
             return DailyInsightResponse(success=True, data=insight)
         return DailyInsightResponse(success=False, message="아직 오늘의 꿀팁이 준비 중입니다.")

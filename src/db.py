@@ -171,6 +171,13 @@ def init_db():
             cursor.execute("ALTER TABLE questions ADD COLUMN teacher_answer TEXT")
             print("[DB Migration] Added column 'teacher_answer' to 'questions' table.")
 
+        # ai_daily_insights 테이블 컬럼 자동 마이그레이션 (part 추가 — 파트별 꿀팁 분리)
+        cursor.execute("PRAGMA table_info(ai_daily_insights)")
+        insight_columns = [row["name"] for row in cursor.fetchall()]
+        if "part" not in insight_columns:
+            cursor.execute("ALTER TABLE ai_daily_insights ADD COLUMN part TEXT")
+            print("[DB Migration] Added column 'part' to 'ai_daily_insights' table.")
+
         # 자주 조회되는 컬럼 인덱스 (실제 쿼리 패턴 기준 — get_active_session 등의
         # "WHERE student_id = ? AND status = 'ACTIVE'"류를 커버)
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_sessions_student_status ON sessions(student_id, status)")
@@ -727,19 +734,19 @@ def has_todays_insight(today_str):
         conn.close()
 
 
-def create_daily_insight(insight_type, title, html_content, created_at_iso):
-    """오늘의 인사이트를 저장하고, 최근 30개만 남기고 오래된 것은 정리."""
+def create_daily_insight(insight_type, title, html_content, created_at_iso, part=None):
+    """오늘의 인사이트를 저장하고, 최근 180개(파트 6개 x 30일치)만 남기고 오래된 것은 정리."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO ai_daily_insights (insight_type, title, html_content, is_active, created_at) VALUES (?, ?, ?, 1, ?)",
-            (insight_type, title, html_content, created_at_iso)
+            "INSERT INTO ai_daily_insights (insight_type, title, html_content, is_active, created_at, part) VALUES (?, ?, ?, 1, ?, ?)",
+            (insight_type, title, html_content, created_at_iso, part)
         )
         cursor.execute("""
             DELETE FROM ai_daily_insights
             WHERE id NOT IN (
-                SELECT id FROM ai_daily_insights ORDER BY created_at DESC LIMIT 30
+                SELECT id FROM ai_daily_insights ORDER BY created_at DESC LIMIT 180
             )
         """)
         conn.commit()
@@ -747,13 +754,14 @@ def create_daily_insight(insight_type, title, html_content, created_at_iso):
         conn.close()
 
 
-def get_latest_active_insight():
-    """가장 최근 활성 인사이트 1건 (학생 화면용)."""
+def get_latest_active_insight(part):
+    """특정 파트의 가장 최근 활성 인사이트 1건 (학생 화면용)."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM ai_daily_insights WHERE is_active = 1 ORDER BY created_at DESC LIMIT 1"
+            "SELECT * FROM ai_daily_insights WHERE is_active = 1 AND part = ? ORDER BY created_at DESC LIMIT 1",
+            (part,)
         )
         row = cursor.fetchone()
         return dict(row) if row else None
@@ -767,7 +775,7 @@ def get_all_insights(limit=30):
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, insight_type, title, is_active, created_at FROM ai_daily_insights ORDER BY created_at DESC LIMIT ?",
+            "SELECT id, insight_type, title, is_active, created_at, part FROM ai_daily_insights ORDER BY created_at DESC LIMIT ?",
             (limit,)
         )
         return [dict(row) for row in cursor.fetchall()]
