@@ -9,6 +9,17 @@
  * 5. 5초 주기의 스마트 폴링을 통한 실시간 데이터 싱크
  */
 
+// 학생 이름/질문 내용 등 사용자 입력을 innerHTML에 꽂아 넣기 전 이스케이프 처리 (저장형 XSS 방지)
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // 대시보드 전역 폴링 타이머 상태
 let dashboardPollingInterval = null;
 let activeStudentsTimerInterval = null;
@@ -315,9 +326,9 @@ function renderActiveStudents(students) {
     item.innerHTML = `
       <div class="item-left">
         <div class="item-title">
-          <strong>${student.name}</strong> 
-          <span class="badge badge-live" style="font-size: 0.6rem; vertical-align: middle; margin-left: 4px;">${student.instrument}</span>
-          <span class="badge" style="font-size: 0.55rem; background: rgba(0, 242, 254, 0.08); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.15); margin-left: 4px; vertical-align: middle;">${student.age || 19}세 / ${student.mbti || 'ENFP'}</span>
+          <strong>${escapeHtml(student.name)}</strong>
+          <span class="badge badge-live" style="font-size: 0.6rem; vertical-align: middle; margin-left: 4px;">${escapeHtml(student.instrument)}</span>
+          <span class="badge" style="font-size: 0.55rem; background: rgba(0, 242, 254, 0.08); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.15); margin-left: 4px; vertical-align: middle;">${student.age || 19}세 / ${escapeHtml(student.mbti || 'ENFP')}</span>
         </div>
         <div class="item-subtitle"><i class="fa-regular fa-clock"></i> 시작 시각: ${formatLocalTime(student.start_time)}</div>
       </div>
@@ -365,7 +376,7 @@ function renderRanking(stats) {
       <div class="rank-number">${rankDecor}</div>
       <div class="rank-details">
         <div class="rank-header">
-          <span class="rank-name">${student.name}<span class="rank-instrument">${student.instrument}</span></span>
+          <span class="rank-name">${escapeHtml(student.name)}<span class="rank-instrument">${escapeHtml(student.instrument)}</span></span>
           <span class="rank-time">${student.total_minutes}분 <span style="font-size: 0.7rem; color: var(--text-muted); font-weight: normal;">(${student.session_count}회)</span></span>
         </div>
         <div class="rank-progress-bg">
@@ -396,7 +407,7 @@ function renderTimeline(timeline) {
     item.innerHTML = `
       <div class="item-left">
         <div class="item-title" style="font-weight: 500;">
-          <strong>${sess.name}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${sess.instrument})</span>
+          <strong>${escapeHtml(sess.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${escapeHtml(sess.instrument)})</span>
         </div>
         <div class="item-subtitle">
           <i class="fa-solid fa-business-time"></i> ${formatLocalTime(sess.start_time)} ~ ${formatLocalTime(sess.end_time)}
@@ -507,7 +518,7 @@ function renderDashboardQuestions(questions) {
           <div style="font-size: 0.78rem; font-weight: 700; color: var(--neon-green); margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
             <i class="fa-solid fa-check"></i> 확정된 전송 답변
           </div>
-          <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4; white-space: pre-wrap;">${q.teacher_answer}</div>
+          <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4; white-space: pre-wrap;">${escapeHtml(q.teacher_answer)}</div>
         </div>
       `;
     } else {
@@ -518,7 +529,7 @@ function renderDashboardQuestions(questions) {
           <div style="font-size: 0.78rem; font-weight: 600; color: var(--neon-mint); display: flex; align-items: center; gap: 4px;">
             <i class="fa-solid fa-robot"></i> AI 추천 답변 초안 (선생님 검토/편집 가능)
           </div>
-          <textarea id="editor-qa-ans-${q.id}" class="custom-textarea" style="width: 100%; min-height: 80px; padding: 10px; font-size: 0.82rem; line-height: 1.4; resize: none; border-radius: 10px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: var(--text-main); outline: none;" placeholder="답변을 입력해 주세요...">${currentDraftValue}</textarea>
+          <textarea id="editor-qa-ans-${q.id}" class="custom-textarea" style="width: 100%; min-height: 80px; padding: 10px; font-size: 0.82rem; line-height: 1.4; resize: none; border-radius: 10px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: var(--text-main); outline: none;" placeholder="답변을 입력해 주세요...">${escapeHtml(currentDraftValue)}</textarea>
           <button class="btn btn-secondary btn-send-qa-reply" data-question-id="${q.id}" style="align-self: flex-end; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer;">
             <i class="fa-solid fa-paper-plane"></i> 답변 전송 완료
           </button>
@@ -529,14 +540,14 @@ function renderDashboardQuestions(questions) {
     card.innerHTML = `
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
         <span style="font-size: 0.88rem; font-weight: 600; color: var(--text-main);">
-          ${q.student_name} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(${q.instrument || '전공 미지정'})</span>
+          ${escapeHtml(q.student_name)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(${escapeHtml(q.instrument || '전공 미지정')})</span>
         </span>
         <div style="display: flex; align-items: center; gap: 8px;">
           <span style="font-size: 0.72rem; color: var(--text-muted);"><i class="fa-regular fa-clock"></i> ${timeText}</span>
           <span class="badge" style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; ${badgeStyle}">${badgeText}</span>
         </div>
       </div>
-      <div style="font-size: 0.85rem; color: var(--text-body); line-height: 1.4; background: rgba(255, 255, 255, 0.01); padding: 10px; border-radius: 8px; border-left: 3px solid var(--neon-purple); white-space: pre-wrap;">${q.question_text}</div>
+      <div style="font-size: 0.85rem; color: var(--text-body); line-height: 1.4; background: rgba(255, 255, 255, 0.01); padding: 10px; border-radius: 8px; border-left: 3px solid var(--neon-purple); white-space: pre-wrap;">${escapeHtml(q.question_text)}</div>
       ${answerAreaHtml}
     `;
     
@@ -637,10 +648,10 @@ async function loadAllStudentsForManagement() {
         const regDate = s.created_at ? new Date(s.created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '미지정';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><strong>${s.name}</strong></td>
-          <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.2);">${s.instrument}</span></td>
+          <td><strong>${escapeHtml(s.name)}</strong></td>
+          <td><span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.2);">${escapeHtml(s.instrument)}</span></td>
           <td>${s.age || 19}세</td>
-          <td><span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.2); font-weight: bold;">${s.mbti || '미가입'}</span></td>
+          <td><span class="badge" style="background: rgba(0, 242, 254, 0.1); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.2); font-weight: bold;">${escapeHtml(s.mbti || '미가입')}</span></td>
           <td style="font-size: 0.8rem; color: var(--text-muted);">${regDate}</td>
           <td style="text-align: center;">
             <button class="btn-table-action" onclick="deleteStudent(${s.id})">
@@ -745,9 +756,9 @@ async function loadTeacherAccounts() {
 
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><strong>${t.username}</strong></td>
-          <td>${t.display_name}</td>
-          <td>${t.part || '-'}</td>
+          <td><strong>${escapeHtml(t.username)}</strong></td>
+          <td>${escapeHtml(t.display_name)}</td>
+          <td>${escapeHtml(t.part || '-')}</td>
           <td>${statusBadge}</td>
           <td style="font-size: 0.8rem; color: var(--text-muted);">${regDate}</td>
           <td style="text-align: center;">${actionCell}</td>
@@ -863,13 +874,13 @@ async function loadTeacherHomeworkList() {
       homeworkList.forEach(hw => {
         const regDate = hw.createdAt ? new Date(hw.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '미지정';
         const attachmentCell = hw.attachmentUrl
-          ? `<a href="${hw.attachmentUrl}" target="_blank" rel="noopener" style="color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${hw.attachmentFilename}</a>`
+          ? `<a href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener" style="color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(hw.attachmentFilename)}</a>`
           : '-';
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td><strong>${hw.studentName}</strong></td>
-          <td>${hw.title}</td>
-          <td style="font-size: 0.8rem; color: var(--text-muted);">${hw.dueDate || '-'}</td>
+          <td><strong>${escapeHtml(hw.studentName)}</strong></td>
+          <td>${escapeHtml(hw.title)}</td>
+          <td style="font-size: 0.8rem; color: var(--text-muted);">${escapeHtml(hw.dueDate || '-')}</td>
           <td>${attachmentCell}</td>
           <td style="font-size: 0.8rem; color: var(--text-muted);">${regDate}</td>
         `;

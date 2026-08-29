@@ -192,19 +192,30 @@ function processTeacherLogout() {
 }
 
 // 교사용 토스트 알림 함수
+// 토스트 메시지에 학생/선생님 이름 등 사용자 입력이 섞여 들어올 수 있어 이스케이프 처리 (저장형 XSS 방지)
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function showToast(message, type = 'success') {
   if (!authDom.toastContainer) return;
-  
+
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
-  
-  const icon = type === 'success' 
-    ? '<i class="fa-solid fa-circle-check"></i>' 
+
+  const icon = type === 'success'
+    ? '<i class="fa-solid fa-circle-check"></i>'
     : '<i class="fa-solid fa-circle-exclamation"></i>';
-    
+
   toast.innerHTML = `
     ${icon}
-    <span>${message}</span>
+    <span>${escapeHtml(message)}</span>
   `;
   
   authDom.toastContainer.appendChild(toast);

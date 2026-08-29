@@ -8,6 +8,17 @@
  * 4. 연습 시작/종료 REST API 연동 및 토스트 메시지 알림
  */
 
+// 질문/숙제 내용 등 사용자 입력을 innerHTML에 꽂아 넣기 전 이스케이프 처리 (저장형 XSS 방지)
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // 전역 애플리케이션 상태 관리 객체
 const state = {
   students: [],
@@ -525,7 +536,7 @@ function showToast(message, type = 'success') {
 
   toast.innerHTML = `
     ${icon}
-    <span>${message}</span>
+    <span>${escapeHtml(message)}</span>
   `;
 
   dom.toastContainer.appendChild(toast);
@@ -997,7 +1008,7 @@ async function loadStudentQuestions(studentId) {
 
         let answerBlockHtml = '';
         if (isAnswered && item.teacher_answer) {
-          let formattedAns = item.teacher_answer
+          let formattedAns = escapeHtml(item.teacher_answer)
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\n/g, '<br>');
           answerBlockHtml = `
@@ -1026,7 +1037,7 @@ async function loadStudentQuestions(studentId) {
               <span class="qa-time"><i class="fa-regular fa-clock"></i> ${timeText}</span>
               <span class="qa-status-badge ${badgeClass}">${badgeText}</span>
             </div>
-            <div class="qa-text">${item.question_text.replace(/\n/g, '<br>')}</div>
+            <div class="qa-text">${escapeHtml(item.question_text).replace(/\n/g, '<br>')}</div>
             <div class="qa-answer-area">${answerBlockHtml}</div>
           `;
 
@@ -1087,11 +1098,11 @@ async function loadStudentHomework(studentId) {
     dom.personalHomeworkList.innerHTML = list.map(hw => `
       <div class="glass-card" style="padding: 14px 16px; margin-bottom: 10px; background: rgba(255,255,255,0.03);">
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-          <strong style="font-size: 0.95rem;">${hw.title}</strong>
-          ${hw.dueDate ? `<span style="font-size: 0.78rem; color: var(--neon-coral);">마감: ${hw.dueDate}</span>` : ''}
+          <strong style="font-size: 0.95rem;">${escapeHtml(hw.title)}</strong>
+          ${hw.dueDate ? `<span style="font-size: 0.78rem; color: var(--neon-coral);">마감: ${escapeHtml(hw.dueDate)}</span>` : ''}
         </div>
-        ${hw.description ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 6px 0 0;">${hw.description}</p>` : ''}
-        ${hw.attachmentUrl ? `<a href="${hw.attachmentUrl}" target="_blank" rel="noopener" style="display: inline-block; margin-top: 8px; font-size: 0.82rem; color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${hw.attachmentFilename}</a>` : ''}
+        ${hw.description ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 6px 0 0;">${escapeHtml(hw.description)}</p>` : ''}
+        ${hw.attachmentUrl ? `<a href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener" style="display: inline-block; margin-top: 8px; font-size: 0.82rem; color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(hw.attachmentFilename)}</a>` : ''}
       </div>
     `).join('');
   } catch (err) {

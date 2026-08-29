@@ -43,11 +43,17 @@ async def create_homework(
         if len(content) > MAX_ATTACHMENT_SIZE_BYTES:
             raise ValueError(f"첨부파일은 {MAX_ATTACHMENT_SIZE_BYTES // (1024*1024)}MB 이하만 가능합니다.")
 
+        # 업로드된 원본 파일명에 경로 구분자나 '..'가 섞여 있으면 uploads/homework/ 밖으로
+        # 탈출해 쓰기가 가능해진다 — basename으로 디렉터리 성분을 전부 제거해 방지.
+        safe_filename = os.path.basename(file.filename)
+        if not safe_filename or safe_filename in (".", ".."):
+            raise ValueError("올바르지 않은 파일 이름입니다.")
+
         os.makedirs(UPLOAD_DIR, exist_ok=True)
-        stored_name = f"{uuid4().hex}_{file.filename}"
+        stored_name = f"{uuid4().hex}_{safe_filename}"
         with open(os.path.join(UPLOAD_DIR, stored_name), "wb") as f:
             f.write(content)
-        attachment_filename = file.filename
+        attachment_filename = safe_filename
         attachment_path = f"/uploads/homework/{stored_name}"
 
     now_iso = datetime.now().isoformat()
