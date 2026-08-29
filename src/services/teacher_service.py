@@ -22,6 +22,8 @@ async def create_teacher(payload: TeacherCreateRequest) -> TeacherSummaryDTO:
 
     if not username or not payload.password or not display_name:
         raise ValueError("아이디, 비밀번호, 이름을 모두 입력해 주세요.")
+    if len(payload.password) < 4:
+        raise ValueError("비밀번호는 4자 이상이어야 합니다.")
     if part not in VALID_PARTS:
         raise ValueError(f"파트는 다음 중 하나여야 합니다: {', '.join(VALID_PARTS)}")
 

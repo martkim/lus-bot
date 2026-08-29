@@ -50,10 +50,17 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# 외부 접근(PWA, 로컬터널 등) 시 CORS 차단 방지 미들웨어 추가
+# 프런트엔드가 API와 같은 도메인에서 서빙되므로(정적 파일 + API가 한 FastAPI 앱) 실사용 시
+# CORS 자체가 거의 발동하지 않는다 — 그래도 allow_origins="*"는 allow_credentials=True와
+# 조합되면 브라우저가 임의 출처를 그대로 반사(reflect)해버려서 방어적으로 실제 도메인만 명시.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://passionmate.app",
+        "https://www.passionmate.app",
+        "http://127.0.0.1:8088",
+        "http://localhost:8088",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
