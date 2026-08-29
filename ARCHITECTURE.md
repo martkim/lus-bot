@@ -47,13 +47,13 @@
 이 프로젝트는 **3계층(Controller/Service/Repository) + DTO** 구조를 표준으로 따른다 (2026-08-07 리팩터링). `main.py`는 앱 부트스트랩만 담당하고 나머지는 전부 `src/` 하위로 분리되어 있다.
 
 ### 2.1 Controller — `src/routers/*` (FastAPI APIRouter)
-- 도메인별로 분리: `students.py`, `sessions.py`, `dashboard.py`, `qa.py`, `ai.py`, `insights.py`, `curriculum.py`, `teachers.py`, `pages.py`(정적 파일 + SPA 폴백).
+- 도메인별로 분리: `students.py`, `sessions.py`, `dashboard.py`, `qa.py`, `ai.py`, `insights.py`, `curriculum.py`, `teachers.py`, `homework.py`, `pages.py`(정적 파일 + SPA 폴백).
 - 각 핸들러는 "요청 파싱 → service 호출 → DTO 응답" 3~5줄. **비즈니스 로직을 라우터에 추가하지 말 것** — Service로 보낸다.
 - 예외 처리 패턴: `ValueError`→400, `NotFoundError`/`ConflictError`(`src/errors.py`)→404/400, 인증 실패 `PermissionError`→401(학생 로그인), 그 외 `Exception`→500 + `logger.exception(...)`.
 - 인증: `Depends(verify_teacher_auth)`(`src/auth.py`)로 로그인한 선생님 누구나(원장+파트 선생님) 접근 허용, `Depends(require_director)`로 원장 전용 엔드포인트를 막는다. 자세한 권한 모델은 §2.7 참고.
 
 ### 2.2 Service — `src/services/*`
-- 실제 비즈니스 로직 전부: `student_service`(학생 CRUD + 가입/로그인), `teacher_service`(선생님 계정 CRUD + 파트 검증), `session_service`(세션 시간 계산), `dashboard_service`(파트별 필터링), `qa_service`, `ai_chat_service`(AI 챗봇 프롬프트+Gemini 호출+룰베이스 폴백), `analysis_service`(AI 패턴 분석 리포트), `curriculum_service`(커리큘럼 CRUD+자동 업데이트+파일분석), `insight_service`(오늘의 인사이트), `ghost_cleanup_service`.
+- 실제 비즈니스 로직 전부: `student_service`(학생 CRUD + 가입/로그인), `teacher_service`(선생님 계정 CRUD + 파트 검증), `homework_service`(숙제 등록 + 파일 저장 + 파트 검증), `session_service`(세션 시간 계산), `dashboard_service`(파트별 필터링), `qa_service`, `ai_chat_service`(AI 챗봇 프롬프트+Gemini 호출+룰베이스 폴백), `analysis_service`(AI 패턴 분석 리포트), `curriculum_service`(커리큘럼 CRUD+자동 업데이트+파일분석), `insight_service`(오늘의 인사이트), `ghost_cleanup_service`.
 - FastAPI를 import하지 않는다 (프레임워크 독립적) — 검증 실패는 `ValueError`, 리소스 없음은 `NotFoundError`, 인증 실패는 `PermissionError`를 그냥 raise하고 라우터가 HTTP로 변환.
 - 함수 진입부마다 `logger.info("[FUNCTION_NAME] 시작")` 태그를 남긴다 (디버깅용, `logs/app.log`에서 실행 흐름 추적 가능).
 - `src/background.py`: 4개의 상시 asyncio 루프(1시간/24시간 주기)가 여기 있고, 실제 로직은 위 서비스들을 호출만 한다.
@@ -62,13 +62,13 @@
 
 ### 2.3 Repository — `src/db.py`
 - `get_db_connection()` / `init_db()` (스키마 생성 + 컬럼 자동 마이그레이션 + 최초 원장 계정 부트스트랩) + 엔티티별 `get_*`/`create_*`/`update_*` 함수.
-- 엔티티: `students`, `teachers`, `sessions`, `questions`, `ai_analysis_reports`, `ai_daily_insights`.
+- 엔티티: `students`, `teachers`, `homework`, `sessions`, `questions`, `ai_analysis_reports`, `ai_daily_insights`.
 - `students` 테이블은 `username`/`password_hash`/`password_salt`(nullable, partial unique index)를 갖고 있어, 원장이 만든 "미가입" 레코드와 학생이 직접 가입을 마친 레코드를 한 테이블에서 구분한다(§2.7).
 - 함수 하나당 커넥션을 열고 닫는다 (커넥션 풀 없음 — SQLite + 저동시성 환경이라 문제 없음).
 - **데이터 관련 버그가 나면 여기부터 본다.**
 
 ### 2.4 DTO — `src/dto/*`
-- 도메인별 Pydantic 모델 (`students.py`, `sessions.py`, `qa.py`, `dashboard.py`, `ai.py`, `insights.py`, `curriculum.py`, `teachers.py`, `common.py`).
+- 도메인별 Pydantic 모델 (`students.py`, `sessions.py`, `qa.py`, `dashboard.py`, `ai.py`, `insights.py`, `curriculum.py`, `teachers.py`, `homework.py`, `common.py`).
 - 요청 모델(예: `StudentCreateRequest`)과 응답 모델(예: `StudentListResponse`)을 함께 보관.
 - 라우터의 `response_model=`에 항상 지정 — DB row(dict)를 그대로 클라이언트에 반환하지 않는다.
 - 필드명은 프런트엔드(`public/*.js`)가 직접 읽는 이름과 **1:1로 고정** (예: `active_session_id`, `dailyStats`) — 바꾸면 프런트가 깨진다.
@@ -163,10 +163,10 @@ requirements.txt 변경됐으면 → pip install -r requirements.txt
 ```
 main.py                 앱 부트스트랩만 (~85줄): FastAPI 생성, 로깅/CORS 설정, 라우터 등록, startup_event
 src/
-  routers/              Controller — students.py, sessions.py, dashboard.py, qa.py, ai.py, insights.py, curriculum.py, teachers.py, pages.py
-  services/             Service — student_service.py, teacher_service.py, session_service.py, dashboard_service.py, qa_service.py,
+  routers/              Controller — students.py, sessions.py, dashboard.py, qa.py, ai.py, insights.py, curriculum.py, teachers.py, homework.py, pages.py
+  services/             Service — student_service.py, teacher_service.py, homework_service.py, session_service.py, dashboard_service.py, qa_service.py,
                          ai_chat_service.py, analysis_service.py, curriculum_service.py, insight_service.py, ghost_cleanup_service.py
-  dto/                  Pydantic 요청/응답 모델 — students.py, sessions.py, qa.py, dashboard.py, ai.py, insights.py, curriculum.py, teachers.py, common.py
+  dto/                  Pydantic 요청/응답 모델 — students.py, sessions.py, qa.py, dashboard.py, ai.py, insights.py, curriculum.py, teachers.py, homework.py, common.py
   db.py                 Repository (get_*/create_*/update_* 함수)
   auth.py               verify_teacher_auth / require_director (FastAPI Depends, §2.7)
   password_utils.py     hash_password / verify_password (pbkdf2, 선생님·학생 계정 공용)
@@ -182,6 +182,7 @@ requirements.txt        Python 의존성
 .env / .env.example     시크릿 (.env는 gitignore)
 logs/                   app.log(로테이팅), monitor_log.txt, deploy_log.txt, needs_attention.log, server_*.log (gitignore)
 backups/                일일 DB 백업, 최근 7개 (gitignore)
+uploads/                사용자 업로드 파일(현재 homework/ 숙제 첨부) (gitignore, 실 데이터 포함)
 database.db             SQLite DB 파일 (gitignore, 실 데이터 포함)
 start-*.bat/.py         수동 서버/터널 기동용 스크립트
 register-startup.*      Windows 시작프로그램 등록 스크립트
@@ -215,8 +216,8 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 - 원장/파트 선생님 역할 분리 (백엔드 권한 + 프런트 UI 분기, §2.7)
 - 학생 아이디/비밀번호 로그인 + 자기 가입(claim) 플로우, MBTI 자기 선택
 - 고정 도메인(`passionmate.app`) + Named Tunnel, 배포 자동화, 워치독 자가복구
+- **개인 숙제 기능(Phase 2)**: 파트 선생님은 자기 파트 학생에게만, 원장은 아무 학생에게나 제목/설명/마감일/첨부파일(최대 20MB)로 숙제를 낼 수 있음. `homework` 테이블, `POST /api/homework`, `GET /api/homework/student/{id}`(학생용, 공개), `GET /api/homework/teacher`(선생님 본인 목록). 첨부는 `uploads/homework/`에 영구 저장 후 `/uploads` 정적 마운트로 서빙. 선생님 쪽 "숙제 관리" 탭, 학생 쪽 "내 숙제" 섹션까지 화면 완성.
 
-**아직 안 한 것 (이전에 세운 3단계 계획 중 Phase 2/3):**
-- **숙제 기능**: 파트 선생님이 자기 파트 학생에게 개인 숙제(파일 첨부 포함)를 낼 수 있는 기능 — `homework` 테이블, 관련 API/화면 전부 미착수.
+**아직 안 한 것 (이전에 세운 3단계 계획 중 Phase 3):**
 - **원장 통계 그래프**: 선생님별 담당 원생 수를 그래프로 보여주고 드릴다운하는 원장 전용 대시보드 — 미착수.
-- 위 두 가지는 설계는 이미 되어 있고(이전 계획 문서 기준), 요청 시 이어서 구현 가능.
+- 설계는 이미 되어 있고(이전 계획 문서 기준), 요청 시 이어서 구현 가능.
