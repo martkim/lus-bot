@@ -4,12 +4,16 @@ import sqlite3
 import shutil
 import os
 import re
+import smtplib
 import socket
 import subprocess
 import sys
 import urllib.request
 import urllib.error
+from email.mime.text import MIMEText
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 # Avoid crashing on non-ASCII output (e.g. "-", Korean text) when running
 # under a console using a legacy codepage like cp949. pythonw.exe has no
@@ -27,6 +31,8 @@ for _stream in (sys.stdout, sys.stderr):
 _NO_WINDOW_KWARGS = {"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}
 
 BASE_DIR = Path("C:/PASSION_MATE")
+load_dotenv(BASE_DIR / ".env")
+
 DB_PATH = BASE_DIR / "database.db"
 BACKUP_DIR = BASE_DIR / "backups"
 LOGS_DIR = BASE_DIR / "logs"
@@ -49,12 +55,43 @@ ERROR_PATTERN = re.compile(r"traceback|error|exception", re.IGNORECASE)
 GIT_REMOTE = "origin"
 GIT_BRANCH = "main"
 
+ALERT_EMAIL_ADDRESS = os.environ.get("ALERT_EMAIL_ADDRESS")
+ALERT_EMAIL_APP_PASSWORD = os.environ.get("ALERT_EMAIL_APP_PASSWORD")
+ALERT_EMAIL_MIN_INTERVAL_SECONDS = 15 * 60  # avoid alert-storm spam
+_last_alert_email_sent_at = None
+
+
+def send_alert_email(subject, body):
+    """Best-effort real-time incident email. Silently no-ops if not configured
+    (missing App Password) and never raises - a broken alert channel must not
+    take down the watchdog itself."""
+    if not ALERT_EMAIL_ADDRESS or not ALERT_EMAIL_APP_PASSWORD:
+        return
+
+    global _last_alert_email_sent_at
+    now = time.monotonic()
+    if _last_alert_email_sent_at is not None and (now - _last_alert_email_sent_at) < ALERT_EMAIL_MIN_INTERVAL_SECONDS:
+        return
+
+    try:
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = ALERT_EMAIL_ADDRESS
+        msg["To"] = ALERT_EMAIL_ADDRESS
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
+            server.login(ALERT_EMAIL_ADDRESS, ALERT_EMAIL_APP_PASSWORD)
+            server.sendmail(ALERT_EMAIL_ADDRESS, [ALERT_EMAIL_ADDRESS], msg.as_string())
+        _last_alert_email_sent_at = now
+    except Exception as e:
+        print(f"[ALERT_EMAIL] send failed: {e}")
+
 
 def log_attention(message):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with open(ATTENTION_LOG, "a", encoding="utf-8") as f:
         f.write(f"[{ts}] {message}\n")
     print(f"[ATTENTION] {message}")
+    send_alert_email("[PASSION MATE] 워치독 알림", f"[{ts}] {message}")
 
 
 def log_deploy(message):

@@ -103,6 +103,8 @@ Windows 시작프로그램에 `pythonw.exe system_service.py`로 등록되어 �
 
 **워치독 자신이 죽으면?** — 위 사이클은 `system_service.py` 프로세스가 살아있다는 전제하에 uvicorn/cloudflared를 감시하는 것이다. 그런데 `system_service.py`는 Windows 로그인 시 1회만 시작되므로(Startup 폴더), **세션 도중 이 프로세스 자체가 죽거나 강제 종료되면 다음 로그인/재부팅 전까지 아무것도 되살려주지 않는 문제**가 있었다 (2026-09-12 감사에서 발견 — 과거에 반복됐던 "재기동 안 됨" 이슈의 근본 원인). 해결책: `ensure_watchdog.ps1` + `register-watchdog-safety-net.ps1`로 Windows 작업 스케줄러에 **"PassionMate_WatchdogSafetyNet"** 이름의 반복 작업(10분 주기)을 등록 — `system_service.py`가 안 떠 있으면(`Win32_Process`의 `CommandLine`으로 판별) 즉시 재기동시키고 `needs_attention.log`에 기록한다. 실제로 워치독 프로세스를 강제 종료한 뒤 이 스크립트가 10분 안에 되살리는 것을 확인했다. 이 스크립트는 이미 로그인된 세션에서만 동작(비밀번호 저장 불필요) — 기존 Startup 폴더 방식과 동일한 전제(PC가 로그인된 채로 계속 켜져 있음)라 새 요구사항을 추가하지 않는다.
 
+**실시간 장애 알림(이메일)**: 기존엔 장애가 나도 `needs_attention.log`를 사람이 직접 열어봐야만 알 수 있었다(2026-09-12 감사에서 High 위험으로 지적). `log_attention(message)`(거의 모든 장애 감지 지점 — 포트 다운, cloudflared 다운, 서버 에러 로그 검출, DB 무결성 실패, 배포 실패/롤백, 워치독 안전망 재기동 등 — 이 공통으로 거쳐가는 단일 지점)에 `send_alert_email(subject, body)` 호출을 추가해, 장애 발생 시 Gmail로 즉시 메일을 보낸다. `smtplib.SMTP_SSL`로 Gmail 앱 비밀번호를 사용(추가 pip 의존성 없음, `password_utils.py`와 동일한 stdlib 우선 철학), `.env`의 `ALERT_EMAIL_ADDRESS`/`ALERT_EMAIL_APP_PASSWORD`가 없으면 조용히 건너뛴다(둘 다 검증 완료 — 미설정 시 무동작, 설정 시 실제 SMTP 전송 경로 도달). 알림 폭주 방지를 위해 최소 15분 간격 스로틀 적용.
+
 ### 2.7 인증 및 권한 모델
 
 두 종류의 계정이 완전히 분리되어 있다 — **선생님 계정**(원장/파트 담당)과 **학생 계정**. 둘 다 `src/password_utils.py`의 pbkdf2 해시(계정별 랜덤 salt, 260,000 iteration)를 공유하지만 인증 방식과 권한 체계는 다르다.
@@ -198,7 +200,7 @@ system_service.py       로컬 워치독 + 배포 파이프라인 (Windows 시�
 health_check.py         1회성 수동 헬스체크 스크립트 (DB 무결성, 유령 세션, API 키 여부)
 check_db.py             1회성 수동 DB 점검 스크립트
 requirements.txt        Python 의존성
-.env / .env.example     시크릿 (.env는 gitignore)
+.env / .env.example     시크릿 (.env는 gitignore, ALERT_EMAIL_ADDRESS/ALERT_EMAIL_APP_PASSWORD는 §2.6 실시간 장애 알림용, 선택사항)
 logs/                   app.log(로테이팅), monitor_log.txt, deploy_log.txt, needs_attention.log, server_*.log (gitignore)
 backups/                일일 DB 백업, 최근 7개 (gitignore)
 uploads/                사용자 업로드 파일(현재 homework/ 숙제 첨부) (gitignore, 실 데이터 포함)
@@ -223,13 +225,14 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 | 워치독이 실제로 떠 있나 | `Get-Process pythonw` (PID 1개여야 정상 — 2개 이상이면 Windows 시작프로그램 중복 등록 의심) |
 | 워치독 안전망(Task Scheduler)이 등록돼 있나 | `Get-ScheduledTask -TaskName PassionMate_WatchdogSafetyNet` (§2.6) |
 | 카카오 오픈빌더 스킬 웹훅이 살아있나 | `/api/kakao/webhook`에 아무 JSON이나 POST해서 200 + 카카오 v2.0 포맷 응답이 오는지 확인 (§2.8) |
+| 실시간 장애 알림(이메일)이 설정돼 있나 | `.env`에 `ALERT_EMAIL_ADDRESS`/`ALERT_EMAIL_APP_PASSWORD` 존재 여부 (§2.6, 없으면 조용히 건너뜀) |
 
 ## 8. 알려진 제약
 
 - SQLite 파일 기반 DB — 동시 쓰기 부하가 커지면 다음 단계로 Postgres 등 전환 고려 필요.
 - ~~배포 파이프라인은 fast-forward pull만 가정한다...~~ **해결됨 (2026-08-05)**: `git pull` → `fetch` + `reset --hard`로 교체, 로컬에 커밋 안 된 변경사항은 자동 stash 백업 후 진행하도록 변경. 로컬 워킹 트리 상태와 무관하게 배포가 항상 성공한다.
 - ~~Cloudflare Quick Tunnel은 무료지만 주소가 고정되지 않는다.~~ **해결됨 (2026-08-08)**: `passionmate.app` 구매 + Named Tunnel로 전환.
-- CI(문법/import 자동 검사), 실시간 장애 알림은 아직 미구축.
+- ~~실시간 장애 알림은 아직 미구축.~~ **해결됨 (2026-09-13)**: Gmail 이메일 알림 추가 (§2.6). CI(문법/import 자동 검사)는 아직 미구축.
 - Named Tunnel 자격증명(`~/.cloudflared/`)이 이 PC에만 있고 백업이 없다 — 다른 PC로 옮기거나 재설치할 경우 `cloudflared tunnel login` + `route dns`부터 다시 해야 함.
 - 학생용 세션 API(연습 시작/종료, AI 챗봇, Q&A)는 로그인 이후 요청마다 `studentId`를 그대로 신뢰한다 — 로그인(§2.7)은 진짜 인증이지만, 그 이후 개별 API 호출이 "이 studentId가 지금 로그인된 사람 본인 것인지"까지 서버가 재검증하진 않는다. 낮은 위험도로 판단해 의도적으로 미뤄둔 부분(§9).
 
@@ -246,5 +249,6 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 - **카카오톡 AI 상담 채널(Phase 1)**: 학생이 카카오톡으로도 AI 튜터와 대화 가능 — 웹 챗봇과 완전히 같은 Gemini 두뇌·하루 한도를 공유(§2.8). `kakao_links` 테이블로 카카오 사용자 ↔ student_id를 최초 1회 아이디/비밀번호 인증으로 연결, 이후 메시지는 `ai_chat_service.get_ai_reply`를 그대로 재사용. `src/routers/kakao.py`, `src/services/kakao_service.py`. 4가지 시나리오(미연결 오류/연결 성공/실제 AI 응답/한도 초과) 및 웹↔카카오 한도 공유를 실제 HTTP로 검증 완료. **Phase 2(카카오 채널·오픈빌더 콘솔 설정)와 Phase 3(실제 카카오톡 앱으로 연동 테스트)는 사용자가 카카오 콘솔에서 직접 해야 하는 작업으로 아직 남아있음.**
 - **운영 체계 전수 감사 (2026-09-12)**: Git/문서/코드/운영 기능(A~M) 상태를 체계적으로 대조 감사. 발견된 Critical 위험은 없었고, High 위험 3건(워치독 자기복구 부재, 실시간 장애 알림 부재, 카카오 웹훅의 Cloudflare 봇 차단 리스크) 중 **워치독 자기복구는 바로 해결**(아래 항목, §2.6). 나머지는 P1로 대기 중.
 - **워치독 안전망(Task Scheduler)**: 위 감사에서 발견된 최대 리스크 — `system_service.py`가 로그인 중 죽으면 재부팅 전까지 복구가 안 되던 문제. `ensure_watchdog.ps1`을 10분 주기 Windows 작업 스케줄러 작업("PassionMate_WatchdogSafetyNet")으로 등록해 해결(§2.6). 실제로 워치독 프로세스를 강제 종료한 뒤 자동 재기동되는 것을 확인.
+- **실시간 장애 알림(Gmail 이메일, P1-2)**: 위 감사의 두 번째 High 위험(장애가 나도 사람이 로그를 직접 열어봐야만 알 수 있던 문제) 해결. `system_service.py`의 `log_attention()`(거의 모든 장애 감지 지점의 공통 경유점)에 `send_alert_email()`을 연결 — `smtplib` + Gmail 앱 비밀번호, 추가 pip 의존성 없음. `.env`에 `ALERT_EMAIL_ADDRESS`/`ALERT_EMAIL_APP_PASSWORD` 미설정 시 조용히 건너뜀(검증 완료), 알림 폭주 방지로 최소 15분 간격 스로틀. 사용자가 Gmail 앱 비밀번호를 `.env`에 넣으면 실제 발송 활성화.
 
 **Phase 1~3(교사/원장 권한, 숙제, 원장 통계)은 완료됐고, 이후에도 테스트로 발견된 문제 수정과 기능 개선(카카오톡 채널, 운영 안정성 등)이 계속 진행 중.**
