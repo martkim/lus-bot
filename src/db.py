@@ -105,6 +105,16 @@ def init_db():
             )
         """)
 
+        # 6-1. 카카오톡 사용자 <-> 학생 계정 연결 (오픈빌더 스킬 웹훅용)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS kakao_links (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                kakao_user_id TEXT NOT NULL UNIQUE,
+                student_id INTEGER NOT NULL,
+                linked_at TEXT NOT NULL
+            )
+        """)
+
         # 7. 선생님 계정 (원장 / 파트 담당 선생님)
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS teachers (
@@ -832,6 +842,36 @@ def record_ai_usage(student_id, created_at_iso):
         cursor.execute(
             "INSERT INTO ai_usage_log (student_id, created_at) VALUES (?, ?)",
             (student_id, created_at_iso)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ==========================================
+# Kakao Links (카카오톡 사용자 <-> 학생 계정 연결)
+# ==========================================
+
+def get_student_id_by_kakao_user(kakao_user_id):
+    """이 카카오 사용자가 이미 어떤 학생 계정에 연결돼 있는지 조회. 없으면 None."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT student_id FROM kakao_links WHERE kakao_user_id = ?", (kakao_user_id,))
+        row = cursor.fetchone()
+        return row["student_id"] if row else None
+    finally:
+        conn.close()
+
+
+def link_kakao_user(kakao_user_id, student_id, linked_at_iso):
+    """카카오 사용자를 학생 계정에 연결. kakao_user_id는 UNIQUE라 중복 연결 시도는 IntegrityError."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO kakao_links (kakao_user_id, student_id, linked_at) VALUES (?, ?, ?)",
+            (kakao_user_id, student_id, linked_at_iso)
         )
         conn.commit()
     finally:

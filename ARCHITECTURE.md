@@ -36,10 +36,17 @@
                                                     ▼
                                               database.db (SQLite)
 
-                    ┌─────────────────────────┐
-                    │  cloudflared Named Tunnel │  → https://passionmate.app (고정)
-                    │  (외부 접속용)             │    tunnel: passionmate
-                    └─────────────────────────┘
+                    ┌─────────────────────────┐        ┌──────────────────────────┐
+                    │  cloudflared Named Tunnel │        │  카카오 i 오픈빌더 스킬     │
+                    │  (웹 브라우저 접속)         │        │  (카카오톡 채널 대화)       │
+                    │  → https://passionmate.app │        │  → POST /api/kakao/webhook│
+                    └─────────────┬─────────────┘        └─────────────┬─────────────┘
+                                  │                                     │
+                                  └──────────────┬──────────────────────┘
+                                                  ▼
+                                        동일한 FastAPI 앱(main:app) — 카카오도
+                                        그냥 우리 서버로 들어오는 HTTP 진입점 하나일 뿐,
+                                        별도 프로세스/배포가 아니다 (§2.8 참고)
 ```
 
 ## 2. 컴포넌트
@@ -47,13 +54,13 @@
 이 프로젝트는 **3계층(Controller/Service/Repository) + DTO** 구조를 표준으로 따른다 (2026-08-07 리팩터링). `main.py`는 앱 부트스트랩만 담당하고 나머지는 전부 `src/` 하위로 분리되어 있다.
 
 ### 2.1 Controller — `src/routers/*` (FastAPI APIRouter)
-- 도메인별로 분리: `students.py`, `sessions.py`, `dashboard.py`, `qa.py`, `ai.py`, `insights.py`, `curriculum.py`, `teachers.py`, `homework.py`, `director.py`(통계 엑셀 다운로드, DTO 없이 원본 바이트 응답), `pages.py`(정적 파일 + SPA 폴백).
+- 도메인별로 분리: `students.py`, `sessions.py`, `dashboard.py`, `qa.py`, `ai.py`, `insights.py`, `curriculum.py`, `teachers.py`, `homework.py`, `director.py`(통계 엑셀 다운로드, DTO 없이 원본 바이트 응답), `kakao.py`(카카오 오픈빌더 스킬 웹훅, 인증 불필요 — §2.8), `pages.py`(정적 파일 + SPA 폴백).
 - 각 핸들러는 "요청 파싱 → service 호출 → DTO 응답" 3~5줄. **비즈니스 로직을 라우터에 추가하지 말 것** — Service로 보낸다.
 - 예외 처리 패턴: `ValueError`→400, `NotFoundError`/`ConflictError`(`src/errors.py`)→404/400, 인증 실패 `PermissionError`→401(학생 로그인), 그 외 `Exception`→500 + `logger.exception(...)`.
 - 인증: `Depends(verify_teacher_auth)`(`src/auth.py`)로 로그인한 선생님 누구나(원장+파트 선생님) 접근 허용, `Depends(require_director)`로 원장 전용 엔드포인트를 막는다. 자세한 권한 모델은 §2.7 참고.
 
 ### 2.2 Service — `src/services/*`
-- 실제 비즈니스 로직 전부: `student_service`(학생 CRUD + 가입/로그인), `teacher_service`(선생님 계정 CRUD + 파트 검증), `homework_service`(숙제 등록 + 파일 저장 + 파트 검증), `director_stats_service`(선생님별 원생 수 + 학생 상세를 `openpyxl`로 엑셀 생성), `session_service`(세션 시간 계산), `dashboard_service`(파트별 필터링), `qa_service`, `ai_chat_service`(AI 챗봇 프롬프트+Gemini 호출+룰베이스 폴백), `analysis_service`(AI 패턴 분석 리포트), `curriculum_service`(커리큘럼 CRUD+자동 업데이트+파일분석), `insight_service`(오늘의 인사이트), `ghost_cleanup_service`.
+- 실제 비즈니스 로직 전부: `student_service`(학생 CRUD + 가입/로그인), `teacher_service`(선생님 계정 CRUD + 파트 검증), `homework_service`(숙제 등록 + 파일 저장 + 파트 검증), `director_stats_service`(선생님별 원생 수 + 학생 상세를 `openpyxl`로 엑셀 생성), `kakao_service`(카카오 사용자 ↔ student_id 연결 관리, `ai_chat_service.get_ai_reply` 재사용 — §2.8), `session_service`(세션 시간 계산), `dashboard_service`(파트별 필터링), `qa_service`, `ai_chat_service`(AI 챗봇 프롬프트+Gemini 호출+룰베이스 폴백), `analysis_service`(AI 패턴 분석 리포트), `curriculum_service`(커리큘럼 CRUD+자동 업데이트+파일분석), `insight_service`(오늘의 인사이트), `ghost_cleanup_service`.
 - FastAPI를 import하지 않는다 (프레임워크 독립적) — 검증 실패는 `ValueError`, 리소스 없음은 `NotFoundError`, 인증 실패는 `PermissionError`를 그냥 raise하고 라우터가 HTTP로 변환.
 - 함수 진입부마다 `logger.info("[FUNCTION_NAME] 시작")` 태그를 남긴다 (디버깅용, `logs/app.log`에서 실행 흐름 추적 가능).
 - `src/background.py`: 4개의 상시 asyncio 루프(1시간/24시간 주기)가 여기 있고, 실제 로직은 위 서비스들을 호출만 한다.
@@ -62,7 +69,7 @@
 
 ### 2.3 Repository — `src/db.py`
 - `get_db_connection()` / `init_db()` (스키마 생성 + 컬럼 자동 마이그레이션 + 최초 원장 계정 부트스트랩) + 엔티티별 `get_*`/`create_*`/`update_*` 함수.
-- 엔티티: `students`, `teachers`, `homework`, `sessions`, `questions`, `ai_analysis_reports`, `ai_daily_insights`.
+- 엔티티: `students`, `teachers`, `homework`, `kakao_links`(카카오 사용자 ↔ 학생 계정 매핑 — §2.8), `sessions`, `questions`, `ai_analysis_reports`, `ai_daily_insights`.
 - `students` 테이블은 `username`/`password_hash`/`password_salt`(nullable, partial unique index)를 갖고 있어, 원장이 만든 "미가입" 레코드와 학생이 직접 가입을 마친 레코드를 한 테이블에서 구분한다(§2.7).
 - 함수 하나당 커넥션을 열고 닫는다 (커넥션 풀 없음 — SQLite + 저동시성 환경이라 문제 없음).
 - **데이터 관련 버그가 나면 여기부터 본다.**
@@ -111,6 +118,16 @@ Windows 시작프로그램에 `pythonw.exe system_service.py`로 등록되어 �
 - 학생이 최초 접속 시 `GET /api/students/unclaimed`로 미가입 학생 목록을 받아 본인 이름을 고르고, `POST /api/students/claim`으로 아이디/비밀번호/MBTI를 직접 설정한다(MBTI는 원장이 정하지 않고 학생 본인이 가입 시 선택 — 등록 시점엔 `mbti=NULL`).
 - 이후 `POST /api/students/login`으로 로그인. `app.js`는 로그인 성공 시 아이디/비밀번호를 `localStorage`에 저장해두고, 재방문 시 `/api/students/login`을 다시 호출해 검증한 뒤에만 자동 입장시킨다(저장된 ID를 그냥 신뢰하지 않음 — 다른 학생 이름을 아는 것만으로 로그인되던 구버전 취약점을 막기 위함).
 - 학생용 엔드포인트는 세션/토큰이 없고 요청 바디의 `studentId`를 그대로 신뢰한다 — 로그인 자체는 진짜 인증이지만, 로그인 이후 개별 API 호출 단계에서 "그 studentId가 진짜 내 것인지"까지 서버가 재검증하진 않는다(낮은 위험도로 판단해 의도적으로 미룬 부분, §9 참고).
+
+### 2.8 카카오톡 채널 (Phase 1 완료, Phase 2/3은 사용자 작업)
+
+학생이 웹앱 대신 평소 쓰는 카카오톡으로도 AI 튜터와 대화할 수 있다. **웹 챗봇과 완전히 같은 Gemini 두뇌·같은 하루 사용 한도를 공유하는 "추가 채널"** 개념이지, 별도 카카오 전용 챗봇이 아니다.
+
+- **연동 방식**: 카카오 i 오픈빌더의 "스킬(웹훅)" — 사용자가 카카오톡 채널 챗봇에 아무 말을 치면 카카오 서버가 그 내용을 `POST /api/kakao/webhook`으로 전달하고, 우리가 반환한 텍스트를 카카오가 사용자에게 대신 보여준다. 우리 쪽은 그냥 API 엔드포인트 하나일 뿐 — 카카오와 상시 소켓 연결을 유지하지 않는다. 인증 없음(카카오 서버가 직접 호출).
+- **응답 포맷**: 카카오 스킬 응답 v2.0 규격 고정 — `{"version": "2.0", "template": {"outputs": [{"simpleText": {"text": "..."}}]}}` (`src/routers/kakao.py`의 `_skill_response()`). 내부 오류가 나도 500을 던지지 않고 이 포맷의 안내 문구로 200을 반환 — 카카오 플랫폼이 비정상 응답을 잘 처리하지 못하기 때문에 이 엔드포인트만 이 코드베이스의 일반적인 "실패 시 HTTPException" 관례에서 의도적으로 벗어난다.
+- **인증 모델 — 카카오 사용자 ≠ 학생 계정**: 카카오는 대화 상대를 `userRequest.user.id`(카카오 내부 ID)로만 알려주는데 이건 우리 `students.id`/`username`과 무관하다. 그래서 `kakao_links` 테이블로 최초 1회 연결한다 — 미연결 사용자의 첫 발화를 `"아이디 비밀번호"` 형식으로 해석해, 기존 학생 로그인과 동일한 `verify_password` 검증을 통과하면 그 카카오 ID를 `student_id`에 매핑해 저장(`kakao_service._try_link`). 아이디만 확인하지 않고 비밀번호까지 요구하는 이유: 남의 아이디를 아는 사람이 그 학생 행세를 하며 하루 한도를 대신 소진시키는 걸 막기 위함.
+- **한도 공유의 구현**: 링크된 사용자의 메시지는 그냥 `ai_chat_service.get_ai_reply(utterance, student_id=linked_student_id)`를 그대로 호출한다 — 하루 사용 한도 체크와 사용량 기록이 이미 그 함수 내부(`db.get_todays_ai_usage_count`/`db.record_ai_usage`)에 있어서 카카오 전용 로직을 따로 만들지 않았다. 실측 검증됨: 같은 학생이 카카오에서 한도를 다 쓰면 웹 챗봇에서도 즉시 "오늘 이미 2회 이용" 메시지가 뜬다(반대도 마찬가지).
+- **Phase 2/3(카카오 콘솔 설정, 실제 카카오톡 앱으로 대화 테스트)은 이 리포지토리 밖의 작업**이라 코드로 재현되지 않는다 — 카카오톡 채널(비즈니스 계정) 생성, 오픈빌더 챗봇 생성, 스킬 URL(`https://passionmate.app/api/kakao/webhook`) 등록, 폴백 블록 연결까지는 사용자가 카카오 콘솔에서 직접 해야 한다. §7 운영 체크리스트에 "스킬 URL이 살아있는지" 확인 항목 추가.
 
 ## 3. 배포 파이프라인 (GitHub → 로컬 서버)
 
@@ -163,8 +180,8 @@ requirements.txt 변경됐으면 → pip install -r requirements.txt
 ```
 main.py                 앱 부트스트랩만 (~85줄): FastAPI 생성, 로깅/CORS 설정, 라우터 등록, startup_event
 src/
-  routers/              Controller — students.py, sessions.py, dashboard.py, qa.py, ai.py, insights.py, curriculum.py, teachers.py, homework.py, director.py, pages.py
-  services/             Service — student_service.py, teacher_service.py, homework_service.py, director_stats_service.py, session_service.py, dashboard_service.py, qa_service.py,
+  routers/              Controller — students.py, sessions.py, dashboard.py, qa.py, ai.py, insights.py, curriculum.py, teachers.py, homework.py, director.py, kakao.py, pages.py
+  services/             Service — student_service.py, teacher_service.py, homework_service.py, director_stats_service.py, kakao_service.py, session_service.py, dashboard_service.py, qa_service.py,
                          ai_chat_service.py, analysis_service.py, curriculum_service.py, insight_service.py, ghost_cleanup_service.py
   dto/                  Pydantic 요청/응답 모델 — students.py, sessions.py, qa.py, dashboard.py, ai.py, insights.py, curriculum.py, teachers.py, homework.py, common.py
   db.py                 Repository (get_*/create_*/update_* 함수)
@@ -200,6 +217,7 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 | DB가 멀쩡한가 | `python check_db.py` 또는 `python health_check.py` |
 | API 500 에러의 실제 원인(스택트레이스) | `logs/app.log` — 모든 서비스/라우터의 handled exception이 여기 찍힘 |
 | 워치독이 실제로 떠 있나 | `Get-Process pythonw` (PID 1개여야 정상 — 2개 이상이면 Windows 시작프로그램 중복 등록 의심) |
+| 카카오 오픈빌더 스킬 웹훅이 살아있나 | `/api/kakao/webhook`에 아무 JSON이나 POST해서 200 + 카카오 v2.0 포맷 응답이 오는지 확인 (§2.8) |
 
 ## 8. 알려진 제약
 
@@ -220,5 +238,6 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 - **원장 통계 — 엑셀 다운로드(Phase 3)**: 브라우저 내 그래프 대신, 원장이 "선생님 계정 관리" 탭에서 버튼을 누르면 서버가 그 자리에서 `.xlsx`를 생성해 다운로드시킨다(`GET /api/director/stats/export`, `require_director`). `openpyxl`로 시트 2개 생성 — 1) 선생님별 담당 원생 수 표 + 네이티브 엑셀 막대그래프, 2) 전체 재적생 상세(파트/나이/MBTI/가입상태). `src/services/director_stats_service.py`, `src/routers/director.py`. 인증 헤더가 필요해 `<a href>` 직접 다운로드가 아니라 `dashboard.js`에서 fetch로 받아 Blob으로 변환 후 다운로드 트리거.
 - **신뢰성/보안 하드닝**: 스트레스·신뢰성 테스트로 발견한 문제 다수 수정 — (1) `verify_teacher_auth`/학생 로그인·가입/선생님 계정 생성의 pbkdf2 호출(실측 ~236ms)이 동기 함수라 이벤트 루프 전체를 막던 것을 `asyncio.to_thread`로 해결(§2.7), (2) SQLite `journal_mode=WAL` 적용, (3) 저장형 XSS(학생 Q&A 텍스트가 teacher.js의 평문 `sessionStorage` 비밀번호를 탈취할 수 있었음) — `escapeHtml()` 도입해 전 렌더링 지점에 적용, (4) 숙제 첨부 파일명 경로 탈출(`os.path.basename()`으로 차단), (5) 통계 엑셀 수식 인젝션(셀 값이 `=/+/-/@`로 시작하면 작은따옴표로 텍스트 강제), (6) 선생님 계정 비밀번호 최소 길이(4자) 강제, (7) CORS `allow_origins`를 와일드카드에서 실제 도메인 목록으로 제한.
 - **오늘의 꿀팁 — 파트별 분리**: 기존엔 파트 개념이 아예 없어 전교생이 "기타 전공" 전용으로 하드코딩된 동일 콘텐츠를 봤음. `ai_daily_insights`에 `part` 컬럼 추가, `GET /api/daily-insight?part=베이스`처럼 파트별로 다른 콘텐츠 반환. Gemini 무료 티어 일일 한도(20회, 배경 루프만으로 6회 고정 소진)를 보호하기 위해 **파트당 별도 호출하지 않고 하루 1회 호출로 6개 파트 콘텐츠를 구조화된 JSON으로 한 번에 받아** 저장(`insight_service.py`의 `PART_FOCUS` + JSON 배열 프롬프트). 학생 쪽 "오늘의 꿀팁" 탭에 로그인 가드 추가(파트를 알아야 콘텐츠를 고를 수 있으므로).
+- **카카오톡 AI 상담 채널(Phase 1)**: 학생이 카카오톡으로도 AI 튜터와 대화 가능 — 웹 챗봇과 완전히 같은 Gemini 두뇌·하루 한도를 공유(§2.8). `kakao_links` 테이블로 카카오 사용자 ↔ student_id를 최초 1회 아이디/비밀번호 인증으로 연결, 이후 메시지는 `ai_chat_service.get_ai_reply`를 그대로 재사용. `src/routers/kakao.py`, `src/services/kakao_service.py`. 4가지 시나리오(미연결 오류/연결 성공/실제 AI 응답/한도 초과) 및 웹↔카카오 한도 공유를 실제 HTTP로 검증 완료. **Phase 2(카카오 채널·오픈빌더 콘솔 설정)와 Phase 3(실제 카카오톡 앱으로 연동 테스트)는 사용자가 카카오 콘솔에서 직접 해야 하는 작업으로 아직 남아있음.**
 
-**Phase 1~3은 완료됐고, 이후에도 테스트로 발견된 문제 수정과 기능 개선이 계속 진행 중.**
+**Phase 1~3(교사/원장 권한, 숙제, 원장 통계)은 완료됐고, 이후에도 테스트로 발견된 문제 수정과 기능 개선(카카오톡 채널 등)이 계속 진행 중.**
