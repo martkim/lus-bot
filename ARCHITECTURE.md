@@ -101,6 +101,8 @@ Windows 시작프로그램에 `pythonw.exe system_service.py`로 등록되어 �
 
 **중요한 한계**: 이 에이전트는 "재기동/롤백"까지는 완전 자동이지만, 실제 코드 버그를 읽고 고치는 판단은 AI(Claude)가 세션을 열었을 때 `needs_attention.log`를 확인하며 처리한다. 이 컴퓨터엔 Claude Code CLI가 없어 완전 무인 AI 디버깅은 불가능하다.
 
+**워치독 자신이 죽으면?** — 위 사이클은 `system_service.py` 프로세스가 살아있다는 전제하에 uvicorn/cloudflared를 감시하는 것이다. 그런데 `system_service.py`는 Windows 로그인 시 1회만 시작되므로(Startup 폴더), **세션 도중 이 프로세스 자체가 죽거나 강제 종료되면 다음 로그인/재부팅 전까지 아무것도 되살려주지 않는 문제**가 있었다 (2026-09-12 감사에서 발견 — 과거에 반복됐던 "재기동 안 됨" 이슈의 근본 원인). 해결책: `ensure_watchdog.ps1` + `register-watchdog-safety-net.ps1`로 Windows 작업 스케줄러에 **"PassionMate_WatchdogSafetyNet"** 이름의 반복 작업(10분 주기)을 등록 — `system_service.py`가 안 떠 있으면(`Win32_Process`의 `CommandLine`으로 판별) 즉시 재기동시키고 `needs_attention.log`에 기록한다. 실제로 워치독 프로세스를 강제 종료한 뒤 이 스크립트가 10분 안에 되살리는 것을 확인했다. 이 스크립트는 이미 로그인된 세션에서만 동작(비밀번호 저장 불필요) — 기존 Startup 폴더 방식과 동일한 전제(PC가 로그인된 채로 계속 켜져 있음)라 새 요구사항을 추가하지 않는다.
+
 ### 2.7 인증 및 권한 모델
 
 두 종류의 계정이 완전히 분리되어 있다 — **선생님 계정**(원장/파트 담당)과 **학생 계정**. 둘 다 `src/password_utils.py`의 pbkdf2 해시(계정별 랜덤 salt, 260,000 iteration)를 공유하지만 인증 방식과 권한 체계는 다르다.
@@ -202,7 +204,9 @@ backups/                일일 DB 백업, 최근 7개 (gitignore)
 uploads/                사용자 업로드 파일(현재 homework/ 숙제 첨부) (gitignore, 실 데이터 포함)
 database.db             SQLite DB 파일 (gitignore, 실 데이터 포함)
 start-*.bat/.py         수동 서버/터널 기동용 스크립트
-register-startup.*      Windows 시작프로그램 등록 스크립트
+register-startup.*      Windows 시작프로그램 등록 스크립트 (⚠️ register-startup.ps1은 옛 프로젝트 경로를 가리키는 죽은 스크립트 — register-startup.vbs만 유효)
+ensure_watchdog.ps1     워치독(system_service.py)이 안 떠 있으면 재기동 ("워치독의 워치독", §2.6)
+register-watchdog-safety-net.ps1  위 스크립트를 작업 스케줄러 10분 주기 작업으로 등록 (1회 실행용)
 server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_modules도 미설치
 ```
 
@@ -217,6 +221,7 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 | DB가 멀쩡한가 | `python check_db.py` 또는 `python health_check.py` |
 | API 500 에러의 실제 원인(스택트레이스) | `logs/app.log` — 모든 서비스/라우터의 handled exception이 여기 찍힘 |
 | 워치독이 실제로 떠 있나 | `Get-Process pythonw` (PID 1개여야 정상 — 2개 이상이면 Windows 시작프로그램 중복 등록 의심) |
+| 워치독 안전망(Task Scheduler)이 등록돼 있나 | `Get-ScheduledTask -TaskName PassionMate_WatchdogSafetyNet` (§2.6) |
 | 카카오 오픈빌더 스킬 웹훅이 살아있나 | `/api/kakao/webhook`에 아무 JSON이나 POST해서 200 + 카카오 v2.0 포맷 응답이 오는지 확인 (§2.8) |
 
 ## 8. 알려진 제약
@@ -239,5 +244,7 @@ server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_m
 - **신뢰성/보안 하드닝**: 스트레스·신뢰성 테스트로 발견한 문제 다수 수정 — (1) `verify_teacher_auth`/학생 로그인·가입/선생님 계정 생성의 pbkdf2 호출(실측 ~236ms)이 동기 함수라 이벤트 루프 전체를 막던 것을 `asyncio.to_thread`로 해결(§2.7), (2) SQLite `journal_mode=WAL` 적용, (3) 저장형 XSS(학생 Q&A 텍스트가 teacher.js의 평문 `sessionStorage` 비밀번호를 탈취할 수 있었음) — `escapeHtml()` 도입해 전 렌더링 지점에 적용, (4) 숙제 첨부 파일명 경로 탈출(`os.path.basename()`으로 차단), (5) 통계 엑셀 수식 인젝션(셀 값이 `=/+/-/@`로 시작하면 작은따옴표로 텍스트 강제), (6) 선생님 계정 비밀번호 최소 길이(4자) 강제, (7) CORS `allow_origins`를 와일드카드에서 실제 도메인 목록으로 제한.
 - **오늘의 꿀팁 — 파트별 분리**: 기존엔 파트 개념이 아예 없어 전교생이 "기타 전공" 전용으로 하드코딩된 동일 콘텐츠를 봤음. `ai_daily_insights`에 `part` 컬럼 추가, `GET /api/daily-insight?part=베이스`처럼 파트별로 다른 콘텐츠 반환. Gemini 무료 티어 일일 한도(20회, 배경 루프만으로 6회 고정 소진)를 보호하기 위해 **파트당 별도 호출하지 않고 하루 1회 호출로 6개 파트 콘텐츠를 구조화된 JSON으로 한 번에 받아** 저장(`insight_service.py`의 `PART_FOCUS` + JSON 배열 프롬프트). 학생 쪽 "오늘의 꿀팁" 탭에 로그인 가드 추가(파트를 알아야 콘텐츠를 고를 수 있으므로).
 - **카카오톡 AI 상담 채널(Phase 1)**: 학생이 카카오톡으로도 AI 튜터와 대화 가능 — 웹 챗봇과 완전히 같은 Gemini 두뇌·하루 한도를 공유(§2.8). `kakao_links` 테이블로 카카오 사용자 ↔ student_id를 최초 1회 아이디/비밀번호 인증으로 연결, 이후 메시지는 `ai_chat_service.get_ai_reply`를 그대로 재사용. `src/routers/kakao.py`, `src/services/kakao_service.py`. 4가지 시나리오(미연결 오류/연결 성공/실제 AI 응답/한도 초과) 및 웹↔카카오 한도 공유를 실제 HTTP로 검증 완료. **Phase 2(카카오 채널·오픈빌더 콘솔 설정)와 Phase 3(실제 카카오톡 앱으로 연동 테스트)는 사용자가 카카오 콘솔에서 직접 해야 하는 작업으로 아직 남아있음.**
+- **운영 체계 전수 감사 (2026-09-12)**: Git/문서/코드/운영 기능(A~M) 상태를 체계적으로 대조 감사. 발견된 Critical 위험은 없었고, High 위험 3건(워치독 자기복구 부재, 실시간 장애 알림 부재, 카카오 웹훅의 Cloudflare 봇 차단 리스크) 중 **워치독 자기복구는 바로 해결**(아래 항목, §2.6). 나머지는 P1로 대기 중.
+- **워치독 안전망(Task Scheduler)**: 위 감사에서 발견된 최대 리스크 — `system_service.py`가 로그인 중 죽으면 재부팅 전까지 복구가 안 되던 문제. `ensure_watchdog.ps1`을 10분 주기 Windows 작업 스케줄러 작업("PassionMate_WatchdogSafetyNet")으로 등록해 해결(§2.6). 실제로 워치독 프로세스를 강제 종료한 뒤 자동 재기동되는 것을 확인.
 
-**Phase 1~3(교사/원장 권한, 숙제, 원장 통계)은 완료됐고, 이후에도 테스트로 발견된 문제 수정과 기능 개선(카카오톡 채널 등)이 계속 진행 중.**
+**Phase 1~3(교사/원장 권한, 숙제, 원장 통계)은 완료됐고, 이후에도 테스트로 발견된 문제 수정과 기능 개선(카카오톡 채널, 운영 안정성 등)이 계속 진행 중.**
