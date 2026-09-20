@@ -343,7 +343,15 @@
                 </div>
                 <div class="form-group" style="margin: 0; width: 100%;">
                   <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">전공 과목</label>
-                  <input type="text" id="reg-instrument" placeholder="전공 (예: 피아노, 작곡)" required style="width: 100%; box-sizing: border-box;">
+                  <select id="reg-instrument" required style="width: 100%; box-sizing: border-box; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px;">
+                    <option value="">전공을 선택하세요...</option>
+                    <option value="일렉기타">일렉기타</option>
+                    <option value="베이스">베이스</option>
+                    <option value="작곡">작곡</option>
+                    <option value="보컬">보컬</option>
+                    <option value="미디">미디</option>
+                    <option value="드럼">드럼</option>
+                  </select>
                 </div>
                 <div class="form-group" style="margin: 0; width: 100%;">
                   <label style="font-size: 0.8rem; color: var(--text-muted); display: block; margin-bottom: 5px;">나이</label>

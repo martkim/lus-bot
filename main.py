@@ -2,10 +2,23 @@ from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 import os
+import sys
 import time
 import logging
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
+
+# stdout/stderr이 파일로 리다이렉트되면(워치독이 server_out.log로 띄우는 평상시 경로)
+# Windows 기본 로캘 cp949로 굳어, 이모지가 섞인 print/StreamHandler 한 줄이
+# UnicodeEncodeError로 터진다. 2026-09-20에 이것 때문에 "오늘의 꿀팁" 생성이 5일간
+# 통째로 실패했다 — 테마 제목('💪 딥워크...')을 print하다 죽어 Gemini 호출조차 못 갔다.
+# system_service.py와 같은 처리를 서버 프로세스에도 적용한다.
+for _stream in (sys.stdout, sys.stderr):
+    if _stream is not None and hasattr(_stream, "reconfigure"):
+        try:
+            _stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
 
 # src.auth / src.gemini_client 등이 모듈 임포트 시점에 os.environ을 읽으므로,
 # 다른 src.* 임포트보다 반드시 먼저 .env를 로드해야 한다. (안 그러면 TEACHER_PASSWORD/

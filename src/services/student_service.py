@@ -7,6 +7,7 @@ from typing import List
 from src import db
 from src.errors import NotFoundError
 from src.password_utils import hash_password, verify_password
+from src.services.teacher_service import VALID_PARTS
 from src.dto.students import (
     StudentCreateRequest, StudentDTO, StudentCreatedDTO,
     UnclaimedStudentDTO, StudentClaimRequest, StudentLoginRequest, StudentAuthDTO,
@@ -34,6 +35,11 @@ def create_student(payload: StudentCreateRequest) -> StudentCreatedDTO:
     instrument = payload.instrument.strip()
     if not name or not instrument:
         raise ValueError("이름과 전공 악기를 모두 입력해 주세요.")
+    # instrument는 파트별 꿀팁(ai_daily_insights.part) 조회 키로 그대로 쓰인다. 자유 입력을
+    # 허용하면 '기타'처럼 PART_FOCUS 키('일렉기타')와 어긋나는 값이 들어가고, 그 학생은
+    # 화면에 "준비 중"만 뜬 채 꿀팁을 영구히 못 보게 된다 (2026-09-20 실제 발생).
+    if instrument not in VALID_PARTS:
+        raise ValueError(f"전공은 다음 중 하나여야 합니다: {', '.join(VALID_PARTS)}")
 
     new_id = db.create_student(name, instrument, payload.age)
     return StudentCreatedDTO(id=new_id, name=name, instrument=instrument, age=payload.age, mbti=None)

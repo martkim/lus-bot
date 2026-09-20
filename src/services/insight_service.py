@@ -55,14 +55,14 @@ async def auto_generate_daily_insight():
     않고 **한 번의 호출로 6개 파트 콘텐츠를 구조화된 JSON으로 한꺼번에 받는다.**
     """
     if not GEMINI_API_KEY:
-        print("[AI Insight] Skipped. No GEMINI_API_KEY.")
+        logger.warning("[AUTO_GENERATE_DAILY_INSIGHT] GEMINI_API_KEY 없음 - 생성 건너뜀")
         return
 
     try:
         # 오늘 이미 생성된 인사이트가 있으면 스킵 (6개 파트 배치가 통째로 하루 1회만 생성됨)
         today_str = datetime.now().strftime("%Y-%m-%d")
         if db.has_todays_insight(today_str):
-            print("[AI Insight] Today's insight already exists. Skipping generation.")
+            logger.info("[AUTO_GENERATE_DAILY_INSIGHT] 오늘자 인사이트가 이미 있음 - 건너뜀")
             return
 
         # 오늘 날짜 기준으로 공통 테마 순환 선택 (day_of_year % 테마수)
@@ -89,7 +89,7 @@ async def auto_generate_daily_insight():
             "8. html_content 문자열 안의 큰따옴표는 JSON 규격에 맞게 이스케이프하세요."
         )
 
-        print(f"[AI Insight] Generating today's insight batch (theme: {theme_title}) for 6 parts...")
+        logger.info(f"[AUTO_GENERATE_DAILY_INSIGHT] 오늘 배치 생성 시작 theme={theme_title} parts={len(PART_FOCUS)}")
         response = await asyncio.to_thread(
             get_client().models.generate_content,
             model='gemini-2.5-flash',
@@ -101,7 +101,7 @@ async def auto_generate_daily_insight():
             items = json.loads(raw_text)
         except json.JSONDecodeError:
             logger.exception("오늘의 인사이트 JSON 파싱 실패")
-            print("[AI Insight Error] Gemini response was not valid JSON. Skipping today's batch (will retry tomorrow).")
+            logger.error("[AUTO_GENERATE_DAILY_INSIGHT] Gemini 응답이 유효한 JSON이 아님 - 오늘 배치 건너뜀(내일 재시도)")
             return
 
         now_iso = datetime.now().isoformat()
@@ -114,19 +114,23 @@ async def auto_generate_daily_insight():
             db.create_daily_insight(insight_type, theme_title, html_content, now_iso, part)
             saved_count += 1
 
-        print(f"[AI Insight] Today's insight batch saved: {saved_count}/{len(PART_FOCUS)} parts.")
+        logger.info(f"[AUTO_GENERATE_DAILY_INSIGHT] 배치 저장 완료 {saved_count}/{len(PART_FOCUS)} 파트")
 
     except Exception as e:
         logger.exception("오늘의 AI 인사이트 생성 실패")
-        try:
-            print(f"[AI Insight Error] Failed to generate daily insight: {e}")
-        except Exception:
-            print("[AI Insight Error] Failed to generate daily insight due to encoding/unicode error.")
+        logger.error(f"[AUTO_GENERATE_DAILY_INSIGHT] 생성 실패: {e}")
 
 
 def get_latest_active_insight(part: str) -> Optional[InsightDTO]:
     logger.info(f"[GET_LATEST_ACTIVE_INSIGHT] 시작 part={part}")
     row = db.get_latest_active_insight(part)
+    if row is None:
+        available = db.get_available_insight_parts()
+        logger.warning(
+            f"[GET_LATEST_ACTIVE_INSIGHT] part={part!r} 인사이트 0건 - 보유 파트={available}, "
+            f"생성 대상 파트={list(PART_FOCUS)}. 학생의 instrument 값이 이 목록에 없으면 "
+            f"그 학생은 꿀팁을 영구히 못 본다(화면엔 '준비 중'으로만 보여 원인이 드러나지 않음)."
+        )
     return InsightDTO(**row) if row else None
 
 

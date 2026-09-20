@@ -779,6 +779,21 @@ def get_latest_active_insight(part):
         conn.close()
 
 
+def get_available_insight_parts():
+    """활성 인사이트가 존재하는 파트 목록. 학생의 instrument 값과 인사이트의 part 값이
+    어긋나 조회가 0건으로 떨어질 때(2026-09-20에 '기타' vs '일렉기타'로 실제 발생),
+    무엇과 어긋났는지 로그로 드러내기 위한 진단용."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT DISTINCT part FROM ai_daily_insights WHERE is_active = 1 AND part IS NOT NULL ORDER BY part"
+        )
+        return [r[0] for r in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
 def get_all_insights(limit=30):
     """전체 인사이트 목록 (교사 관리용)."""
     conn = get_db_connection()
