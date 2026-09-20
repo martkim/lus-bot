@@ -47,6 +47,7 @@ CLOUDFLARED_ERR_LOG = LOGS_DIR / "cf_err.log"
 LATEST_URL_FILE = BASE_DIR / "latest_url.txt"
 CLOUDFLARED_EXE = BASE_DIR / "cloudflared.exe"
 LOCK_FILE = LOGS_DIR / "watchdog.lock"
+LAST_CRASH_MARKER = LOGS_DIR / "last_seen_unexpected_shutdown.txt"
 
 PORT = 8088
 PUBLIC_URL = "https://passionmate.app"  # Named Tunnel, fixed domain (was an ephemeral trycloudflare.com URL)
@@ -436,9 +437,54 @@ def acquire_single_instance_lock():
     LOCK_FILE.write_text(str(my_pid), encoding="utf-8")
 
 
+def _run_powershell(command, timeout=15):
+    return subprocess.run(
+        ["powershell", "-NoProfile", "-Command", command],
+        capture_output=True, text=True, timeout=timeout, **_NO_WINDOW_KWARGS,
+    )
+
+
+def check_unexpected_reboot():
+    """Alert if this boot followed a crash (BSOD/power loss) rather than a
+    clean shutdown, since these otherwise recover silently - nobody finds out
+    unless they happen to open Event Viewer. Compares the timestamp of the
+    latest "unexpected shutdown" event (Id 6008) against the last one we've
+    already alerted on, persisted in LAST_CRASH_MARKER so we don't re-alert
+    on every watchdog restart for the same old crash."""
+    try:
+        r = _run_powershell(
+            "Get-WinEvent -FilterHashtable @{LogName='System'; Id=6008} -MaxEvents 1 "
+            "-ErrorAction SilentlyContinue | Select-Object -ExpandProperty TimeCreated | "
+            "Get-Date -Format o"
+        )
+        latest = r.stdout.strip()
+        if not latest:
+            return  # no such event on record, or PowerShell/event log unavailable
+
+        last_seen = LAST_CRASH_MARKER.read_text(encoding="utf-8").strip() if LAST_CRASH_MARKER.exists() else ""
+        if latest == last_seen:
+            return  # already alerted on this one
+
+        first_run = last_seen == ""
+        LAST_CRASH_MARKER.write_text(latest, encoding="utf-8")
+        if first_run:
+            return  # don't retroactively alert on crash history predating this feature
+
+        bc = _run_powershell(
+            "Get-WinEvent -FilterHashtable @{LogName='System'; "
+            "ProviderName='Microsoft-Windows-WER-SystemErrorReporting'} -MaxEvents 1 "
+            "-ErrorAction SilentlyContinue | Select-Object -ExpandProperty Message"
+        )
+        detail = bc.stdout.strip() or "(bugcheck 상세 조회 실패 - Event Viewer에서 System 로그 직접 확인 필요)"
+        log_attention(f"컴퓨터가 예기치 않게 재부팅됐습니다 (크래시로 추정, 감지 시각 {latest}).\n{detail}")
+    except Exception as e:
+        print(f"[BOOT_CHECK] Unexpected-reboot check failed: {e}")
+
+
 def main():
     acquire_single_instance_lock()
     print("PASSION MATE System Service (watchdog) started.")
+    check_unexpected_reboot()
     last_backup_date = None
 
     while True:
