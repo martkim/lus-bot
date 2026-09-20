@@ -1089,6 +1089,12 @@ body {
   font-weight: 500;
   user-select: none;
   width: 100%;
+  /* 높이 지정이 없을 땐 글자 높이만큼(실측 21.9dp)이라 안드로이드 권장 터치 타겟 48dp의
+     절반도 안 됐다 - 손떨림이 있거나 정밀도가 떨어지는 사용자가 누르기 어렵다.
+     48px만으로는 실측 38.9dp에 그쳐(컨테이너 여백에 먹힘) 여유를 더 준다. */
+  min-height: 56px;
+  padding-top: 4px;
+  padding-bottom: 4px;
 }
 
 /* 기본 체크박스 숨기기 */
@@ -1171,10 +1177,16 @@ body {
   gap: 10px;
   width: 100%;
   margin-top: 5px;
+  /* 글자 크기를 키운 사용자(접근성 설정)나 좁은 기기에서 입력란+버튼 합이 컨테이너를
+     넘으면, nowrap이라 '입장' 버튼이 화면 밖으로 밀려 눌리지 않았다 (2026-09-20 실측). */
+  flex-wrap: wrap;
 }
 
 .custom-input-text {
   flex: 1;
+  /* flex 아이템 기본값 min-width:auto는 placeholder 텍스트보다 좁아지는 것을 막아
+     축소 여지를 없앤다. 0으로 풀어야 입력란이 먼저 줄고 버튼이 자리를 지킨다. */
+  min-width: 0;
   background: var(--bg-tertiary);
   border: 1px solid var(--glass-border);
   color: var(--text-main);
@@ -1218,9 +1230,13 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   transition: var(--transition-smooth);
   margin-left: auto; /* 우측 정렬 */
+  /* 실측 27.7dp로 권장 48dp에 한참 못 미쳤다. 배지 안에 들어가는 버튼이라 48까지는
+     키우지 않고, 실수로 누르기 어렵지 않을 만큼만(44dp) 터치 영역을 확보한다. */
+  min-height: 44px;
 }
 
 .btn-logout:hover {

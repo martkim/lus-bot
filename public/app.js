@@ -292,6 +292,9 @@ function handleStudentSelection(studentId) {
 
     if (state.qaPollingInterval) clearInterval(state.qaPollingInterval);
     state.qaPollingInterval = setInterval(() => {
+      // 앱이 백그라운드(화면 안 보임)면 요청을 건너뛴다 - 안드로이드 앱에서 홈으로 나가
+      // 있는 동안에도 5초마다 계속 호출돼 배터리/데이터만 쓰고 있었다.
+      if (document.hidden) return;
       if (state.selectedStudent) {
         loadStudentQuestions(state.selectedStudent.id);
       }
@@ -1155,6 +1158,7 @@ window.addEventListener('online', async () => {
     if (!state.qaPollingInterval) {
       loadStudentQuestions(state.selectedStudent.id);
       state.qaPollingInterval = setInterval(() => {
+        if (document.hidden) return;
         if (state.selectedStudent) {
           loadStudentQuestions(state.selectedStudent.id);
         }
