@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:allowBackup="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:theme="@style/Theme.PassionMate"
+        android:usesCleartextTraffic="false">
+
+        <!-- configChanges를 선언하지 않으면 폰트 크기/다크모드/언어 변경만으로 Activity가
+             재생성되고, WebView가 START_URL부터 다시 로드된다 - 연습 타이머가 돌아가는 중이거나
+             Q&A를 입력하던 중이면 그 화면이 통째로 날아간다 (2026-09-20 실측 재현). -->
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:screenOrientation="portrait"
+            android:configChanges="uiMode|fontScale|locale|layoutDirection|screenSize|smallestScreenSize|orientation|keyboardHidden|density"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>

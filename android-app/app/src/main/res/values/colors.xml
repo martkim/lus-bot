@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Matches public/manifest.json's theme_color / background_color -->
+    <color name="passionmate_background">#080C14</color>
+    <color name="passionmate_on_background">#FFFFFF</color>
+    <color name="passionmate_muted">#9AA4B2</color>
+</resources>
