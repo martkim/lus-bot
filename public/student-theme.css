@@ -461,6 +461,25 @@ body.student-light .text-danger {
   color: var(--warn-700);
 }
 
+/* 토스트도 배경만 rgba(15,22,38,.95)로 하드코딩돼 있고 글자색은 --text-main을
+   따라간다. 그래서 화이트 테마에서는 검은 배경 위에 진회색 글씨(1.4:1)가 되어
+   '먼저 본인의 이름을 입력해 입장해 주세요' 같은 안내문이 통째로 안 보였다.
+   배경을 흰 카드로 돌리고, 성공/실패는 왼쪽 띠 색으로만 구분한다. */
+body.student-light .toast {
+  background: var(--bg-primary);
+  border: 1px solid var(--n-200);
+  color: var(--text-main);
+  box-shadow: 0 8px 24px rgba(15, 22, 38, 0.14);
+}
+
+body.student-light .toast.success {
+  border-left: 3px solid var(--ok-700);
+}
+
+body.student-light .toast.error {
+  border-left: 3px solid var(--warn-700);
+}
+
 /* ==========================================================================
    오늘의 꿀팁 — AI가 만들어 보내는 HTML 카드
    --------------------------------------------------------------------------
