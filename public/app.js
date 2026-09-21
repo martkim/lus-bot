@@ -26,7 +26,9 @@ const state = {
   activeSession: null,
   timerInterval: null,
   startTime: null,
-  qaPollingInterval: null
+  qaPollingInterval: null,
+  goalMinutes: 180,   // 목표 편집창을 열 때 기본값으로 쓴다 (서버 응답으로 갱신)
+  planMaxSlots: 10    // 계획 슬롯 상한 — 서버가 알려주는 값으로 덮어쓴다
 };
 
 // 1. DOM 요소 취득
@@ -62,15 +64,25 @@ const dom = {
   btnStudentSignup: document.getElementById('btn-student-signup'),
   btnBackToLogin: document.getElementById('btn-back-to-login'),
 
-  // 추천 연습 계획 DOM 요소
+  // 내 연습 계획 DOM 요소
   personalPlanSection: document.getElementById('personal-plan-section'),
   personalPlanList: document.getElementById('personal-plan-list'),
+  planSlotCount: document.getElementById('plan-slot-count'),
+  planAddForm: document.getElementById('plan-add-form'),
+  planAddInput: document.getElementById('plan-add-input'),
+  btnPlanAdd: document.getElementById('btn-plan-add'),
 
   // 오늘의 목표(시간 블록) DOM 요소
   dailyGoalSection: document.getElementById('daily-goal-section'),
   goalBlocks: document.getElementById('goal-blocks'),
   goalCount: document.getElementById('goal-count'),
   goalFoot: document.getElementById('goal-foot'),
+  btnGoalEdit: document.getElementById('btn-goal-edit'),
+  goalEditor: document.getElementById('goal-editor'),
+  goalInputHours: document.getElementById('goal-input-hours'),
+  goalInputMins: document.getElementById('goal-input-mins'),
+  btnGoalSave: document.getElementById('btn-goal-save'),
+  btnGoalCancel: document.getElementById('btn-goal-cancel'),
 
   // AI 튜터 챗봇 DOM 요소
   chatMessages: document.getElementById('chat-messages'),
@@ -124,6 +136,54 @@ async function initApp() {
 
 // 4. 이벤트 리스너 리스트
 function setupEventListeners() {
+  // --- 내 연습 계획 ---
+  if (dom.planAddForm) {
+    dom.planAddForm.addEventListener('submit', handlePlanAdd);
+  }
+  // 슬롯은 렌더링될 때마다 새로 만들어지므로, 목록에 한 번만 걸어 두고 위임한다.
+  if (dom.personalPlanList) {
+    dom.personalPlanList.addEventListener('change', (e) => {
+      const planId = e.target.dataset && e.target.dataset.planCheck;
+      if (planId) handlePlanCheck(Number(planId), e.target.checked, e.target);
+    });
+    dom.personalPlanList.addEventListener('click', (e) => {
+      const editId = e.target.dataset && e.target.dataset.planEdit;
+      if (editId) {
+        handlePlanEdit(Number(editId));
+        return;
+      }
+      const deleteId = e.target.dataset && e.target.dataset.planDelete;
+      if (deleteId) handlePlanDelete(Number(deleteId));
+    });
+  }
+
+  // --- 오늘의 목표 시간 설정 ---
+  if (dom.btnGoalEdit) {
+    dom.btnGoalEdit.addEventListener('click', () => {
+      if (dom.goalEditor && dom.goalEditor.hidden) {
+        openGoalEditor();
+      } else {
+        closeGoalEditor();
+      }
+    });
+  }
+  if (dom.btnGoalSave) {
+    dom.btnGoalSave.addEventListener('click', handleGoalSave);
+  }
+  if (dom.btnGoalCancel) {
+    dom.btnGoalCancel.addEventListener('click', closeGoalEditor);
+  }
+  // 숫자 칸에서 엔터를 치면 저장으로 이어지게 한다 (모바일 키보드의 '완료' 포함).
+  [dom.goalInputHours, dom.goalInputMins].forEach((input) => {
+    if (!input) return;
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        handleGoalSave();
+      }
+    });
+  });
+
   // 하단 탭바 뷰 전환 처리
   dom.tabItems.forEach(item => {
     item.addEventListener('click', (e) => {
@@ -286,8 +346,8 @@ function handleStudentSelection(studentId) {
     resetTimerUI();
   }
 
-  // 전공별 추천 연습 계획 렌더링
-  loadPersonalPlan(student.instrument);
+  // 본인이 직접 쓴 연습 계획 슬롯
+  loadPersonalPlan(studentId);
 
   // 오늘의 목표 블록
   loadDailyGoal(studentId);
@@ -700,6 +760,10 @@ async function loadDailyGoal(studentId) {
 }
 
 function renderDailyGoal(d) {
+  // 편집창에 들어갈 기본값은 항상 현재 목표. 열 때마다 다시 채워야
+  // 저장을 취소하고 다시 열었을 때 직전에 끄적인 값이 남지 않는다.
+  state.goalMinutes = d.goalMinutes;
+
   dom.goalBlocks.innerHTML = '';
   for (let i = 0; i < d.blocks; i++) {
     const block = document.createElement('div');
@@ -724,67 +788,229 @@ function renderDailyGoal(d) {
 }
 
 // ==========================================
-// 15. 전공별 동적 추천 연습 계획 렌더링
+// 15. 내 연습 계획 - 학생이 직접 쓰는 슬롯
 // ==========================================
-function loadPersonalPlan(instrument) {
+// 예전에는 전공을 보고 고정된 문구 3줄을 뿌렸다. 누구에게나 같은 내용이라 체크해도
+// 의미가 없었고 본인 레슨 진도와도 맞지 않았다. 이제는 학생이 직접 쓴다.
+// 계획 문구는 서버에 남고 체크만 날마다 풀리므로 매일 다시 쓸 필요는 없다.
+
+async function loadPersonalPlan(studentId) {
   if (!dom.personalPlanSection || !dom.personalPlanList) return;
-
-  const ins = instrument.toLowerCase();
-  let plans = [];
-
-  // 전공 분석 분류 분기
-  if (ins.includes('피아노') || ins.includes('piano') || ins.includes('건반')) {
-    plans = [
-      '하농(Hanon) & 스케일(Scale)을 30분 이상 치며 부드럽게 손끝 릴렉스하기',
-      '쇼팽 에튀드 등 대곡은 처음 2~3일간 반드시 70% 느린 템포로 터치감 익히기',
-      '건반을 억지로 때리거나 내려찍지 않고 어깨와 손목의 힘을 빼고 치기'
-    ];
-  } else if (ins.includes('바이올린') || ins.includes('violin') || ins.includes('현악') || ins.includes('첼로') || ins.includes('cello')) {
-    plans = [
-      '개현(Open string)에서 활 쓰기 기초 연습 매일 15분 이상 진행하기',
-      '매 순간 정밀 연습을 위해 튜너기를 켜두고 손가락 피치(Intonation) 완벽히 맞추기',
-      '쉬프트 포지션 이동 시 어깨와 엄지손가락에 과도하게 들어가 있는 힘 빼기'
-    ];
-  } else if (ins.includes('작곡') || ins.includes('composition') || ins.includes('화성') || ins.includes('이론')) {
-    plans = [
-      '화성학 풀이 2문제 꼼꼼히 풀고, 병진행(5도, 8도) 등 금칙 위반 셀프 체크하기',
-      '아침/낮 시간대에 귀를 훈련하는 단선율 및 2성부 청음 20분 실시하기',
-      '주 1회 이상 피아노 명곡 소나티네 분석 보고서 가볍게 정리해 보기'
-    ];
-  } else if (ins.includes('성악') || ins.includes('vocal') || ins.includes('노래') || ins.includes('성악과') || ins.includes('보컬')) {
-    plans = [
-      '아포지오(Appoggio, 호흡 지탱) 감각을 느끼며 복식 호흡 15분 연습하기',
-      '목을 쥐어짜지 않고 연구개(Soft Palate)를 높여 비강 공명 마음껏 울려주기',
-      '외국어(이탈리아/독일) 곡은 딕션을 정확히 소리 내어 읽고 감정 담아 부르기'
-    ];
-  } else {
-    // 기본 전공용 플랜 (그 외 악기)
-    plans = [
-      '본격적인 연습 전, 쉬운 곡이나 스케일을 이용해 20분 이상 가볍게 손/몸 풀기',
-      '중점적으로 안 되는 2~4마디 마킹 후 메트로놈 켜고 느린 템포로 집중 훈련하기',
-      '오늘 하루의 목표 연주 1회분을 전체 녹음해서 부족한 점 피드백해 보기'
-    ];
+  try {
+    const res = await fetch(`/api/plans/${studentId}`);
+    const result = await res.json();
+    if (!result.success || !result.data) return;
+    renderPersonalPlans(result.data);
+    dom.personalPlanSection.style.display = 'block';
+  } catch (err) {
+    // 계획을 못 불러와도 타이머 같은 핵심 기능은 계속 쓸 수 있어야 한다.
   }
+}
 
-  // 기존 항목 삭제
+function renderPersonalPlans(data) {
+  const plans = data.plans || [];
+  state.planMaxSlots = data.maxSlots;
+
   dom.personalPlanList.innerHTML = '';
 
-  // 동적 체크리스트 HTML 주입
-  plans.forEach((planText, index) => {
+  if (plans.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'empty-placeholder';
+    empty.innerHTML = '<p>아직 적어 둔 계획이 없습니다. 오늘 할 연습을 적어 보세요.</p>';
+    dom.personalPlanList.appendChild(empty);
+  }
+
+  plans.forEach((plan) => {
     const item = document.createElement('div');
-    item.className = 'plan-item';
+    item.className = 'plan-item' + (plan.done ? ' done' : '');
+    item.dataset.planId = plan.id;
     item.innerHTML = `
       <label class="checkbox-container">
-        <input type="checkbox" id="chk-plan-${index}">
+        <input type="checkbox" data-plan-check="${plan.id}"${plan.done ? ' checked' : ''}>
         <span class="checkmark"></span>
-        <span class="plan-text">${planText}</span>
+        <span class="plan-text">${escapeHtml(plan.content)}</span>
       </label>
+      <div class="plan-item-actions">
+        <button type="button" class="plan-action" data-plan-edit="${plan.id}">수정</button>
+        <button type="button" class="plan-action plan-action-danger" data-plan-delete="${plan.id}">삭제</button>
+      </div>
     `;
     dom.personalPlanList.appendChild(item);
   });
 
-  // 섹션 표시
-  dom.personalPlanSection.style.display = 'block';
+  updatePlanSlotCount(plans.length);
+}
+
+// 슬롯이 꽉 차면 입력창을 잠가, 눌러 본 뒤에야 거절당하는 일이 없게 한다.
+function updatePlanSlotCount(count) {
+  const max = state.planMaxSlots || 10;
+  const full = count >= max;
+
+  if (dom.planSlotCount) {
+    dom.planSlotCount.textContent = `${count} / ${max}`;
+  }
+  if (dom.planAddInput) {
+    dom.planAddInput.disabled = full;
+    dom.planAddInput.placeholder = full
+      ? `계획은 ${max}개까지 적을 수 있습니다`
+      : '연습할 내용을 적어 주세요';
+  }
+  if (dom.btnPlanAdd) {
+    dom.btnPlanAdd.disabled = full;
+  }
+}
+
+// 서버가 400으로 돌려준 안내 문구는 학생에게 그대로 보여주도록 쓰여 있다.
+function planErrorMessage(result, fallback) {
+  if (result && result.detail && result.detail.message) return result.detail.message;
+  if (result && result.message) return result.message;
+  return fallback;
+}
+
+async function handlePlanAdd(event) {
+  event.preventDefault();
+  if (!state.selectedStudent || !dom.planAddInput) return;
+
+  const content = dom.planAddInput.value.trim();
+  if (!content) {
+    showToast('연습할 내용을 적어 주세요.', 'error');
+    dom.planAddInput.focus();
+    return;
+  }
+
+  dom.btnPlanAdd.disabled = true;
+  try {
+    const res = await fetch('/api/plans', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: state.selectedStudent.id, content })
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      showToast(planErrorMessage(result, '계획을 추가하지 못했습니다.'), 'error');
+      return;
+    }
+    dom.planAddInput.value = '';
+    await loadPersonalPlan(state.selectedStudent.id);
+  } catch (err) {
+    showToast('계획을 추가하지 못했습니다. 연결 상태를 확인해 주세요.', 'error');
+  } finally {
+    dom.btnPlanAdd.disabled = false;
+    // 연달아 적는 경우가 많아 입력창에 포커스를 돌려준다.
+    if (dom.planAddInput && !dom.planAddInput.disabled) dom.planAddInput.focus();
+  }
+}
+
+async function patchPlan(planId, body) {
+  const res = await fetch(`/api/plans/${planId}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(Object.assign({ studentId: state.selectedStudent.id }, body))
+  });
+  const result = await res.json();
+  if (!res.ok) throw new Error(planErrorMessage(result, '계획을 수정하지 못했습니다.'));
+  return result;
+}
+
+async function handlePlanCheck(planId, done, checkbox) {
+  try {
+    await patchPlan(planId, { done });
+    const item = dom.personalPlanList.querySelector(`[data-plan-id="${planId}"]`);
+    if (item) item.classList.toggle('done', done);
+  } catch (err) {
+    // 서버가 거절했으면 체크 표시를 되돌려 화면과 저장 상태를 일치시킨다.
+    if (checkbox) checkbox.checked = !done;
+    showToast(err.message, 'error');
+  }
+}
+
+async function handlePlanEdit(planId) {
+  const item = dom.personalPlanList.querySelector(`[data-plan-id="${planId}"]`);
+  const current = item ? item.querySelector('.plan-text').textContent.trim() : '';
+
+  const next = window.prompt('계획을 수정합니다.', current);
+  if (next === null) return;
+  if (!next.trim()) {
+    showToast('계획 내용을 입력해 주세요.', 'error');
+    return;
+  }
+
+  try {
+    await patchPlan(planId, { content: next.trim() });
+    await loadPersonalPlan(state.selectedStudent.id);
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+async function handlePlanDelete(planId) {
+  if (!window.confirm('이 계획을 삭제할까요?')) return;
+  try {
+    const res = await fetch(`/api/plans/${planId}/delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: state.selectedStudent.id })
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      showToast(planErrorMessage(result, '계획을 삭제하지 못했습니다.'), 'error');
+      return;
+    }
+    await loadPersonalPlan(state.selectedStudent.id);
+  } catch (err) {
+    showToast('계획을 삭제하지 못했습니다. 연결 상태를 확인해 주세요.', 'error');
+  }
+}
+
+// ==========================================
+// 15-1. 오늘의 목표 시간 직접 설정
+// ==========================================
+function openGoalEditor() {
+  if (!dom.goalEditor) return;
+  // 열 때마다 현재 목표로 다시 채운다. 그래야 저장을 취소하고 다시 열었을 때
+  // 직전에 끄적여 둔 값이 남아 있지 않다.
+  const minutes = state.goalMinutes || 180;
+  dom.goalInputHours.value = Math.floor(minutes / 60);
+  dom.goalInputMins.value = minutes % 60;
+  dom.goalEditor.hidden = false;
+  dom.btnGoalEdit.setAttribute('aria-expanded', 'true');
+  dom.goalInputHours.focus();
+}
+
+function closeGoalEditor() {
+  if (!dom.goalEditor) return;
+  dom.goalEditor.hidden = true;
+  dom.btnGoalEdit.setAttribute('aria-expanded', 'false');
+}
+
+async function handleGoalSave() {
+  if (!state.selectedStudent) return;
+
+  // 빈 칸은 0으로 본다. 둘 다 비우면 0분이 되어 서버의 범위 검사에 걸린다.
+  const hours = parseInt(dom.goalInputHours.value, 10) || 0;
+  const mins = parseInt(dom.goalInputMins.value, 10) || 0;
+  const goalMinutes = hours * 60 + mins;
+
+  dom.btnGoalSave.disabled = true;
+  try {
+    const res = await fetch('/api/students/daily-goal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ studentId: state.selectedStudent.id, goalMinutes })
+    });
+    const result = await res.json();
+    if (!res.ok) {
+      showToast(planErrorMessage(result, '목표 시간을 바꾸지 못했습니다.'), 'error');
+      return;
+    }
+    closeGoalEditor();
+    await loadDailyGoal(state.selectedStudent.id);
+    showToast(`오늘의 목표를 ${formatMinutes(goalMinutes)}으로 정했습니다.`, 'success');
+  } catch (err) {
+    showToast('목표 시간을 바꾸지 못했습니다. 연결 상태를 확인해 주세요.', 'error');
+  } finally {
+    dom.btnGoalSave.disabled = false;
+  }
 }
 
 // ==========================================
@@ -975,7 +1201,12 @@ function processStudentLogout() {
   }
   if (dom.personalPlanSection) {
     dom.personalPlanSection.style.display = 'none';
+    // 다음 학생이 앞사람의 계획을 그대로 보지 않도록 내용까지 비운다.
+    if (dom.personalPlanList) dom.personalPlanList.innerHTML = '';
+    if (dom.planAddInput) dom.planAddInput.value = '';
   }
+  // 목표 편집창이 열린 채로 퇴장하면 다음 사람 화면에 그대로 펼쳐져 있다.
+  closeGoalEditor();
   if (dom.personalQaSection) {
     dom.personalQaSection.style.display = 'none';
   }

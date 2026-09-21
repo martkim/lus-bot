@@ -310,11 +310,126 @@ body.student-light .goal-card {
   color: var(--text-main);
 }
 
+/* 달성 시간은 게이지 바로 올려 제목 줄을 비운다 — 그 자리에 '시간 설정'이 들어간다 */
 .goal-count {
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 1.4rem;
+  font-weight: 800;
   color: var(--neon-purple);
   font-variant-numeric: tabular-nums;
+  margin-bottom: 12px;
+}
+
+/* 목표 시간을 바꾸는 입구. 게이지 옆에 붙여 두어야 '이 숫자를 내가 정한다'가 읽힌다. */
+.goal-edit-btn {
+  flex-shrink: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--n-200);
+  color: var(--text-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 8px 14px;
+  min-height: 40px;
+  border-radius: 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.goal-edit-btn:hover {
+  background: var(--n-100);
+  border-color: var(--n-300);
+}
+
+.goal-editor {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--n-200);
+}
+
+/* hidden 속성만으로는 display:flex 계열에 가려 안 먹는 경우가 있어 명시해 둔다 */
+.goal-editor[hidden] {
+  display: none;
+}
+
+.goal-editor-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.goal-editor-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-body);
+  flex: 1;
+}
+
+.goal-input {
+  width: 100%;
+  min-height: 52px;
+  padding: 0 14px;
+  font-size: 1.1rem;
+  font-weight: 700;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-main);
+  background: var(--bg-secondary);
+  border: 1px solid var(--n-200);
+  border-radius: 12px;
+  outline: none;
+}
+
+.goal-input:focus {
+  border-color: var(--p-600);
+  box-shadow: 0 0 0 4px var(--neon-purple-glow);
+}
+
+.goal-editor-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.btn-goal-save,
+.btn-goal-cancel {
+  flex: 1;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-goal-save {
+  background: var(--p-600);
+  border: none;
+  color: #fff;
+}
+
+.btn-goal-save:hover {
+  background: var(--p-700);
+}
+
+.btn-goal-save:disabled {
+  background: var(--n-100);
+  color: var(--n-800);
+  cursor: not-allowed;
+}
+
+.btn-goal-cancel {
+  background: #fff;
+  border: 1px solid var(--n-200);
+  color: var(--text-body);
+}
+
+.btn-goal-cancel:hover {
+  background: var(--bg-secondary);
 }
 
 .goal-blocks {
@@ -527,4 +642,149 @@ body.student-light #insight-widget-frame > div {
   background: var(--bg-primary) !important;
   border: 1px solid var(--n-200) !important;
   border-radius: 20px;
+}
+
+/* ==========================================================================
+   내 연습 계획 — 학생이 직접 쓰는 슬롯
+   --------------------------------------------------------------------------
+   전공별 고정 문구를 뿌리던 자리다. 이제 본인이 쓰고 지우므로, 각 줄에 수정/삭제가
+   붙고 아래에 입력줄이 생긴다. 아이콘을 쓰지 않기로 했으니 동작은 글자로 적는다.
+   ========================================================================== */
+.plan-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.plan-head h3 {
+  margin: 0;
+}
+
+.plan-slot-count {
+  flex-shrink: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 체크박스가 가로를 다 먹고 있어서, 수정/삭제가 들어갈 자리를 남겨 준다 */
+body.student-light .plan-item {
+  align-items: flex-start;
+  gap: 10px;
+}
+
+body.student-light .plan-item .checkbox-container {
+  width: auto;
+  flex: 1;
+}
+
+.plan-item-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.plan-action {
+  background: transparent;
+  border: 1px solid var(--n-200);
+  color: var(--text-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 6px 10px;
+  min-height: 34px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.plan-action:hover {
+  background: var(--n-100);
+  border-color: var(--n-300);
+}
+
+.plan-action-danger {
+  color: var(--warn-700);
+}
+
+.plan-action-danger:hover {
+  background: #fdf2f2;
+  border-color: var(--warn-700);
+}
+
+/* 다 한 계획은 흐려지지만, 읽을 수는 있어야 한다 (취소선은 .plan-text에 이미 있다) */
+body.student-light .plan-item.done {
+  background: var(--bg-secondary);
+  border-color: var(--n-200);
+}
+
+/* style.css는 완료된 줄에 opacity:0.5와 회색을 함께 걸어, 둘이 겹치면 대비가
+   1.9:1까지 떨어진다. 어제 뭘 했는지 돌아볼 수 없으면 체크리스트의 의미가 없다.
+   완료 표시는 체크와 취소선이 이미 하고 있으니 투명도는 걷어내고 색만 낮춘다. */
+body.student-light .checkbox-container input:checked ~ .plan-text {
+  opacity: 1;
+  color: var(--text-body);
+}
+
+.plan-add-form {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.plan-add-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  color: var(--text-main);
+  background: var(--bg-secondary);
+  border: 1px solid var(--n-200);
+  border-radius: 12px;
+  outline: none;
+}
+
+.plan-add-input::placeholder {
+  color: var(--text-muted);
+}
+
+.plan-add-input:focus {
+  border-color: var(--p-600);
+  box-shadow: 0 0 0 4px var(--neon-purple-glow);
+}
+
+.plan-add-input:disabled {
+  background: var(--n-100);
+  color: var(--n-800);
+}
+
+.btn-plan-add {
+  flex-shrink: 0;
+  min-height: 48px;
+  padding: 0 18px;
+  background: var(--p-600);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  font-family: inherit;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.btn-plan-add:hover {
+  background: var(--p-700);
+}
+
+.btn-plan-add:disabled {
+  background: var(--n-100);
+  color: var(--n-800);
+  cursor: not-allowed;
 }

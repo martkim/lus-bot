@@ -9,3 +9,11 @@ class ConflictError(Exception):
     current state (e.g. starting a session that's already active). Routers
     convert this to an HTTP 400."""
     pass
+
+
+class ValidationError(Exception):
+    """Raised by services when the input itself is unusable (empty plan text, a
+    goal outside the allowed range). Distinct from ConflictError: nothing about
+    the stored state is wrong, the request is. Routers convert this to an
+    HTTP 400, and its message is written to be shown to the student as-is."""
+    pass

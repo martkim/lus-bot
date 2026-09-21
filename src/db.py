@@ -149,6 +149,26 @@ def init_db():
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_homework_student_id ON homework(student_id)")
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_homework_teacher_id ON homework(teacher_id)")
 
+        # 9. 학생이 직접 쓰는 연습 계획 슬롯
+        #    done_date에 '오늘 날짜'가 들어 있으면 체크된 상태로 본다. 완료 여부를
+        #    불리언으로 두면 자정에 일괄로 풀어주는 배치가 필요한데, 날짜로 두면
+        #    날짜가 바뀌는 순간 자동으로 해제된 것과 같아져서 그런 배치가 필요 없다.
+        #    계획 문구 자체는 남으므로 매일 다시 쓸 필요도 없다.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS practice_plans (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                student_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                sort_order INTEGER NOT NULL DEFAULT 0,
+                done_date TEXT,
+                created_at TEXT NOT NULL,
+                FOREIGN KEY (student_id) REFERENCES students(id)
+            )
+        """)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_practice_plans_student ON practice_plans(student_id, sort_order)"
+        )
+
         # students 테이블 컬럼 자동 마이그레이션 (age, mbti, status 추가)
         cursor.execute("PRAGMA table_info(students)")
         student_columns = [row["name"] for row in cursor.fetchall()]
@@ -1071,5 +1091,123 @@ def get_all_active_students_for_export():
             ORDER BY instrument, name
         """)
         return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+# ==========================================
+# 연습 계획 슬롯 (학생이 직접 작성)
+# ==========================================
+
+def get_practice_plans(student_id):
+    """학생의 계획 슬롯을 정렬 순서대로 조회."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT id, content, sort_order, done_date
+            FROM practice_plans
+            WHERE student_id = ?
+            ORDER BY sort_order, id
+            """,
+            (student_id,)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def count_practice_plans(student_id):
+    """슬롯 개수 상한을 검사하기 위한 카운트."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) AS count FROM practice_plans WHERE student_id = ?", (student_id,))
+        row = cursor.fetchone()
+        return row["count"] if row else 0
+    finally:
+        conn.close()
+
+
+def create_practice_plan(student_id, content, created_at):
+    """새 슬롯을 맨 뒤에 추가하고 생성된 id를 반환."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        # 정렬값을 조회 후 +1 하는 대신 한 문장에서 계산해, 동시에 추가돼도 겹치지 않게 한다.
+        cursor.execute(
+            """
+            INSERT INTO practice_plans (student_id, content, sort_order, done_date, created_at)
+            VALUES (
+                ?, ?,
+                COALESCE((SELECT MAX(sort_order) + 1 FROM practice_plans WHERE student_id = ?), 0),
+                NULL, ?
+            )
+            """,
+            (student_id, content, student_id, created_at)
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def update_practice_plan_content(plan_id, student_id, content):
+    """슬롯 문구 수정. student_id를 조건에 함께 넣어 남의 슬롯은 건드리지 못하게 한다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE practice_plans SET content = ? WHERE id = ? AND student_id = ?",
+            (content, plan_id, student_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
+
+
+def set_practice_plan_done(plan_id, student_id, done_date):
+    """체크 상태 변경. done_date=None이면 체크 해제."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE practice_plans SET done_date = ? WHERE id = ? AND student_id = ?",
+            (done_date, plan_id, student_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
+
+
+def delete_practice_plan(plan_id, student_id):
+    """슬롯 삭제."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "DELETE FROM practice_plans WHERE id = ? AND student_id = ?",
+            (plan_id, student_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
+    finally:
+        conn.close()
+
+
+def update_daily_goal_minutes(student_id, minutes):
+    """학생 본인의 하루 목표 연습시간(분)을 변경."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE students SET daily_goal_minutes = ? WHERE id = ?",
+            (minutes, student_id)
+        )
+        conn.commit()
+        return cursor.rowcount > 0
     finally:
         conn.close()
