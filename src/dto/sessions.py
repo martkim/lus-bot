@@ -31,6 +31,19 @@ class SessionEndResponse(BaseModel):
     data: SessionEndedDTO
 
 
+class GoalProgressDTO(BaseModel):
+    goalMinutes: int
+    doneMinutes: int
+    blocks: int          # 목표를 몇 칸으로 나눴는지
+    filledBlocks: int    # 그중 꽉 찬 칸 수
+    partialFill: int     # 다음 칸이 몇 % 찼는지 (0~99)
+
+
+class GoalProgressResponse(BaseModel):
+    success: bool
+    data: GoalProgressDTO
+
+
 class ForceEndedDTO(BaseModel):
     studentName: str
     durationMinutes: int

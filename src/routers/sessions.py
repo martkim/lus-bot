@@ -6,11 +6,25 @@ from src.auth import verify_teacher_auth
 from src.errors import NotFoundError, ConflictError
 from src.services import session_service
 from src.dto.sessions import (
-    SessionControlRequest, SessionStartResponse, SessionEndResponse, ForceEndSessionResponse
+    SessionControlRequest, SessionStartResponse, SessionEndResponse, ForceEndSessionResponse,
+    GoalProgressResponse,
 )
 
 logger = logging.getLogger("passion_mate")
 router = APIRouter()
+
+
+@router.get("/api/sessions/today/{student_id}", response_model=GoalProgressResponse)
+async def get_today_goal_progress(student_id: int):
+    """학생 화면의 '오늘의 목표' 블록 — 목표 대비 누적 연습시간."""
+    try:
+        progress = session_service.get_today_goal_progress(student_id)
+        return GoalProgressResponse(success=True, data=progress)
+    except NotFoundError as e:
+        raise HTTPException(status_code=404, detail={"success": False, "message": str(e)})
+    except Exception as e:
+        logger.exception("오늘의 목표 조회 실패")
+        raise HTTPException(status_code=500, detail={"success": False, "message": "오늘의 목표 조회 중 오류 발생", "error": str(e)})
 
 
 @router.post("/api/sessions/start", response_model=SessionStartResponse)

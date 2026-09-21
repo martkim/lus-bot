@@ -170,6 +170,9 @@ def init_db():
         if "password_salt" not in student_columns:
             cursor.execute("ALTER TABLE students ADD COLUMN password_salt TEXT")
             print("[DB Migration] Added column 'password_salt' to 'students' table.")
+        if "daily_goal_minutes" not in student_columns:
+            cursor.execute("ALTER TABLE students ADD COLUMN daily_goal_minutes INTEGER DEFAULT 180")
+            print("[DB Migration] Added column 'daily_goal_minutes' to 'students' table.")
 
         # questions 테이블 컬럼 자동 마이그레이션 (ai_answer, teacher_answer 추가)
         cursor.execute("PRAGMA table_info(questions)")
@@ -374,6 +377,32 @@ def get_student_by_username(username):
 # ==========================================
 # Sessions
 # ==========================================
+
+def get_today_goal_progress(student_id, since_iso):
+    """학생 본인의 오늘 누적 연습시간(분)과 목표시간을 함께 조회 — 학생 화면의
+    '오늘의 목표' 블록용. 대시보드 통계와 같은 기준(COMPLETED + end_time >= since)을
+    써야 선생님 화면에 보이는 수치와 학생이 보는 수치가 어긋나지 않는다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT s.daily_goal_minutes AS goal_minutes,
+                   COALESCE(SUM(sess.duration_minutes), 0) AS done_minutes
+            FROM students s
+            LEFT JOIN sessions sess ON s.id = sess.student_id
+              AND sess.status = 'COMPLETED'
+              AND sess.end_time >= ?
+            WHERE s.id = ?
+            GROUP BY s.id
+            """,
+            (since_iso, student_id)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
 
 def get_active_session(student_id):
     """학생의 진행 중인 세션(id, start_time)을 조회."""
