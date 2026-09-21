@@ -1444,7 +1444,9 @@ body {
   left: 0;
   right: 0;
   z-index: 9999;
-  background: rgba(239, 68, 68, 0.95);
+  /* 밝은 빨강(#ef4444) 위의 흰 글씨는 3.57:1이라 작은 글씨 기준(4.5:1)에 못 미친다.
+     오프라인 안내는 못 읽으면 의미가 없으므로 빨강을 어둡게 내려 6.22:1로 맞췄다. */
+  background: rgba(185, 28, 28, 0.97);
   color: #ffffff;
   text-align: center;
   padding: 8px 16px;

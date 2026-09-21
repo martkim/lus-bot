@@ -150,9 +150,16 @@ body.student-light .btn-primary {
   box-shadow: 0 6px 16px var(--neon-purple-glow);
 }
 
-body.student-light .btn-primary:disabled {
-  background: #d9dce3;
-  color: #fff;
+/* 비활성 버튼이 밝은 회색(#d9dce3) 위에 흰 글씨라 1.37:1 — 글자가 통째로 사라진다.
+   로그인 전에는 '연습 시작하기'가 이 상태라 버튼이 비어 보였다.
+   style.css의 .btn:disabled가 opacity:0.6까지 걸어 더 흐려지므로 그것도 되돌린다.
+   회색 배경과 not-allowed 커서만으로도 비활성인 건 충분히 읽힌다. */
+body.student-light .btn:disabled,
+body.student-light .btn-primary:disabled,
+body.student-light .btn-secondary:disabled {
+  background: var(--n-100);
+  color: var(--n-800);
+  opacity: 1;
   box-shadow: none;
 }
 
