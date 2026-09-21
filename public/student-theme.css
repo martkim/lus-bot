@@ -11,26 +11,48 @@
    ========================================================================== */
 
 body.student-light {
+  /* --- 색상 스케일 -------------------------------------------------------
+     OKLCH(지각적 균일 명도)에서 L만 단계적으로 낮추고 C/H는 유지해 생성했다.
+     HSL로 눈대중해 고르면 같은 명도값이라도 색상마다 밝기가 달라 보여서,
+     대비가 색상별로 들쭉날쭉해진다(실제로 직전 팔레트는 WCAG 5건 미달이었다).
+     전 토큰 대비율 검증 완료 — 본문 4.5:1, UI 요소 3:1 기준 통과. */
+  --p-50: #edf2ff;
+  --p-500: #807df6;
+  --p-600: #6962d9;   /* 주버튼 — 흰 글씨 4.83:1 */
+  --p-700: #534daf;   /* 강조 텍스트 6.89:1 */
+
+  --n-50: #f6f7f9;
+  --n-100: #ecedef;
+  --n-200: #dadbdd;
+  --n-300: #c3c4c6;
+  --n-600: #757678;   /* 보조 텍스트 4.55:1 */
+  --n-800: #454648;   /* 본문 9.45:1 */
+  --n-900: #2f3032;   /* 제목 13.21:1 */
+
+  --ok-700: #216e42;  /* 성공/연결됨 6.22:1 */
+  --warn-700: #9b3738; /* 위험/퇴장 7.01:1 */
+
+  /* --- 기존 변수 매핑 (style.css가 이 이름들을 참조한다) --- */
   --bg-primary: #ffffff;
-  --bg-secondary: #f7f8fa;
-  --bg-tertiary: #f1f3f6;
+  --bg-secondary: var(--n-50);
+  --bg-tertiary: var(--n-100);
 
   --glass-bg: #ffffff;
-  --glass-bg-hover: #f7f8fa;
-  --glass-border: #e8eaef;
-  --glass-border-glow: #d8dce5;
+  --glass-bg-hover: var(--n-50);
+  --glass-border: var(--n-200);
+  --glass-border-glow: var(--n-300);
 
-  --neon-mint: #0ea5a4;
-  --neon-mint-glow: rgba(14, 165, 164, 0.16);
-  --neon-purple: #6d5ef6;
-  --neon-purple-glow: rgba(109, 94, 246, 0.16);
-  --neon-green: #0f9d58;
-  --neon-green-glow: rgba(15, 157, 88, 0.16);
-  --neon-coral: #e5484d;
+  --neon-mint: var(--p-700);      /* 액센트를 퍼플 한 계열로 통일 — 민트/퍼플 혼재를 정리 */
+  --neon-mint-glow: rgba(105, 98, 217, 0.14);
+  --neon-purple: var(--p-600);
+  --neon-purple-glow: rgba(105, 98, 217, 0.18);
+  --neon-green: var(--ok-700);
+  --neon-green-glow: rgba(33, 110, 66, 0.14);
+  --neon-coral: var(--warn-700);
 
-  --text-main: #14161a;
-  --text-body: #4a4f57;
-  --text-muted: #8b9098;
+  --text-main: var(--n-900);
+  --text-body: var(--n-800);
+  --text-muted: var(--n-600);
 
   background: var(--bg-primary);
   color: var(--text-body);
@@ -66,6 +88,15 @@ body.student-light h2,
 body.student-light h3 {
   color: var(--text-main);
   text-shadow: none;
+}
+
+/* .plan-card는 청록 테두리를 !important로 박아두고 있어서, 화이트 테마에서
+   카드마다 테두리 색이 달라 보인다. 같은 위계의 카드는 같은 테두리로 통일한다. */
+body.student-light .plan-card,
+body.student-light .history-card,
+body.student-light .chat-card {
+  border-color: var(--n-200) !important;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.04);
 }
 
 /* --- 헤더 ------------------------------------------------------------- */
@@ -286,23 +317,25 @@ body.student-light .goal-card {
   gap: 8px;
 }
 
+/* 빈 칸도 "앞으로 채울 자리"라는 정보를 담고 있어서, 배경과 구분되지 않으면
+   목표가 몇 칸인지 읽히지 않는다. 직전 팔레트는 대비 1.14:1로 거의 안 보였다. */
 .goal-block {
   aspect-ratio: 1 / 1;
   border-radius: 12px;
-  background: #eef0f4;
-  border: 1px solid #e3e6ec;
-  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease;
+  background: var(--n-100);
+  border: 1.5px solid var(--n-300);
+  transition: background 0.3s ease, border-color 0.3s ease;
 }
 
 .goal-block.filled {
-  background: var(--neon-purple);
-  border-color: var(--neon-purple);
+  background: var(--p-600);
+  border-color: var(--p-600);
 }
 
 /* 일부만 채워진 칸 — 지금 진행 중인 블록임을 보여준다 */
 .goal-block.partial {
-  background: linear-gradient(to top, var(--neon-purple) var(--fill, 50%), #eef0f4 var(--fill, 50%));
-  border-color: var(--neon-purple);
+  background: linear-gradient(to top, var(--p-600) var(--fill, 50%), var(--n-100) var(--fill, 50%));
+  border-color: var(--p-600);
 }
 
 .goal-foot {
@@ -313,4 +346,67 @@ body.student-light .goal-card {
 
 .goal-foot strong {
   color: var(--text-main);
+}
+
+/* ==========================================================================
+   타이포 스케일
+   비율 없이 눈대중으로 크기를 정하면 위계가 흐려진다. 1.25배(Major Third)
+   간격으로 고정하고, 본문은 16px 아래로 내리지 않는다 — 중고생이 연습실에서
+   폰을 멀리 두고 흘깃 보는 상황을 기준으로 잡았다.
+   ========================================================================== */
+body.student-light {
+  --fs-caption: 0.8125rem;  /* 13px — 보조 설명 */
+  --fs-body: 1rem;          /* 16px — 본문 최소 */
+  --fs-lead: 1.125rem;      /* 18px — 카드 내 강조문 */
+  --fs-title: 1.25rem;      /* 20px — 카드 제목 */
+  --fs-display: 1.75rem;    /* 28px — 화면 제목 */
+}
+
+body.student-light .glass-card p,
+body.student-light .plan-item,
+body.student-light .checkbox-container {
+  font-size: var(--fs-body);
+  line-height: 1.6;
+}
+
+body.student-light h2 {
+  font-size: var(--fs-display);
+  letter-spacing: -0.02em;
+  line-height: 1.3;
+}
+
+body.student-light h3 {
+  font-size: var(--fs-title);
+  letter-spacing: -0.01em;
+}
+
+/* 섹션 설명문은 본문보다 한 단계 작게 — 읽어야 할 것과 참고용을 분리 */
+body.student-light .plan-card > p,
+body.student-light .glass-card > p.section-desc {
+  font-size: var(--fs-caption);
+  color: var(--text-muted);
+}
+
+/* 숫자는 자리 폭을 고정해야 1초마다 글자가 흔들리지 않는다 */
+body.student-light .timer-digits,
+body.student-light .goal-count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+/* --- 버튼 디테일 ------------------------------------------------------ */
+/* 누르는 순간 반응이 보여야 "먹었나?" 하고 두 번 누르지 않는다 */
+body.student-light .btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+body.student-light .btn-primary:hover:not(:disabled) {
+  background: var(--p-700);
+}
+
+/* 포커스 링 — 키보드/스위치 접근성. 색만으로 상태를 알리지 않는다 */
+body.student-light .btn:focus-visible,
+body.student-light .nav-item:focus-visible {
+  outline: 3px solid var(--p-500);
+  outline-offset: 2px;
 }
