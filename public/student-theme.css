@@ -1,0 +1,316 @@
+/* ==========================================================================
+   학생 화면 전용 화이트 테마
+   --------------------------------------------------------------------------
+   style.css는 선생님 대시보드와 공유되므로 건드리지 않고, index.html에서만
+   이 파일을 뒤에 로드해 덮어쓴다. 선생님 화면은 기존 다크 테마 그대로 유지된다.
+
+   설계 기준(2026 모바일 UI 레퍼런스 조사 반영):
+   - 화이트 배경 + 넉넉한 여백으로 정보 위계를 여백이 만들게 한다
+   - 카드는 테두리를 옅게, 그림자도 옅게 — 색 대비 대신 면 분리로 구분
+   - 터치 타겟은 최소 48dp, 주요 버튼은 56dp 이상 (중고생 한 손 조작 기준)
+   ========================================================================== */
+
+body.student-light {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f7f8fa;
+  --bg-tertiary: #f1f3f6;
+
+  --glass-bg: #ffffff;
+  --glass-bg-hover: #f7f8fa;
+  --glass-border: #e8eaef;
+  --glass-border-glow: #d8dce5;
+
+  --neon-mint: #0ea5a4;
+  --neon-mint-glow: rgba(14, 165, 164, 0.16);
+  --neon-purple: #6d5ef6;
+  --neon-purple-glow: rgba(109, 94, 246, 0.16);
+  --neon-green: #0f9d58;
+  --neon-green-glow: rgba(15, 157, 88, 0.16);
+  --neon-coral: #e5484d;
+
+  --text-main: #14161a;
+  --text-body: #4a4f57;
+  --text-muted: #8b9098;
+
+  background: var(--bg-primary);
+  color: var(--text-body);
+}
+
+/* 다크 테마에서 쓰던 배경 글로우/그라데이션 제거 */
+body.student-light::before,
+body.student-light::after {
+  display: none !important;
+}
+
+/* .app-container는 변수가 아니라 rgba(8,12,20,.8)이 하드코딩돼 있어 변수 교체만으로는
+   배경이 어두운 채로 남는다. 페이지 전체 바탕이므로 여기서 직접 덮는다. */
+body.student-light .app-container {
+  background: var(--bg-primary);
+  border-left: 1px solid var(--glass-border);
+  border-right: 1px solid var(--glass-border);
+}
+
+/* --- 카드 ------------------------------------------------------------- */
+body.student-light .glass-card,
+body.student-light .plan-card,
+body.student-light .history-card,
+body.student-light .chat-card {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.04);
+  backdrop-filter: none;
+}
+
+body.student-light h2,
+body.student-light h3 {
+  color: var(--text-main);
+  text-shadow: none;
+}
+
+/* --- 헤더 ------------------------------------------------------------- */
+body.student-light .app-header,
+body.student-light header {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid var(--glass-border);
+  backdrop-filter: saturate(180%) blur(12px);
+}
+
+body.student-light .logo-text,
+body.student-light .app-title {
+  color: var(--text-main);
+  text-shadow: none;
+}
+
+/* --- 입력 ------------------------------------------------------------- */
+body.student-light .custom-input-text,
+body.student-light select.custom-input-text,
+body.student-light textarea {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-main);
+  border-radius: 14px;
+  min-height: 52px;
+}
+
+body.student-light .custom-input-text::placeholder,
+body.student-light textarea::placeholder {
+  color: var(--text-muted);
+}
+
+body.student-light .custom-input-text:focus,
+body.student-light textarea:focus {
+  border-color: var(--neon-purple);
+  box-shadow: 0 0 0 4px var(--neon-purple-glow);
+  outline: none;
+}
+
+/* --- 버튼 ------------------------------------------------------------- */
+body.student-light .btn {
+  border-radius: 14px;
+  min-height: 52px;
+  font-weight: 700;
+}
+
+body.student-light .btn-primary {
+  background: var(--neon-purple);
+  border: none;
+  color: #fff;
+  box-shadow: 0 6px 16px var(--neon-purple-glow);
+}
+
+body.student-light .btn-primary:disabled {
+  background: #d9dce3;
+  color: #fff;
+  box-shadow: none;
+}
+
+body.student-light .btn-secondary {
+  background: var(--neon-purple);
+  border: none;
+  color: #fff;
+}
+
+body.student-light .btn-lg {
+  min-height: 60px;
+  font-size: 1.05rem;
+}
+
+body.student-light .btn-logout {
+  background: #fff;
+  border: 1px solid var(--glass-border);
+  color: var(--neon-coral);
+}
+
+/* --- 타이머 ----------------------------------------------------------- */
+/* 링은 conic-gradient 배경으로 그려지고 가운데를 inner-ring이 덮어 도넛이 된다.
+   outer를 흰색으로 칠하면 흰 바탕에 묻혀 링이 사라지므로 회색 링을 유지한다. */
+body.student-light .timer-outer-ring {
+  background: conic-gradient(from 0deg, #e4e7ee 0%, #e4e7ee 100%);
+  box-shadow: 0 8px 28px rgba(16, 24, 40, 0.07);
+}
+
+body.student-light .timer-outer-ring.active {
+  background: conic-gradient(from 0deg, var(--neon-purple) 0%, var(--neon-mint) 50%, var(--neon-purple) 100%);
+  box-shadow: 0 0 36px rgba(109, 94, 246, 0.22);
+}
+
+body.student-light .timer-inner-ring {
+  background: #fff;
+  box-shadow: none;
+}
+
+body.student-light .timer-digits {
+  color: var(--text-main);
+  text-shadow: none;
+  font-variant-numeric: tabular-nums;
+}
+
+body.student-light .timer-label {
+  color: var(--text-muted);
+}
+
+body.student-light.is-practicing .timer-digits {
+  color: var(--neon-purple);
+}
+
+body.student-light .timer-info-badge {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+body.student-light .badge-instrument {
+  background: var(--neon-purple);
+  color: #fff;
+}
+
+body.student-light .badge-name {
+  color: var(--text-main);
+}
+
+/* --- 연습 계획 체크리스트 --------------------------------------------- */
+body.student-light .plan-item {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+}
+
+body.student-light .plan-item:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--glass-border-glow);
+}
+
+body.student-light .checkbox-container {
+  color: var(--text-body);
+}
+
+body.student-light .checkmark {
+  background: #fff;
+  border: 2px solid #cbd0d9;
+}
+
+body.student-light .checkbox-container input:checked ~ .checkmark {
+  background: var(--neon-purple);
+  border-color: var(--neon-purple);
+}
+
+/* --- 하단 탭 ---------------------------------------------------------- */
+body.student-light .app-navbar {
+  background: rgba(255, 255, 255, 0.96);
+  border-top: 1px solid var(--glass-border);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+
+body.student-light .nav-item {
+  color: var(--text-muted);
+  background: transparent;
+}
+
+body.student-light .nav-item.active,
+body.student-light .nav-item.active .nav-icon,
+body.student-light .nav-item.active .nav-text {
+  color: var(--neon-purple);
+}
+
+/* --- 채팅 ------------------------------------------------------------- */
+body.student-light .chat-bubble-ai,
+body.student-light .msg-ai {
+  background: var(--bg-secondary);
+  border: 1px solid var(--glass-border);
+  color: var(--text-body);
+}
+
+body.student-light .chat-bubble-user,
+body.student-light .msg-user {
+  background: var(--neon-purple);
+  color: #fff;
+}
+
+/* ==========================================================================
+   오늘의 목표 — 시간 블록
+   하루 목표를 칸으로 나눠 연습한 만큼 채운다. 남은 칸이 눈에 보여야 "조금만 더"가
+   되므로, 채운 칸과 빈 칸의 대비를 분명히 두고 숫자도 함께 보여준다.
+   ========================================================================== */
+body.student-light .goal-card {
+  background: #fff;
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 22px 20px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.04);
+}
+
+.goal-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.goal-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.goal-count {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--neon-purple);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-blocks {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.goal-block {
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  background: #eef0f4;
+  border: 1px solid #e3e6ec;
+  transition: transform 0.25s cubic-bezier(0.4, 0, 0.2, 1), background 0.25s ease;
+}
+
+.goal-block.filled {
+  background: var(--neon-purple);
+  border-color: var(--neon-purple);
+}
+
+/* 일부만 채워진 칸 — 지금 진행 중인 블록임을 보여준다 */
+.goal-block.partial {
+  background: linear-gradient(to top, var(--neon-purple) var(--fill, 50%), #eef0f4 var(--fill, 50%));
+  border-color: var(--neon-purple);
+}
+
+.goal-foot {
+  margin-top: 14px;
+  font-size: 0.9rem;
+  color: var(--text-muted);
+}
+
+.goal-foot strong {
+  color: var(--text-main);
+}

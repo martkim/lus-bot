@@ -27,6 +27,13 @@ async def get_style():
     return FileResponse(os.path.join(PUBLIC_DIR, "style.css"), headers=ASSET_HEADERS)
 
 
+@router.get("/student-theme.css")
+async def get_student_theme():
+    """학생 화면 전용 화이트 테마. style.css를 선생님 대시보드와 공유하고 있어서,
+    학생 쪽만 바꾸려고 별도 파일로 분리해 index.html에서만 뒤에 덧씌운다."""
+    return FileResponse(os.path.join(PUBLIC_DIR, "student-theme.css"), headers=ASSET_HEADERS)
+
+
 @router.get("/app.js")
 async def get_app_js():
     return FileResponse(os.path.join(PUBLIC_DIR, "app.js"), headers=ASSET_HEADERS)

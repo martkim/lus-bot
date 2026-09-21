@@ -20,8 +20,10 @@
   
   <!-- 스타일 시트 -->
   <link rel="stylesheet" href="/style.css">
+  <!-- 학생 화면 전용 화이트 테마 (style.css를 선생님 화면과 공유하므로 뒤에서 덮어쓴다) -->
+  <link rel="stylesheet" href="/student-theme.css">
 </head>
-<body>
+<body class="student-light">
   
   <!-- 📶 와이파이 오프라인 자동 감지 경고 배너 -->
   <div id="offline-warning-banner" class="network-status-banner">
@@ -48,7 +50,7 @@
       
       <!-- [탭 1] 학생 연습 타이머 화면 (Default) -->
       <section id="view-timer" class="app-view active">
-        <div class="glass-card welcome-card">
+        <div class="glass-card welcome-card" id="login-welcome-card">
           <h2>오늘도 한 걸음 더 성장해봐요 🚀</h2>
           <p>아이디와 비밀번호를 입력해 입장해 주세요. 처음이시면 가입부터 진행해 주세요.</p>
           
@@ -137,6 +139,16 @@
               <i class="fa-solid fa-play"></i> 연습 시작하기
             </button>
           </div>
+        </div>
+
+        <!-- 오늘의 목표 — 연습한 만큼 칸이 채워진다 -->
+        <div class="goal-card" id="daily-goal-section" style="display: none;">
+          <div class="goal-head">
+            <span class="goal-title">오늘의 목표</span>
+            <span class="goal-count" id="goal-count">0분 / 0분</span>
+          </div>
+          <div class="goal-blocks" id="goal-blocks"></div>
+          <div class="goal-foot" id="goal-foot"></div>
         </div>
 
         <!-- 오늘의 추천 연습 계획 (전공별 체크리스트) -->

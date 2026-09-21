@@ -46,6 +46,7 @@ const dom = {
 
   // 로그인/로그아웃 관련 DOM 요소
   loginFormContainer: document.getElementById('login-form-container'),
+  loginWelcomeCard: document.getElementById('login-welcome-card'),
   studentUsernameInput: document.getElementById('student-username-input'),
   studentPasswordInput: document.getElementById('student-password-input'),
   btnStudentLogin: document.getElementById('btn-student-login'),
@@ -64,6 +65,12 @@ const dom = {
   // 추천 연습 계획 DOM 요소
   personalPlanSection: document.getElementById('personal-plan-section'),
   personalPlanList: document.getElementById('personal-plan-list'),
+
+  // 오늘의 목표(시간 블록) DOM 요소
+  dailyGoalSection: document.getElementById('daily-goal-section'),
+  goalBlocks: document.getElementById('goal-blocks'),
+  goalCount: document.getElementById('goal-count'),
+  goalFoot: document.getElementById('goal-foot'),
 
   // AI 튜터 챗봇 DOM 요소
   chatMessages: document.getElementById('chat-messages'),
@@ -282,6 +289,9 @@ function handleStudentSelection(studentId) {
   // 전공별 추천 연습 계획 렌더링
   loadPersonalPlan(student.instrument);
 
+  // 오늘의 목표 블록
+  loadDailyGoal(studentId);
+
   // 오늘의 개인 연습 기록 내역도 리프레시
   loadPersonalHistory(studentId);
 
@@ -377,6 +387,7 @@ async function endPractice() {
       resetTimerUI();
       await loadStudents();
       loadPersonalHistory(state.selectedStudent.id);
+      loadDailyGoal(state.selectedStudent.id);
     } else {
       throw new Error(result.message || '연습을 종료하지 못했습니다.');
     }
@@ -673,6 +684,54 @@ function removeTypingIndicator() {
 }
 
 // ==========================================
+// 🎯 오늘의 목표 — 연습한 만큼 칸을 채운다
+// ==========================================
+function formatMinutes(min) {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  if (h && m) return `${h}시간 ${m}분`;
+  if (h) return `${h}시간`;
+  return `${m}분`;
+}
+
+async function loadDailyGoal(studentId) {
+  if (!dom.dailyGoalSection || !dom.goalBlocks) return;
+  try {
+    const res = await fetch(`/api/sessions/today/${studentId}`);
+    const result = await res.json();
+    if (!result.success || !result.data) return;
+    renderDailyGoal(result.data);
+    dom.dailyGoalSection.style.display = 'block';
+  } catch (err) {
+    // 목표 표시는 부가 정보라, 실패해도 타이머 같은 핵심 기능을 막지 않는다.
+  }
+}
+
+function renderDailyGoal(d) {
+  dom.goalBlocks.innerHTML = '';
+  for (let i = 0; i < d.blocks; i++) {
+    const block = document.createElement('div');
+    block.className = 'goal-block';
+    if (i < d.filledBlocks) {
+      block.classList.add('filled');
+    } else if (i === d.filledBlocks && d.partialFill > 0) {
+      block.classList.add('partial');
+      block.style.setProperty('--fill', `${d.partialFill}%`);
+    }
+    dom.goalBlocks.appendChild(block);
+  }
+
+  dom.goalCount.textContent = `${formatMinutes(d.doneMinutes)} / ${formatMinutes(d.goalMinutes)}`;
+
+  const left = Math.max(0, d.goalMinutes - d.doneMinutes);
+  if (dom.goalFoot) {
+    dom.goalFoot.innerHTML = left === 0
+      ? '오늘 목표를 다 채웠어요! 🎉'
+      : `목표까지 <strong>${formatMinutes(left)}</strong> 남았어요`;
+  }
+}
+
+// ==========================================
 // 📋 15. 전공별 동적 추천 연습 계획 렌더링
 // ==========================================
 function loadPersonalPlan(instrument) {
@@ -779,9 +838,13 @@ async function processStudentLogin() {
     // 2. 학생 셋팅 및 타이머/계획 렌더링
     handleStudentSelection(student.id);
 
-    // 3. 로그인 폼 숨김 처리
+    // 3. 로그인 폼 숨김 처리 — 안내 문구까지 같이 접는다. 폼만 숨기면 로그인한 뒤에도
+    //    "아이디와 비밀번호를 입력해 주세요" 카드가 빈 채로 남아 자리를 차지한다.
     if (dom.loginFormContainer) {
       dom.loginFormContainer.style.display = 'none';
+    }
+    if (dom.loginWelcomeCard) {
+      dom.loginWelcomeCard.style.display = 'none';
     }
 
     // 4. 입력창 리셋
@@ -805,6 +868,7 @@ function showSignupForm() {
 function showLoginForm() {
   if (dom.signupFormContainer) dom.signupFormContainer.style.display = 'none';
   if (dom.loginFormContainer) dom.loginFormContainer.style.display = 'block';
+  if (dom.loginWelcomeCard) dom.loginWelcomeCard.style.display = 'block';
 }
 
 // 가입 화면에 아직 아이디/비밀번호를 설정하지 않은 학생 목록을 채워 넣기
