@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="Theme.PassionMate" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="android:statusBarColor">@color/passionmate_background</item>
-        <item name="android:windowBackground">@color/passionmate_background</item>
+    <style name="Theme.BurstIn" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="android:statusBarColor">@color/app_background</item>
+        <item name="android:windowBackground">@color/app_background</item>
+        <!-- 흰 상태바 위의 아이콘은 어두워야 보인다 -->
+        <item name="android:windowLightStatusBar">true</item>
     </style>
 </resources>

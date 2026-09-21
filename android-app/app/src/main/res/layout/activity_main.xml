@@ -5,7 +5,7 @@
     android:id="@+id/root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/passionmate_background">
+    android:background="@color/app_background">
 
     <WebView
         android:id="@+id/webview"
@@ -26,7 +26,7 @@
         android:id="@+id/retry_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="@color/passionmate_background"
+        android:background="@color/app_background"
         android:orientation="vertical"
         android:gravity="center"
         android:padding="32dp"
@@ -48,7 +48,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/retry_title"
-            android:textColor="@color/passionmate_on_background"
+            android:textColor="@color/app_on_background"
             android:textSize="18sp"
             android:textStyle="bold" />
 
@@ -59,7 +59,7 @@
             android:layout_marginTop="8dp"
             android:layout_marginBottom="24dp"
             android:text="@string/retry_message"
-            android:textColor="@color/passionmate_muted"
+            android:textColor="@color/app_muted"
             android:textAlignment="center" />
 
         <Button

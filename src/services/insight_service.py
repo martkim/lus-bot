@@ -14,13 +14,13 @@ logger = logging.getLogger("passion_mate")
 # 매일 다양하게 바뀌는 공통 테마 (딥워크 타임라인 / 멘탈 도서 / 합격 마인드 / 근육 릴렉스) —
 # day-of-year 기준으로 하나를 골라, 아래 6개 파트 전부에 그 테마를 각자 특성에 맞게 변주해서 적용한다.
 INSIGHT_THEMES = [
-    ("timeplan", "⏱️ 오늘의 딥워크 타임라인",
+    ("timeplan", "오늘의 딥워크 타임라인",
      "오늘 하루 연습/작업 시간을 어떻게 배분하면 좋을지 딥워크 타임라인을 제시해줘."),
-    ("mental_book_review", "📚 딥러닝 라이브러리: 멘탈 도서 리뷰",
+    ("mental_book_review", "딥러닝 라이브러리: 멘탈 도서 리뷰",
      "심리학 도서나 자기계발서 1권(예: 아웃라이어, 미움받을 용기, 아토믹 해빗 등)을 선정해, 그 책의 핵심 철학을 입시생의 슬럼프 극복이나 마인드 세팅에 어떻게 적용할 수 있는지 요약해줘."),
-    ("audition_mindset", "🧠 실기고사 합격 마인드 세팅",
+    ("audition_mindset", "실기고사 합격 마인드 세팅",
      "실기고사장 특유의 분위기, 평가 기준, 그리고 실기장에서 압박감을 이겨내는 스포츠 심리학 기반 멘탈 컨트롤 비법을 정리해줘."),
-    ("deep_work_practice", "💪 딥워크(Deep Work)와 신체 관리",
+    ("deep_work_practice", "딥워크(Deep Work)와 신체 관리",
      "신체 피로도 관리, 근육 릴렉스 비법, 호흡법 등 신체적 한계를 극복하고 연습의 질(Quality)을 높이는 딥워크 연습법을 과학적 근거와 함께 제시해줘."),
 ]
 
@@ -76,17 +76,19 @@ async def auto_generate_daily_insight():
             f"오늘의 공통 주제: {theme_prompt}\n\n"
             "아래 6개 전공 파트 각각에 대해, 위 주제를 그 파트 특성에 맞게 변형한 HTML 카드를 만들어주세요:\n"
             f"{parts_hint}\n\n"
-            "⚠️ 중요한 규칙:\n"
+            "중요한 규칙:\n"
             "1. 반드시 아래 형식의 JSON 배열만 반환하세요. 다른 설명 텍스트나 코드펜스(```) 절대 금지:\n"
             '   [{"part": "일렉기타", "html_content": "<div>...</div>"}, {"part": "베이스", "html_content": "..."}, ...]\n'
             "2. 배열은 반드시 6개 항목이어야 하고, part 값은 위에 나열된 6개 이름을 정확히 그대로 써야 합니다.\n"
             "3. html_content 안에는 <style> 태그로 CSS를 인라인 포함하세요.\n"
-            "4. 전체 배경은 투명(transparent), 카드 내부만 다크 글래스 스타일: "
-            "background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 16px; padding: 20px;\n"
-            "5. 텍스트는 흰색 계열(#fff, #e0e0e0), 강조색은 보라(#a78bfa)/민트(#00f2fe)/노랑(#ffd60a) 계열.\n"
+            "4. 학생 화면은 흰 배경입니다. 전체 배경은 투명(transparent), 카드 내부만 밝은 스타일: "
+            "background: #ffffff; border: 1px solid #dadbdd; border-radius: 16px; padding: 20px;\n"
+            "5. 텍스트는 어두운 회색(#454648), 제목은 #2f3032, 강조색은 보라(#534daf) 하나만 쓰세요. "
+            "흰색이나 밝은 회색 글자(#fff, #e0e0e0)는 흰 배경에서 보이지 않으므로 절대 쓰지 마세요.\n"
             "6. 모바일 화면에 맞게 max-width: 100%를 유지하세요.\n"
             "7. 내용은 각 파트 학생에게 실제로 도움이 되는 진짜 정보로 채우세요.\n"
-            "8. html_content 문자열 안의 큰따옴표는 JSON 규격에 맞게 이스케이프하세요."
+            "8. html_content 문자열 안의 큰따옴표는 JSON 규격에 맞게 이스케이프하세요.\n"
+            "9. 이모지와 그림문자를 절대 쓰지 마세요. 제목과 본문 모두 글자만 사용합니다."
         )
 
         logger.info(f"[AUTO_GENERATE_DAILY_INSIGHT] 오늘 배치 생성 시작 theme={theme_title} parts={len(PART_FOCUS)}")

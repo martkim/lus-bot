@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 # stdout/stderr이 파일로 리다이렉트되면(워치독이 server_out.log로 띄우는 평상시 경로)
 # Windows 기본 로캘 cp949로 굳어, 이모지가 섞인 print/StreamHandler 한 줄이
 # UnicodeEncodeError로 터진다. 2026-09-20에 이것 때문에 "오늘의 꿀팁" 생성이 5일간
-# 통째로 실패했다 — 테마 제목('💪 딥워크...')을 print하다 죽어 Gemini 호출조차 못 갔다.
+# 통째로 실패했다 — 테마 제목('딥워크...')을 print하다 죽어 Gemini 호출조차 못 갔다.
 # system_service.py와 같은 처리를 서버 프로세스에도 적용한다.
 for _stream in (sys.stdout, sys.stderr):
     if _stream is not None and hasattr(_stream, "reconfigure"):
@@ -30,7 +30,7 @@ from src.curriculum_store import load_curriculum
 from src.routers import students, sessions, dashboard, qa, ai, insights, curriculum, teachers, homework, director, kakao, pages
 
 # ==========================================
-# 📝 로깅 설정 — 핸들링된 예외도 logs/app.log에 스택트레이스까지 남긴다.
+# 로깅 설정 — 핸들링된 예외도 logs/app.log에 스택트레이스까지 남긴다.
 # server_err.log는 uvicorn 자체 크래시/print만 남기지, try/except로 잡힌
 # 에러는 안 남았었다. 이게 그 구멍을 메운다.
 # ==========================================

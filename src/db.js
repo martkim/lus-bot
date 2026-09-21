@@ -5,9 +5,9 @@ const path = require('path');
 const dbPath = path.join(__dirname, '../database.db');
 const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
-    console.error('❌ SQLite 데이터베이스 연결 실패:', err.message);
+    console.error('SQLite 데이터베이스 연결 실패:', err.message);
   } else {
-    console.log('💾 SQLite 데이터베이스 연결 완료:', dbPath);
+    console.log('SQLite 데이터베이스 연결 완료:', dbPath);
   }
 });
 
@@ -89,7 +89,7 @@ async function init() {
       )
     `);
 
-    console.log('✅ SQLite 테이블 구조 생성 및 확인 완료.');
+    console.log('SQLite 테이블 구조 생성 및 확인 완료.');
 
     // 3. 더미 데이터 적재 (학생 목록이 비어있을 때만)
     const studentCount = await get('SELECT COUNT(*) as count FROM students');
@@ -108,10 +108,10 @@ async function init() {
           [student.name, student.instrument]
         );
       }
-      console.log('🌱 초기 입시생 더미 데이터 5명 등록 완료.');
+      console.log('초기 입시생 더미 데이터 5명 등록 완료.');
     }
   } catch (error) {
-    console.error('❌ 데이터베이스 초기화 중 치명적 오류 발생:', error);
+    console.error('데이터베이스 초기화 중 치명적 오류 발생:', error);
   }
 }
 

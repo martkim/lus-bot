@@ -18,7 +18,7 @@ async def ask_question(payload: QuestionAskRequest):
     동시에 선생님의 커리큘럼을 학습한 AI가 추천 답변(초안)을 백엔드에서 실시간 생성하여 적재합니다."""
     try:
         draft = await qa_service.ask_question(payload)
-        return QuestionAskResponse(success=True, message="선생님께 질문이 성공적으로 접수되었습니다. 💌", data=draft)
+        return QuestionAskResponse(success=True, message="선생님께 질문이 성공적으로 접수되었습니다.", data=draft)
     except ValueError as e:
         raise HTTPException(status_code=400, detail={"success": False, "message": str(e)})
     except NotFoundError as e:
@@ -33,7 +33,7 @@ async def resolve_question(payload: QuestionResolveRequest):
     """선생님이 질문에 대해 최종 답변을 확정하여 완료 처리하는 API. (교사용 보안 검증 적용)"""
     try:
         qa_service.resolve_question(payload)
-        return MessageResponse(success=True, message="답변 전송이 완료되었습니다! 🎓")
+        return MessageResponse(success=True, message="답변 전송이 완료되었습니다!")
     except ValueError as e:
         raise HTTPException(status_code=400, detail={"success": False, "message": str(e)})
     except NotFoundError as e:

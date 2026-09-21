@@ -258,9 +258,8 @@ body.student-light .nav-item {
 }
 
 body.student-light .nav-item.active,
-body.student-light .nav-item.active .nav-icon,
 body.student-light .nav-item.active .nav-text {
-  color: var(--neon-purple);
+  color: var(--p-600);
 }
 
 /* --- 채팅 ------------------------------------------------------------- */
@@ -409,4 +408,97 @@ body.student-light .btn:focus-visible,
 body.student-light .nav-item:focus-visible {
   outline: 3px solid var(--p-500);
   outline-offset: 2px;
+}
+
+/* ==========================================================================
+   아이콘·이모지를 걷어낸 자리
+   ========================================================================== */
+
+/* 상태 배지는 흰 배경 위에 반투명 흰색으로 칠해져 있어 테두리째 사라진다 */
+body.student-light .status-indicator {
+  background: var(--n-50);
+  border: 1px solid var(--n-200);
+  color: var(--text-body);
+  font-weight: 500;
+}
+
+body.student-light .status-indicator .dot.live {
+  background: var(--ok-700);
+  box-shadow: none;
+}
+
+/* 채팅 입력줄은 rgba(8,12,20,.5)이 하드코딩돼 있어 흰 화면에서 혼자 검게 남는다 */
+body.student-light .chat-input-form {
+  background: var(--bg-secondary);
+  border: 1px solid var(--n-200);
+}
+
+body.student-light .chat-input-form:focus-within {
+  border-color: var(--p-600);
+  box-shadow: 0 0 0 4px var(--neon-purple-glow);
+}
+
+body.student-light .chat-input-form input {
+  color: var(--text-main);
+  min-height: 40px;
+}
+
+/* 글자만 남은 전송 버튼 */
+body.student-light .btn-chat-send {
+  background: var(--p-600);
+}
+
+body.student-light .btn-chat-send:hover {
+  background: var(--p-700);
+  box-shadow: none;
+}
+
+body.student-light .spinner {
+  color: var(--p-600);
+}
+
+body.student-light .text-danger {
+  color: var(--warn-700);
+}
+
+/* ==========================================================================
+   오늘의 꿀팁 — AI가 만들어 보내는 HTML 카드
+   --------------------------------------------------------------------------
+   이 카드의 HTML과 <style>은 Gemini가 생성해 DB에 저장한 것이라 우리 토큰을
+   따르지 않는다. 다크 테마 시절 프롬프트로 만들어진 기존 카드들은 글자가
+   흰색(#fff, #e0e0e0)이어서 화이트 배경에서는 글씨가 통째로 보이지 않는다.
+   프롬프트는 라이트 기준으로 고쳐 놓았지만, 이미 저장된 카드도 읽혀야 하므로
+   여기서 색을 덮어쓴다. !important는 주입된 <style>을 이기기 위해 필요하다.
+   ========================================================================== */
+body.student-light #insight-widget-frame {
+  color: var(--text-body) !important;
+}
+
+body.student-light #insight-widget-frame * {
+  color: inherit !important;
+  text-shadow: none !important;
+}
+
+body.student-light #insight-widget-frame h1,
+body.student-light #insight-widget-frame h2,
+body.student-light #insight-widget-frame h3,
+body.student-light #insight-widget-frame h4,
+body.student-light #insight-widget-frame strong,
+body.student-light #insight-widget-frame b {
+  color: var(--text-main) !important;
+}
+
+/* 어두운 반투명 배경(rgba(255,255,255,0.05) 계열)은 흰 바탕에서 거의 흰색이 된다 */
+body.student-light #insight-widget-frame div,
+body.student-light #insight-widget-frame section,
+body.student-light #insight-widget-frame article,
+body.student-light #insight-widget-frame li {
+  background: transparent !important;
+  border-color: var(--n-200) !important;
+}
+
+body.student-light #insight-widget-frame > div {
+  background: var(--bg-primary) !important;
+  border: 1px solid var(--n-200) !important;
+  border-radius: 20px;
 }

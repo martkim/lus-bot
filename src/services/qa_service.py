@@ -20,7 +20,7 @@ async def ask_question(payload: QuestionAskRequest) -> AiDraftDTO:
     if not student_name:
         raise NotFoundError("등록되지 않은 학생입니다.")
 
-    # 🤖 AI 추천 답변 초안 자동 생성 (is_draft=True)
+    # AI 추천 답변 초안 자동 생성 (is_draft=True)
     ai_draft = await get_ai_reply(question_text, is_draft=True, student_id=payload.studentId)
 
     now_iso = datetime.now().isoformat()

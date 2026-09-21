@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Matches public/manifest.json's theme_color / background_color -->
-    <color name="passionmate_background">#080C14</color>
-    <color name="passionmate_on_background">#FFFFFF</color>
-    <color name="passionmate_muted">#9AA4B2</color>
+    <!-- public/manifest.json의 theme_color / background_color와 맞춘다.
+         학생 화면이 화이트로 바뀌어서 네이티브 배경도 흰색으로 맞췄다.
+         (검정으로 두면 앱 기동 때 검은 화면이 한 번 번쩍인다) -->
+    <color name="app_background">#FFFFFF</color>
+    <color name="app_on_background">#2F3032</color>
+    <color name="app_muted">#757678</color>
 </resources>

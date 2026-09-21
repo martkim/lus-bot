@@ -1,5 +1,5 @@
 /**
- * ⏱️ PASSION MATE - 학생 연습 타이머 비즈니스 로직 (app.js)
+ * 버스트인(Burst-In) - 학생 연습 타이머 비즈니스 로직 (app.js)
  * 
  * 주요 기능:
  * 1. 하단 탭 내비게이션 처리 (학생 화면 <-> 선생님 화면)
@@ -129,15 +129,15 @@ function setupEventListeners() {
     item.addEventListener('click', (e) => {
       const targetId = item.getAttribute('data-target');
 
-      // 🔒 등록생 입장 보안 가드 (미입장 상태에서 AI 튜터 탭 진입 차단)
+      // 등록생 입장 보안 가드 (미입장 상태에서 AI 튜터 탭 진입 차단)
       if (targetId === 'view-ai-chat' && !state.selectedStudent) {
-        showToast('먼저 본인의 이름을 입력해 입장해 주세요! 🤖', 'error');
+        showToast('먼저 본인의 이름을 입력해 입장해 주세요!', 'error');
         return;
       }
 
-      // 🔒 오늘의 꿀팁은 학생의 전공 파트를 알아야 맞춤 콘텐츠를 고를 수 있어 로그인 필요
+      // 오늘의 꿀팁은 학생의 전공 파트를 알아야 맞춤 콘텐츠를 고를 수 있어 로그인 필요
       if (targetId === 'view-daily-tip' && !state.selectedStudent) {
-        showToast('먼저 본인의 이름을 입력해 입장해 주세요! 🎓', 'error');
+        showToast('먼저 본인의 이름을 입력해 입장해 주세요!', 'error');
         return;
       }
 
@@ -342,7 +342,7 @@ async function startPractice() {
 
       // 타이머 가동 UI 전환
       resumeTimerUI();
-      showToast(`${state.selectedStudent.name} 학생의 연습 기록을 시작합니다. 화이팅! 🎹`, 'success');
+      showToast(`${state.selectedStudent.name} 학생의 연습 기록을 시작합니다. 화이팅!`, 'success');
 
       // 학생 리스트 재로딩하여 내부 상태의 active_session_id 동기화
       await loadStudents();
@@ -383,7 +383,7 @@ async function endPractice() {
     if (result.success) {
       clearInterval(state.timerInterval);
       const duration = result.data ? result.data.durationMinutes : 0;
-      showToast(`연습이 정상 종료되었습니다! 총 ${duration}분 동안 집중하셨네요. 대단합니다! 🎉`, 'success');
+      showToast(`연습이 정상 종료되었습니다! 총 ${duration}분 동안 집중하셨네요. 대단합니다!`, 'success');
       resetTimerUI();
       await loadStudents();
       loadPersonalHistory(state.selectedStudent.id);
@@ -396,7 +396,7 @@ async function endPractice() {
     saveToOfflineQueue(requestBody);
     
     clearInterval(state.timerInterval);
-    showToast(`네트워크 오류로 오프라인 저장되었습니다. (인터넷 복구 시 자동 동기화) ☁️`, 'success');
+    showToast(`네트워크 오류로 오프라인 저장되었습니다. (인터넷 복구 시 자동 동기화)`, 'success');
     resetTimerUI();
     
     // 내부 UI 강제 갱신용
@@ -431,7 +431,7 @@ async function syncOfflineData() {
     if (res.ok) {
       queue.shift();
       localStorage.setItem('offline_session_queue', JSON.stringify(queue));
-      showToast('오프라인에 임시 저장되었던 연습 기록이 서버와 동기화되었습니다! ☁️', 'success');
+      showToast('오프라인에 임시 저장되었던 연습 기록이 서버와 동기화되었습니다!', 'success');
       
       loadStudents();
       if (state.selectedStudent && state.selectedStudent.id === item.studentId) {
@@ -449,7 +449,7 @@ function resumeTimerUI() {
   if (state.timerInterval) clearInterval(state.timerInterval);
 
   // 버튼 스타일 변경 (연습 중지 모드)
-  dom.btnTimerToggle.innerHTML = '<i class="fa-solid fa-square"></i> 연습 완료하기';
+  dom.btnTimerToggle.textContent = '연습 완료하기';
   dom.btnTimerToggle.className = 'btn btn-primary btn-lg end-mode';
 
   dom.timerRing.classList.add('active');
@@ -467,14 +467,14 @@ function resetTimerUI() {
   state.activeSession = null;
   state.startTime = null;
 
-  dom.btnTimerToggle.innerHTML = '<i class="fa-solid fa-play"></i> 연습 시작하기';
+  dom.btnTimerToggle.textContent = '연습 시작하기';
   dom.btnTimerToggle.className = 'btn btn-primary btn-lg';
 
   dom.timerRing.classList.remove('active');
   dom.timerTime.textContent = '00:00:00';
   dom.timerStatusText.textContent = '대기 중';
 
-  // ✅ BUG FIX: 로그인 상태일 땐 계획 섹션을 숨기지 않음 (퇴장 시에만 숨김)
+  // BUG FIX: 로그인 상태일 땐 계획 섹션을 숨기지 않음 (퇴장 시에만 숨김)
   // personalPlanSection은 processStudentLogout()에서만 숨겨야 함
 }
 
@@ -530,7 +530,7 @@ async function loadPersonalHistory(studentId) {
         item.className = 'history-item';
         item.innerHTML = `
           <div class="item-left">
-            <div class="item-title"><i class="fa-regular fa-calendar-check"></i> 연습 세션 완료</div>
+            <div class="item-title">연습 세션 완료</div>
             <div class="item-subtitle">${formatTime(sess.start_time)} ~ ${formatTime(sess.end_time)}</div>
           </div>
           <div class="item-right">
@@ -550,14 +550,7 @@ function showToast(message, type = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
 
-  const icon = type === 'success'
-    ? '<i class="fa-solid fa-circle-check"></i>'
-    : '<i class="fa-solid fa-circle-exclamation"></i>';
-
-  toast.innerHTML = `
-    ${icon}
-    <span>${escapeHtml(message)}</span>
-  `;
+  toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
 
   dom.toastContainer.appendChild(toast);
 
@@ -573,7 +566,7 @@ function showToast(message, type = 'success') {
 }
 
 // ==========================================
-// 🤖 14. PASSION AI 튜터 챗봇 비즈니스 로직
+// 14. AI 튜터 챗봇 비즈니스 로직
 // ==========================================
 
 // 대화 내역 최하단 자동 스크롤 함수
@@ -620,12 +613,12 @@ async function sendChatMessage() {
       // 5. AI 답변 렌더링
       appendChatMessage('tutor', result.reply);
     } else {
-      appendChatMessage('tutor', '죄송해요. 답변을 생성하는 중 일시적인 문제가 생겼어요. 잠시 후에 다시 한 번 물어봐 주세요! 🥺');
+      appendChatMessage('tutor', '죄송해요. 답변을 생성하는 중 일시적인 문제가 생겼어요. 잠시 후에 다시 한 번 물어봐 주세요!');
       showToast(result.message || 'AI 답변을 불러오지 못했습니다.', 'error');
     }
   } catch (err) {
     removeTypingIndicator();
-    appendChatMessage('tutor', '인터넷 연결이 불안정하거나 서버가 응답하지 않고 있습니다. 서버 가동 상태를 확인해 주세요! 🔌');
+    appendChatMessage('tutor', '인터넷 연결이 불안정하거나 서버가 응답하지 않고 있습니다. 서버 가동 상태를 확인해 주세요!');
     showToast('네트워크 연결 실패', 'error');
     console.error('sendChatMessage Error:', err);
   }
@@ -641,7 +634,6 @@ function appendChatMessage(sender, text) {
   // 마크다운 형식의 기호가 들어가 있을 경우 HTML로 보기 좋게 매핑 (줄바꿈 및 볼드 등)
   let formattedText = text
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // 볼드 처리
-    .replace(/👉 (.*?)/g, '👉 <strong>$1</strong>')
     .replace(/\n/g, '<br>'); // 줄바꿈
 
   msgDiv.innerHTML = `
@@ -684,7 +676,7 @@ function removeTypingIndicator() {
 }
 
 // ==========================================
-// 🎯 오늘의 목표 — 연습한 만큼 칸을 채운다
+// 오늘의 목표 — 연습한 만큼 칸을 채운다
 // ==========================================
 function formatMinutes(min) {
   const h = Math.floor(min / 60);
@@ -726,13 +718,13 @@ function renderDailyGoal(d) {
   const left = Math.max(0, d.goalMinutes - d.doneMinutes);
   if (dom.goalFoot) {
     dom.goalFoot.innerHTML = left === 0
-      ? '오늘 목표를 다 채웠어요! 🎉'
+      ? '오늘 목표를 다 채웠어요!'
       : `목표까지 <strong>${formatMinutes(left)}</strong> 남았어요`;
   }
 }
 
 // ==========================================
-// 📋 15. 전공별 동적 추천 연습 계획 렌더링
+// 15. 전공별 동적 추천 연습 계획 렌더링
 // ==========================================
 function loadPersonalPlan(instrument) {
   if (!dom.personalPlanSection || !dom.personalPlanList) return;
@@ -796,7 +788,7 @@ function loadPersonalPlan(instrument) {
 }
 
 // ==========================================
-// 🔑 16. 학생 아이디/비밀번호 로그인, 최초 가입 & 퇴장(로그아웃) 처리
+// 16. 학생 아이디/비밀번호 로그인, 최초 가입 & 퇴장(로그아웃) 처리
 // ==========================================
 
 // 서버에 로그인 요청을 보내고, 성공 시 학생 정보를, 실패 시 null을 반환 (자동 재입장에도 재사용)
@@ -850,9 +842,9 @@ async function processStudentLogin() {
     // 4. 입력창 리셋
     dom.studentUsernameInput.value = '';
     dom.studentPasswordInput.value = '';
-    showToast(`${student.name} 학생, PASSION MATE 입장 성공! 🎹`, 'success');
+    showToast(`${student.name} 학생, 입장 성공!`, 'success');
   } else {
-    showToast('아이디 또는 비밀번호가 올바르지 않습니다. ⚠️', 'error');
+    showToast('아이디 또는 비밀번호가 올바르지 않습니다.', 'error');
     dom.studentPasswordInput.value = '';
     dom.studentPasswordInput.focus();
   }
@@ -991,11 +983,11 @@ function processStudentLogout() {
     dom.personalHomeworkSection.style.display = 'none';
   }
 
-  showToast('연습실에서 안전하게 퇴장(로그아웃)되었습니다! 🌟', 'success');
+  showToast('연습실에서 안전하게 퇴장(로그아웃)되었습니다!', 'success');
 }
 
 // ==========================================
-// 📥 17. 선생님 실시간 Q&A 관련 비즈니스 로직
+// 17. 선생님 실시간 Q&A 관련 비즈니스 로직
 // ==========================================
 
 // Q&A 질문 등록 전송
@@ -1025,7 +1017,7 @@ async function submitStudentQuestion() {
     const result = await res.json();
 
     if (result.success) {
-      showToast('선생님께 질문이 전송되었습니다! (AI 분석 초안 로딩 완료) 💌', 'success');
+      showToast('선생님께 질문이 전송되었습니다! (AI 분석 초안 로딩 완료)', 'success');
       dom.studentQaInput.value = '';
       // 개인 질문 히스토리 리프레시
       loadStudentQuestions(state.selectedStudent.id);
@@ -1087,7 +1079,7 @@ async function loadStudentQuestions(studentId) {
           answerBlockHtml = `
             <div class="qa-answer-block" style="margin-top: 10px; padding: 12px; border-radius: 8px; background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.15);">
               <div style="font-size: 0.78rem; font-weight: 700; color: var(--neon-green); margin-bottom: 5px; display: flex; align-items: center; gap: 4px;">
-                <i class="fa-solid fa-graduation-cap"></i> 선생님의 답변
+                선생님의 답변
               </div>
               <div style="font-size: 0.85rem; color: var(--text-body); line-height: 1.4;">${formattedAns}</div>
             </div>
@@ -1107,7 +1099,7 @@ async function loadStudentQuestions(studentId) {
           itemDiv.setAttribute('data-question-id', item.id);
           itemDiv.innerHTML = `
             <div class="qa-history-header">
-              <span class="qa-time"><i class="fa-regular fa-clock"></i> ${timeText}</span>
+              <span class="qa-time">${timeText}</span>
               <span class="qa-status-badge ${badgeClass}">${badgeText}</span>
             </div>
             <div class="qa-text">${escapeHtml(item.question_text).replace(/\n/g, '<br>')}</div>
@@ -1137,7 +1129,7 @@ async function loadStudentQuestions(studentId) {
               answerArea.innerHTML = answerBlockHtml;
 
               // 3. 토스트 알림으로 카카오톡 진동처럼 선생님 답장 도달 알림 극대화!
-              showToast('선생님으로부터 실시간 특별 레슨 피드백이 도착했습니다! 💌', 'success');
+              showToast('선생님으로부터 실시간 특별 레슨 피드백이 도착했습니다!', 'success');
             }
           }
         }
@@ -1175,7 +1167,7 @@ async function loadStudentHomework(studentId) {
           ${hw.dueDate ? `<span style="font-size: 0.78rem; color: var(--neon-coral);">마감: ${escapeHtml(hw.dueDate)}</span>` : ''}
         </div>
         ${hw.description ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 6px 0 0;">${escapeHtml(hw.description)}</p>` : ''}
-        ${hw.attachmentUrl ? `<a href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener" style="display: inline-block; margin-top: 8px; font-size: 0.82rem; color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(hw.attachmentFilename)}</a>` : ''}
+        ${hw.attachmentUrl ? `<a href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener" style="display: inline-block; margin-top: 8px; font-size: 0.82rem; color: var(--neon-mint);">${escapeHtml(hw.attachmentFilename)}</a>` : ''}
       </div>
     `).join('');
   } catch (err) {
@@ -1183,7 +1175,7 @@ async function loadStudentHomework(studentId) {
   }
 }
 
-// 📶 [학원 와이파이 안심 복구 시스템] 실시간 네트워크 연결 상태 자동 감지 및 자동 재가동
+// [학원 와이파이 안심 복구 시스템] 실시간 네트워크 연결 상태 자동 감지 및 자동 재가동
 window.addEventListener('offline', () => {
   const banner = document.getElementById('offline-warning-banner');
   if (banner) banner.classList.add('active');
@@ -1212,9 +1204,9 @@ window.addEventListener('online', async () => {
     statusLamp.innerHTML = '<span class="dot live"></span> 실시간 연결됨';
   }
 
-  showToast('와이파이가 성공적으로 복구되었습니다! 24H 실시간 모드를 즉시 재가동합니다. 📶✨', 'success');
+  showToast('와이파이가 성공적으로 복구되었습니다! 24H 실시간 모드를 즉시 재가동합니다.', 'success');
 
-  // ✅ BUG FIX: 온라인 복구 시 중복 폴링 방지
+  // BUG FIX: 온라인 복구 시 중복 폴링 방지
   // handleStudentSelection() 대신 필요한 데이터만 갱신
   if (state.selectedStudent) {
     await loadStudents();
@@ -1232,7 +1224,7 @@ window.addEventListener('online', async () => {
 });
 
 // ==========================================
-// 🎓 24H AI 오늘의 서울예대 꿀팁 로드 함수
+// 24H AI 오늘의 서울예대 꿀팁 로드 함수
 // ==========================================
 async function loadDailyInsight() {
   const container = document.getElementById('daily-tip-content');
@@ -1241,8 +1233,8 @@ async function loadDailyInsight() {
   // 로딩 스피너 표시
   container.innerHTML = `
     <div class="empty-placeholder" style="padding: 60px 0;">
-      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 2rem; color: #a78bfa; margin-bottom: 12px;"></i>
-      <p style="color: #e0e0e0; font-weight: 600;">AI가 오늘의 꿀팁을 불러오는 중...</p>
+      <span class="spinner" aria-hidden="true"></span>
+      <p>AI가 오늘의 꿀팁을 불러오는 중...</p>
     </div>
   `;
 
@@ -1255,17 +1247,16 @@ async function loadDailyInsight() {
       const dateStr = new Date(created_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 
       container.innerHTML = `
-        <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 10px;">
-          <span style="background: linear-gradient(135deg, #a78bfa, #00f2fe); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 1.05rem; font-weight: 800;">${title}</span>
-          <span style="font-size: 0.75rem; color: var(--text-muted);">${dateStr} 갱신</span>
+        <div class="insight-head">
+          <span class="insight-title">${title}</span>
+          <span class="insight-date">${dateStr} 갱신</span>
         </div>
         <div id="insight-widget-frame" style="animation: fadeIn 0.4s ease;">${html_content}</div>
       `;
     } else {
       container.innerHTML = `
         <div class="glass-card" style="text-align: center; padding: 40px 20px;">
-          <i class="fa-solid fa-clock" style="font-size: 2.5rem; color: #a78bfa; margin-bottom: 15px;"></i>
-          <p style="color: #fff; font-weight: 700; font-size: 1rem;">AI가 오늘의 콘텐츠를 준비 중입니다</p>
+          <p style="font-weight: 700; font-size: 1rem;">AI가 오늘의 콘텐츠를 준비 중입니다</p>
           <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 8px;">서버 시작 후 약 20초 내에 완성됩니다. 잠시 후 다시 확인해 주세요!</p>
         </div>
       `;
@@ -1273,7 +1264,7 @@ async function loadDailyInsight() {
   } catch (err) {
     container.innerHTML = `
       <div class="glass-card" style="text-align: center; padding: 30px;">
-        <p style="color: #f87171;">교원 와이파이 연결 확인 후 다시 시도해 주세요.</p>
+        <p class="text-danger">교원 와이파이 연결 확인 후 다시 시도해 주세요.</p>
       </div>
     `;
   }

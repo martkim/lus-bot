@@ -1,5 +1,5 @@
 /**
- * 🔐 PASSION TEACHER - 교사용 비밀번호 및 이름 2팩터 로그인 & 세션 관리 로직 (teacher.js)
+ * 버스트인(Burst-In) 교사용 - 비밀번호 및 이름 2팩터 로그인 & 세션 관리 로직 (teacher.js)
  */
 
 let dashboardPolling = null;
@@ -69,12 +69,12 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
   const password = cachedPassword || (authDom.passwordInput ? authDom.passwordInput.value.trim() : '');
   
   if (!name) {
-    showToast('선생님 이름을 입력해 주세요. 👔', 'error');
+    showToast('선생님 이름을 입력해 주세요.', 'error');
     if (authDom.nameInput) authDom.nameInput.focus();
     return;
   }
   if (!password) {
-    showToast('비밀번호를 입력해 주세요. 🔐', 'error');
+    showToast('비밀번호를 입력해 주세요.', 'error');
     if (authDom.passwordInput) authDom.passwordInput.focus();
     return;
   }
@@ -109,7 +109,7 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
         // 서브 탭 이벤트 초기 바인딩
         initTeacherSubTabs();
 
-        showToast(`${name} 선생님, 인증 성공! 대시보드가 연결되었습니다. 🎓`, 'success');
+        showToast(`${name} 선생님, 인증 성공! 대시보드가 연결되었습니다.`, 'success');
 
         // 4. dashboard.js 내의 전역 대시보드 리프레시 즉시 구동
         if (typeof refreshDashboard === 'function') {
@@ -132,7 +132,7 @@ async function processTeacherLogin(cachedName = null, cachedPassword = null) {
       }
     } else {
       // 401 Unauthorized 등 실패 처리
-      showToast('선생님 이름 또는 비밀번호가 올바르지 않습니다! ⚠️', 'error');
+      showToast('선생님 이름 또는 비밀번호가 올바르지 않습니다!', 'error');
       sessionStorage.removeItem('teacher_name');
       sessionStorage.removeItem('teacher_password'); // 잘못된 캐시 삭제
       if (authDom.passwordInput) {
@@ -188,7 +188,7 @@ function processTeacherLogout() {
     authDom.passwordInput.value = '';
   }
 
-  showToast('대시보드 인증 세션이 안전하게 만료되었습니다. 🌟', 'success');
+  showToast('대시보드 인증 세션이 안전하게 만료되었습니다.', 'success');
 }
 
 // 교사용 토스트 알림 함수
@@ -209,14 +209,7 @@ function showToast(message, type = 'success') {
   const toast = document.createElement('div');
   toast.className = `toast ${type}`;
 
-  const icon = type === 'success'
-    ? '<i class="fa-solid fa-circle-check"></i>'
-    : '<i class="fa-solid fa-circle-exclamation"></i>';
-
-  toast.innerHTML = `
-    ${icon}
-    <span>${escapeHtml(message)}</span>
-  `;
+  toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
   
   authDom.toastContainer.appendChild(toast);
   
@@ -230,7 +223,7 @@ function showToast(message, type = 'success') {
   }, 3500);
 }
 
-// 🎛️ 교사용 3대 서브 탭 전환 및 라이프사이클 처리
+// 교사용 3대 서브 탭 전환 및 라이프사이클 처리
 function initTeacherSubTabs() {
   const tabButtons = document.querySelectorAll('.teacher-tab-btn');
   const subViews = document.querySelectorAll('.teacher-sub-view');

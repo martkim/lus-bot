@@ -1,5 +1,5 @@
 /* ==========================================================================
-   🎨 PASSION MATE - PREMIUM DESIGN SYSTEM (GLASSMORPHISM & SLICK DARK)
+   버스트인(Burst-In) - DESIGN SYSTEM
    ========================================================================== */
 
 /* 1. 디자인 시스템 토큰 및 변수 선언 */
@@ -127,6 +127,38 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
+/* 학생 화면 헤더는 로고를 두지 않는다 — 앱 안에서 앱 이름을 되풀이하지 않고
+   연결 상태만 남겨 여백을 크게 가져간다. 홀로 남은 배지가 오른쪽에 떠 있으면
+   허전해 보여서 왼쪽으로 붙인다. */
+.app-header.header-minimal {
+  justify-content: flex-start;
+  padding: 12px 20px;
+}
+
+/* 오늘의 꿀팁 카드 머리말 */
+.insight-head {
+  margin-bottom: 12px;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.insight-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.insight-date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.text-danger {
+  color: var(--neon-coral);
+}
+
 .dot {
   display: inline-block;
   width: 7px;
@@ -231,17 +263,8 @@ body {
   box-shadow: 0 0 12px rgba(139, 92, 246, 0.25);
 }
 
-.custom-select-wrapper::after {
-  content: '\f107';
-  font-family: 'Font Awesome 6 Free';
-  font-weight: 900;
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--text-body);
-  pointer-events: none;
-}
+/* 셀렉트 화살표를 Font Awesome 글리프(\f107)로 그리던 규칙은 아이콘 폰트를 걷어내면서
+   빈 네모로 남게 되어 제거했다. 셀렉트는 브라우저 기본 화살표를 쓴다. */
 
 /* 8. 펄싱 네온 타이머 그래픽 디스플레이 */
 .timer-section {
@@ -481,10 +504,25 @@ body {
   font-size: 0.8rem;
 }
 
-.empty-placeholder i {
-  font-size: 1.5rem;
-  margin-bottom: 8px;
+/* 아이콘 폰트를 걷어내면서 로딩 표시는 CSS 원형 스피너로 대체했다 */
+.spinner {
   display: block;
+  width: 22px;
+  height: 22px;
+  margin: 0 auto 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.55;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2.4s; }
 }
 
 /* 11. 교사 대시보드 - 요약 그리드 */
@@ -501,28 +539,6 @@ body {
   gap: 14px;
   padding: 16px 14px;
   margin-bottom: 0; /* 그리드 마진 상쇄 */
-}
-
-.stat-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  font-size: 1.25rem;
-}
-
-.icon-neon-green {
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--neon-green);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-}
-
-.icon-neon-purple {
-  background: rgba(139, 92, 246, 0.1);
-  color: var(--neon-purple);
-  border: 1px solid rgba(139, 92, 246, 0.2);
 }
 
 .stat-content {
@@ -741,23 +757,17 @@ body {
   outline: none;
   color: var(--text-muted);
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   cursor: pointer;
   transition: var(--transition-smooth);
 }
 
-.nav-icon {
-  font-size: 1.25rem;
-  transition: var(--transition-smooth);
-}
-
+/* 아이콘이 사라진 만큼 글자가 탭을 대표해야 해서 키웠다 */
 .nav-text {
-  font-size: 0.72rem;
+  font-size: 0.9rem;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: -0.1px;
 }
 
 /* 선택된 탭 활성화 상태 */
@@ -766,9 +776,8 @@ body {
   text-shadow: 0 0 10px var(--neon-mint-glow);
 }
 
-.nav-item.active .nav-icon {
-  transform: translateY(-2px);
-  color: var(--neon-mint);
+.nav-item.active .nav-text {
+  font-weight: 700;
 }
 
 /* 15. 토스트 알림 메시지 */
@@ -806,19 +815,13 @@ body {
 .toast.success {
   border-left: 3px solid var(--neon-green);
 }
-.toast.success i {
-  color: var(--neon-green);
-}
 
 .toast.error {
   border-left: 3px solid var(--neon-coral);
 }
-.toast.error i {
-  color: var(--neon-coral);
-}
 
 /* ==========================================================================
-   🌀 KEYFRAME ANIMATIONS (DYNAMIC EFFECTS)
+   KEYFRAME ANIMATIONS (DYNAMIC EFFECTS)
    ========================================================================== */
 
 @keyframes logo-pulse {
@@ -897,7 +900,7 @@ body {
 }
 
 /* ==========================================================================
-   🤖 PASSION AI TUTOR CHATBOARD UI (PREMIUM STYLING)
+   AI TUTOR CHATBOARD UI
    ========================================================================== */
 
 .chat-card {
@@ -1016,14 +1019,19 @@ body {
   color: var(--text-muted);
 }
 
+/* 종이비행기 아이콘을 없애고 글자 버튼으로 바꿨다 — 너비는 글자에 맞추되 터치 영역은 지킨다 */
 .btn-chat-send {
   background: linear-gradient(135deg, var(--neon-purple) 0%, var(--neon-mint) 100%);
   border: none;
   outline: none;
   color: #ffffff;
-  width: 36px;
-  height: 36px;
+  min-height: 40px;
+  padding: 0 16px;
   border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1032,12 +1040,11 @@ body {
 }
 
 .btn-chat-send:hover {
-  transform: scale(1.05);
   box-shadow: 0 0 10px var(--neon-mint-glow);
 }
 
 .btn-chat-send:active {
-  transform: scale(0.95);
+  transform: scale(0.97);
 }
 
 /* 모바일 키보드 대응 및 스크롤 패딩 */
@@ -1048,7 +1055,7 @@ body {
 }
 
 /* ==========================================================================
-   📋 PASSION STUDENT PRACTICE PLAN CHECKLIST (PREMIUM STYLING)
+   STUDENT PRACTICE PLAN CHECKLIST
    ========================================================================== */
 
 .plan-card {
@@ -1169,7 +1176,7 @@ body {
 }
 
 /* ==========================================================================
-   🔑 PASSION STUDENT LOGIN & LOGOUT FORM (PREMIUM STYLING)
+   STUDENT LOGIN & LOGOUT FORM
    ========================================================================== */
 
 .login-input-wrapper {
@@ -1250,7 +1257,7 @@ body {
 }
 
 /* ==========================================================================
-   📥 PASSION STUDENT & TEACHER Q&A (PREMIUM STYLING)
+   STUDENT & TEACHER Q&A
    ========================================================================== */
 
 .custom-textarea {
@@ -1396,7 +1403,7 @@ body {
   transform: translateY(-1px);
 }
 
-/* 🔮 실시간 Q&A 피드백 트랜지션 애니메이션 효과 */
+/* 실시간 Q&A 피드백 트랜지션 애니메이션 효과 */
 .qa-history-item {
   animation: slideInUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
   transition: all 0.4s ease;
@@ -1430,7 +1437,7 @@ body {
   }
 }
 
-/* 📶 학원 와이파이 불안정 및 오프라인 상태 감지 안심 배너 스타일 */
+/* 학원 와이파이 불안정 및 오프라인 상태 감지 안심 배너 스타일 */
 .network-status-banner {
   position: fixed;
   top: 0;
@@ -1443,7 +1450,6 @@ body {
   padding: 8px 16px;
   font-size: 0.8rem;
   font-weight: 700;
-  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
   backdrop-filter: blur(8px);
   display: flex;
   justify-content: center;
@@ -1454,9 +1460,12 @@ body {
   pointer-events: none;
 }
 
+/* 그림자는 배너가 보일 때만 준다. 기본 상태에 두면 translateY(-100%)로 숨겨 놔도
+   아래로 4px+15px 번져서, 오프라인이 아닐 때도 화면 맨 위에 분홍 띠가 항상 남는다. */
 .network-status-banner.active {
   transform: translateY(0);
   pointer-events: auto;
+  box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4);
 }
 
 .wifi-pulse-dot {

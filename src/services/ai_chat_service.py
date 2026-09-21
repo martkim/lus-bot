@@ -44,7 +44,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
                 return "(오늘 AI 사용 한도를 넘어 자동 초안을 생성하지 못했습니다 — 선생님께서 직접 답변해 주세요.)"
             return (
                 "오늘 AI 상담을 이미 2회 이용하셨어요! 하루 이용 한도라서 내일 다시 이용해 주세요. "
-                "급한 질문은 '질문하기'로 선생님께 직접 남겨주시면 답변해 드릴게요. 💌"
+                "급한 질문은 '질문하기'로 선생님께 직접 남겨주시면 답변해 드릴게요."
             )
 
     curriculum_text = get_curriculum_text()
@@ -86,17 +86,19 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
         if is_draft:
             system_instruction = (
                 "너는 입시생이 선생님에게 직접 물어볼 질문에 대해, 선생님이 보고 즉시 전송하거나 가볍게 수정하여 답변할 수 있도록 "
-                "선생님의 연습 커리큘럼 및 지침서(Curriculum)에 입각하여 명확하고 정중하게 답변 초안을 작성해주는 'PASSION MATE AI 비서'이다.\n"
-                "선생님의 어조(전문적이고 따뜻한 격려의 말투)로 답변을 작성하라. 답변은 2~4문장 내외로 간결하고 핵심적으로 하되, 절대 반말을 쓰지 마라.\n\n"
+                "선생님의 연습 커리큘럼 및 지침서(Curriculum)에 입각하여 명확하고 정중하게 답변 초안을 작성해주는 '버스트인 AI 비서'이다.\n"
+                "선생님의 어조(전문적이고 따뜻한 격려의 말투)로 답변을 작성하라. 답변은 2~4문장 내외로 간결하고 핵심적으로 하되, 절대 반말을 쓰지 마라.\n"
+                "이모지와 그림문자는 절대 쓰지 마라. 글자만 사용하라.\n\n"
                 f"=== [질문 학생의 오늘 학습 내용] ===\n{student_context}\n\n"
                 f"=== [선생님의 커리큘럼 및 지침서] ===\n{curriculum_text}\n======================================"
             )
         else:
             system_instruction = (
-                "너는 입시생의 학습/연습을 전담하는 전문 'PASSION MATE AI 센터' 보조교사이다.\n"
+                "너는 실기 시험을 준비하는 음악 입시생의 학습/연습을 전담하는 '버스트인 AI 튜터' 보조교사이다.\n"
                 "항상 친절하고 전문적이며, 학생들에게 영감을 주고 용기를 불어넣는 따뜻한 어조(반말이 아닌 격려의 말투)로 대답하라.\n"
                 "특히 아래 명시된 '선생님의 연습 커리큘럼 및 지침서(Curriculum)' 내용을 절대 거스르지 말고 이에 입각하여 조언하라.\n"
-                "학생이 '오늘 연습이 안돼요', '울고싶다' 등 감정적인 말을 하면 적극적으로 다독이며 공감을 주어라.\n\n"
+                "학생이 '오늘 연습이 안돼요', '울고싶다' 등 감정적인 말을 하면 적극적으로 다독이며 공감을 주어라.\n"
+                "이모지와 그림문자는 절대 쓰지 마라. 글자만 사용하라.\n\n"
                 f"=== [질문 학생의 오늘 학습 내용] ===\n{student_context}\n\n"
                 f"=== [선생님의 커리큘럼 및 지침서] ===\n{curriculum_text}\n======================================"
             )
@@ -137,13 +139,13 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     if student_info:
         name = student_info["name"]
         instrument = student_info["instrument"]
-        welcome_prefix = f"✨ **{name} 학생 ({instrument} 전공)**, 반갑습니다! 오늘 벌써 **{today_minutes}분**이나 연습하셨군요. "
+        welcome_prefix = f"**{name} 학생 ({instrument} 전공)**, 반갑습니다! 오늘 벌써 **{today_minutes}분**이나 연습하셨군요. "
         if today_minutes > 0:
-            welcome_prefix += "열정 가득한 태도에 진심으로 박수를 보냅니다! 👏\n\n"
+            welcome_prefix += "열정 가득한 태도에 진심으로 박수를 보냅니다!\n\n"
         else:
-            welcome_prefix += "연습 시작하기를 누르고 집중 훈련을 시작해 볼까요? 🚀\n\n"
+            welcome_prefix += "연습 시작하기를 누르고 집중 훈련을 시작해 볼까요?\n\n"
     else:
-        welcome_prefix = "💡 **PASSION AI 튜터**의 맞춤형 가이드입니다.\n\n"
+        welcome_prefix = "**버스트인 AI 튜터**의 맞춤형 가이드입니다.\n\n"
 
     is_piano = "피아노" in msg or "하농" in msg or "스케일" in msg or "건반" in msg or (student_info and "피아노" in student_info["instrument"])
     is_violin = "바이올린" in msg or "현악" in msg or "활" in msg or "피치" in msg or (student_info and ("바이올린" in student_info["instrument"] or "첼로" in student_info["instrument"]))
@@ -153,7 +155,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     if is_piano:
         return (
             welcome_prefix +
-            "🎹 **[선생님 피아노 연습 수칙]**\n\n"
+            "**[선생님 피아노 연습 수칙]**\n\n"
             "우리 레슨실의 피아노 입시 규칙에 따라 안내해 드려요!\n"
             "- 매일 연습의 시작은 반드시 **하농(Hanon)과 스케일(Scale)을 30분 이상** 가볍게 치며 손가락을 풀고 릴렉스해야 합니다.\n"
             "- 손목의 힘을 빼는 감각이 가장 중요하니 건반을 억지로 때리지 마세요.\n"
@@ -162,7 +164,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     elif is_violin:
         return (
             welcome_prefix +
-            "🎻 **[선생님 바이올린/현악 연습 수칙]**\n\n"
+            "**[선생님 바이올린/현악 연습 수칙]**\n\n"
             "바이올린 및 현악기 전공생은 아래 원칙을 매일 지켜야 합니다:\n"
             "- 활 쓰기(Bowing) 기초 연습을 개현(Open string)에서 **매일 15분 이상** 공들여 소리를 고르세요.\n"
             "- 튜너기를 켜두고 본인의 손가락 피치(Intonation)가 완벽한지 매 순간 점검하는 정밀 연습이 생명입니다.\n"
@@ -171,7 +173,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     elif is_composition:
         return (
             welcome_prefix +
-            "📝 **[선생님 작곡/음악이론 수칙]**\n\n"
+            "**[선생님 작곡/음악이론 수칙]**\n\n"
             "작곡 전공생의 24H 필수 과업 지침입니다:\n"
             "- **매일 화성학 풀이 2문제**를 꼼꼼히 풀고, 연필로 병진행(5도, 8도) 금칙 위반이 있는지 스스로 적어가며 체크하세요.\n"
             "- 매일 아침 귀를 깨워주는 **단선율/2성부 청음 20분 훈련**을 루틴으로 소화해 주세요.\n"
@@ -180,7 +182,7 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     elif is_vocal:
         return (
             welcome_prefix +
-            "🎤 **[선생님 성악 연습 수칙]**\n\n"
+            "**[선생님 성악 연습 수칙]**\n\n"
             "성악 입시를 위한 아름다운 호흡과 발성 원칙입니다:\n"
             "- 복식 호흡과 아포지오(Appoggio, 호흡 지탱) 감각을 살리기 위해 매일 15분간 호흡 전용 훈련을 마스터해야 합니다.\n"
             "- 목을 억지로 쥐어짜지 말고, 연구개(Soft palate)를 동그랗게 높여 비강 공명을 마음껏 울려주세요.\n"
@@ -189,15 +191,15 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     elif "슬럼프" in msg or "힘" in msg or "우울" in msg or "좌절" in msg:
         return (
             welcome_prefix +
-            "🌈 **[선생님의 따뜻한 멘탈 응원]**\n\n"
+            "**[선생님의 따뜻한 멘탈 응원]**\n\n"
             "힘든 시기를 겪고 있군요. 슬럼프는 사실 성장을 바로 코앞에 두고 겪는 도약의 신호랍니다.\n"
             "억지로 어려운 입시 곡을 붙잡고 스트레스받지 마세요. 그럴 때는 쉬운 소곡집이나 좋아하는 팝, 혹은 하농을 가볍게 치며 손끝 감각을 즐겨보세요.\n"
-            "하루에 단 30분만 악기를 매만지며 마음을 가다듬어도 훌륭한 성취입니다. 선생님이 언제나 곁에서 힘껏 응원하고 있어요. 힘내요! 🎹"
+            "하루에 단 30분만 악기를 매만지며 마음을 가다듬어도 훌륭한 성취입니다. 선생님이 언제나 곁에서 힘껏 응원하고 있어요. 힘내요!"
         )
     elif "입시" in msg or "시험" in msg or "실기" in msg or "긴장" in msg:
         return (
             welcome_prefix +
-            "✨ **[실기 시험/입시 긴장 극복 꿀팁]**\n\n"
+            "**[실기 시험/입시 긴장 극복 꿀팁]**\n\n"
             "실기 시험장이 다가올수록 불안해지는 것은 지극히 당연한 열정의 증거입니다!\n"
             "- 실기 2주 전부터는 일주일에 3번 이상, 실제 연주복을 깔끔히 갖춰 입고 거울 앞에서 인사하고 연주하는 '모의 실기 시뮬레이션'을 반복해 보세요.\n"
             "- 무대 위에서의 긴장감을 설렘과 긍정적인 집중력의 네온 에너지로 치환시키는 연습이 많은 도움이 됩니다."
@@ -206,18 +208,18 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
         if is_draft:
             return (
                 welcome_prefix +
-                f"안녕하세요! 입시생의 질문에 대한 자동 분석 가이드입니다. 💡\n\n"
+                f"안녕하세요! 입시생의 질문에 대한 자동 분석 가이드입니다.\n\n"
                 f"학생이 물어본 '{user_message}'에 대해서는 우리 레슨실의 전공별 지침에 입각하여 성심껏 훈련하도록 지도하겠습니다.\n"
                 f"세부 사항을 묻는 질문이라면 전공별 키워드('피아노', '바이올린', '성악', '작곡')를 포함해 대화해 보시는 것을 추천해 드립니다."
             )
         else:
             return (
                 welcome_prefix +
-                "안녕하세요! 입시생 여러분의 연습 메이트 AI 튜터입니다. 💡\n\n"
+                "안녕하세요! 입시생 여러분의 연습 메이트 AI 튜터입니다.\n\n"
                 "현재 AI 챗봇의 **[24H 자동 응답 모드]**가 안전하게 기동 중입니다.\n\n"
                 "궁금하신 전공 지침이나 팁을 알아보기 위해 아래 키워드를 입력해 질문해 보세요!\n"
-                "👉 **키워드 안내**: `'피아노', '바이올린', '성악', '작곡', '슬럼프', '입시'`\n\n"
-                "*(💡 교사용 안내: 이 컴퓨터에 구글 Gemini API Key를 설정하시면 최첨단 음악 상담 AI 챗봇이 24시간 실시간 대화형으로 영구 활성화됩니다!)*"
+                "**키워드 안내**: `'피아노', '바이올린', '성악', '작곡', '슬럼프', '입시'`\n\n"
+                "*(교사용 안내: 이 컴퓨터에 구글 Gemini API Key를 설정하시면 최첨단 음악 상담 AI 챗봇이 24시간 실시간 대화형으로 영구 활성화됩니다!)*"
             )
 
 

@@ -208,10 +208,10 @@ app.get('*', (req, res) => {
 
 // 서버 및 데이터베이스 구동
 (async () => {
-  console.log('🔄 데이터베이스 테이블 초기화 중...');
+  console.log('데이터베이스 테이블 초기화 중...');
   await db.init();
   
   app.listen(PORT, () => {
-    console.log(`🚀 입시생 연습 기록 PWA 서버 기동 중: http://localhost:${PORT}`);
+    console.log(`입시생 연습 기록 PWA 서버 기동 중: http://localhost:${PORT}`);
   });
 })();

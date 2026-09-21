@@ -35,7 +35,7 @@ async def _try_link(kakao_user_id: str, utterance: str) -> str:
     parts = utterance.split(maxsplit=1)
     if len(parts) != 2:
         return (
-            "안녕하세요! 아직 이 카카오톡 계정이 연결되지 않았어요. 🔗\n"
+            "안녕하세요! 아직 이 카카오톡 계정이 연결되지 않았어요.\n"
             "PASSION MATE 웹앱에서 쓰시는 아이디와 비밀번호를 순서대로 입력해 주세요.\n"
             "예) mystudent123 mypassword"
         )
@@ -55,7 +55,7 @@ async def _try_link(kakao_user_id: str, utterance: str) -> str:
         return "이미 연결된 계정입니다. 바로 질문해 보세요!"
 
     return (
-        f"{student_row['name']} 학생, 연결이 완료됐어요! 🎉\n"
+        f"{student_row['name']} 학생, 연결이 완료됐어요!\n"
         "이제부터 이 카카오톡 대화창에서 바로 AI 튜터에게 질문할 수 있어요. "
         "웹앱과 하루 이용 한도(2회)를 함께 씁니다."
     )

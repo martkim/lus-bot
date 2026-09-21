@@ -8,7 +8,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
-        android:theme="@style/Theme.PassionMate"
+        android:theme="@style/Theme.BurstIn"
         android:usesCleartextTraffic="false">
 
         <!-- configChanges를 선언하지 않으면 폰트 크기/다크모드/언어 변경만으로 Activity가

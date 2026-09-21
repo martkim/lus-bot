@@ -28,9 +28,9 @@ async def verify_teacher_auth(request: Request) -> TeacherDTO:
         return None
 
     auth_name_encoded = request.headers.get("X-Teacher-Name", "")
-    username = urllib.parse.unquote(auth_name_encoded)  # 👔 URL 디코딩 한글 복원!
+    username = urllib.parse.unquote(auth_name_encoded)  # URL 디코딩 한글 복원!
     auth_pwd_encoded = request.headers.get("X-Teacher-Password", "")
-    password = urllib.parse.unquote(auth_pwd_encoded)  # 🔐 URL 디코딩 비밀번호 복원!
+    password = urllib.parse.unquote(auth_pwd_encoded)  # URL 디코딩 비밀번호 복원!
 
     teacher_row = db.get_teacher_by_username(username) if username else None
     is_valid = teacher_row and await asyncio.to_thread(

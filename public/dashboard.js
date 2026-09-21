@@ -1,5 +1,5 @@
 /**
- * 📊 PASSION MATE - 교사 대시보드 실시간 현황 및 통계 로직 (dashboard.js)
+ * 버스트인(Burst-In) - 교사 대시보드 실시간 현황 및 통계 로직 (dashboard.js)
  * 
  * 주요 기능:
  * 1. 현재 연습 중인 입시생의 경과시간 실시간 추적 (초 단위 펄싱 텍스트 연출)
@@ -73,7 +73,7 @@ function setupDashboardListeners() {
         const result = await res.json();
  
         if (result.success) {
-          showToast(`입시생 ${name} (${instrument}) 등록이 성공적으로 완료되었습니다! 🎓`, 'success');
+          showToast(`입시생 ${name} (${instrument}) 등록이 성공적으로 완료되었습니다!`, 'success');
           
           // 폼 입력 리셋
           dashDom.regName.value = '';
@@ -132,7 +132,7 @@ function setupDashboardListeners() {
         const result = await res.json();
 
         if (result.success) {
-          showToast(`선생님 계정 ${display_name} (${part}) 생성이 완료되었습니다! 🎓`, 'success');
+          showToast(`선생님 계정 ${display_name} (${part}) 생성이 완료되었습니다!`, 'success');
 
           usernameInput.value = '';
           passwordInput.value = '';
@@ -188,7 +188,7 @@ function setupDashboardListeners() {
         const result = await res.json();
 
         if (result.success) {
-          showToast(`${result.data.studentName} 학생에게 숙제 "${title}"을(를) 냈습니다! 📚`, 'success');
+          showToast(`${result.data.studentName} 학생에게 숙제 "${title}"을(를) 냈습니다!`, 'success');
 
           titleInput.value = '';
           dueDateInput.value = '';
@@ -217,7 +217,7 @@ function setupDashboardListeners() {
   }
 }
 
-// 👔 [원장 통계] 엑셀 다운로드 — 인증 헤더가 필요해 링크로 못 열고 fetch+blob으로 받아서 다운로드 트리거
+// [원장 통계] 엑셀 다운로드 — 인증 헤더가 필요해 링크로 못 열고 fetch+blob으로 받아서 다운로드 트리거
 async function exportStatsExcel() {
   const btn = document.getElementById('btn-export-stats');
   if (btn) btn.disabled = true;
@@ -246,7 +246,7 @@ async function exportStatsExcel() {
     a.remove();
     window.URL.revokeObjectURL(url);
 
-    showToast('통계 엑셀 파일을 다운로드했습니다! 📊', 'success');
+    showToast('통계 엑셀 파일을 다운로드했습니다!', 'success');
   } catch (err) {
     showToast('서버 통신 중 오류가 발생했습니다.', 'error');
     console.error('exportStatsExcel Error:', err);
@@ -255,7 +255,7 @@ async function exportStatsExcel() {
   }
 }
 
-// 🔄 대시보드 데이터 총 리프레시 함수 (선생님 Q&A 타이핑 시 IME 보호 락 연동)
+// 대시보드 데이터 총 리프레시 함수 (선생님 Q&A 타이핑 시 IME 보호 락 연동)
 async function refreshDashboard() {
   try {
     const res = await fetch('/api/dashboard/status', {
@@ -301,14 +301,13 @@ async function refreshDashboard() {
   }
 }
 
-// 🟢 실시간 연습 중인 학생 렌더링 (나이, MBTI 배지 및 강제 종료 버튼 추가)
+// 실시간 연습 중인 학생 렌더링 (나이, MBTI 배지 및 강제 종료 버튼 추가)
 function renderActiveStudents(students) {
   dashDom.activeList.innerHTML = '';
  
   if (students.length === 0) {
     dashDom.activeList.innerHTML = `
       <div class="empty-placeholder">
-        <i class="fa-solid fa-mug-hot"></i>
         <p>현재 연습 중인 학생이 없습니다.</p>
       </div>
     `;
@@ -330,11 +329,11 @@ function renderActiveStudents(students) {
           <span class="badge badge-live" style="font-size: 0.6rem; vertical-align: middle; margin-left: 4px;">${escapeHtml(student.instrument)}</span>
           <span class="badge" style="font-size: 0.55rem; background: rgba(0, 242, 254, 0.08); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.15); margin-left: 4px; vertical-align: middle;">${student.age || 19}세 / ${escapeHtml(student.mbti || 'ENFP')}</span>
         </div>
-        <div class="item-subtitle"><i class="fa-regular fa-clock"></i> 시작 시각: ${formatLocalTime(student.start_time)}</div>
+        <div class="item-subtitle">시작 시각: ${formatLocalTime(student.start_time)}</div>
       </div>
       <div class="item-right">
         <span class="active-time-elapsed" data-start-time="${student.start_time}">
-          <i class="fa-solid fa-circle-notch fa-spin"></i> <span class="elapsed-counter">${elapsedText}</span>
+          <span class="spinner"></span> <span class="elapsed-counter">${elapsedText}</span>
         </span>
       </div>
     `;
@@ -342,7 +341,7 @@ function renderActiveStudents(students) {
   });
 }
 
-// 👑 오늘 누적 시간 랭킹 렌더링 (프로그레스 바 빌더)
+// 오늘 누적 시간 랭킹 렌더링 (프로그레스 바 빌더)
 function renderRanking(stats) {
   dashDom.rankingList.innerHTML = '';
 
@@ -363,11 +362,8 @@ function renderRanking(stats) {
     const item = document.createElement('div');
     item.className = 'ranking-item';
 
-    // 1등부터 3등까지 왕관 데코 아이콘 설정
-    let rankDecor = rank;
-    if (rank === 1) rankDecor = '<i class="fa-solid fa-crown" style="color: #fbbf24;"></i>';
-    else if (rank === 2) rankDecor = '<i class="fa-solid fa-medal" style="color: #cbd5e1;"></i>';
-    else if (rank === 3) rankDecor = '<i class="fa-solid fa-medal" style="color: #b45309;"></i>';
+    // 아이콘을 걷어낸 뒤로는 1~3등도 등수 숫자를 그대로 보여준다
+    const rankDecor = rank;
 
     // 프로그레스 바 백분율 계산 (연습 시간이 0분일 경우 0%)
     const percentage = maxMinutes > 0 ? Math.round((student.total_minutes / maxMinutes) * 100) : 0;
@@ -388,7 +384,7 @@ function renderRanking(stats) {
   });
 }
 
-// ⏳ 오늘 완료된 타임라인 렌더링
+// 오늘 완료된 타임라인 렌더링
 function renderTimeline(timeline) {
   dashDom.timelineList.innerHTML = '';
 
@@ -410,7 +406,7 @@ function renderTimeline(timeline) {
           <strong>${escapeHtml(sess.name)}</strong> <span style="font-size: 0.75rem; color: var(--text-muted);">(${escapeHtml(sess.instrument)})</span>
         </div>
         <div class="item-subtitle">
-          <i class="fa-solid fa-business-time"></i> ${formatLocalTime(sess.start_time)} ~ ${formatLocalTime(sess.end_time)}
+          ${formatLocalTime(sess.start_time)} ~ ${formatLocalTime(sess.end_time)}
         </div>
       </div>
       <div class="item-right">
@@ -421,7 +417,7 @@ function renderTimeline(timeline) {
   });
 }
 
-// ⏰ 보조 헬퍼: 1초마다 연습 중인 학생들의 경과 시간 카운터를 부드럽게 갱신
+// 보조 헬퍼: 1초마다 연습 중인 학생들의 경과 시간 카운터를 부드럽게 갱신
 function updateActiveStudentsElapsedTime() {
   const elapsedBadges = document.querySelectorAll('.active-time-elapsed');
   elapsedBadges.forEach(badge => {
@@ -433,7 +429,7 @@ function updateActiveStudentsElapsedTime() {
   });
 }
 
-// ⏰ 보조 헬퍼: 연습 시간 시작 기준 정밀 경과 텍스트 계산 (시:분:초 형식)
+// 보조 헬퍼: 연습 시간 시작 기준 정밀 경과 텍스트 계산 (시:분:초 형식)
 function calculateElapsedTimeText(startTimeISO) {
   const startTime = new Date(startTimeISO.replace("Z", "+00:00"));
   const now = new Date();
@@ -455,13 +451,13 @@ function calculateElapsedTimeText(startTimeISO) {
   }
 }
 
-// 📅 보조 헬퍼: ISO 표준 날짜를 한국 로컬 포맷 24시간 표기로 변환 (예: 15:40:02)
+// 보조 헬퍼: ISO 표준 날짜를 한국 로컬 포맷 24시간 표기로 변환 (예: 15:40:02)
 function formatLocalTime(isoString) {
   const date = new Date(isoString);
   return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 }
 
-// 💬 교사 대시보드 실시간 Q&A 피드백 렌더링 (5초 폴링 시 타이핑 텍스트 및 커서 유실 방지 스마트 포커스 락 아키텍처 적용)
+// 교사 대시보드 실시간 Q&A 피드백 렌더링 (5초 폴링 시 타이핑 텍스트 및 커서 유실 방지 스마트 포커스 락 아키텍처 적용)
 function renderDashboardQuestions(questions) {
   if (!dashDom.questionsList) return;
   
@@ -484,7 +480,6 @@ function renderDashboardQuestions(questions) {
   if (!questions || questions.length === 0) {
     dashDom.questionsList.innerHTML = `
       <div class="empty-placeholder">
-        <i class="fa-regular fa-comment-dots"></i>
         <p>아직 접수된 질문이 없습니다.</p>
       </div>
     `;
@@ -516,7 +511,7 @@ function renderDashboardQuestions(questions) {
       answerAreaHtml = `
         <div class="qa-resolved-box" style="margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(16, 185, 129, 0.06); border: 1px solid rgba(16, 185, 129, 0.15);">
           <div style="font-size: 0.78rem; font-weight: 700; color: var(--neon-green); margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
-            <i class="fa-solid fa-check"></i> 확정된 전송 답변
+            확정된 전송 답변
           </div>
           <div style="font-size: 0.85rem; color: var(--text-main); line-height: 1.4; white-space: pre-wrap;">${escapeHtml(q.teacher_answer)}</div>
         </div>
@@ -527,11 +522,11 @@ function renderDashboardQuestions(questions) {
       answerAreaHtml = `
         <div class="qa-edit-box" style="margin-top: 12px; display: flex; flex-direction: column; gap: 8px;">
           <div style="font-size: 0.78rem; font-weight: 600; color: var(--neon-mint); display: flex; align-items: center; gap: 4px;">
-            <i class="fa-solid fa-robot"></i> AI 추천 답변 초안 (선생님 검토/편집 가능)
+            AI 추천 답변 초안 (선생님 검토/편집 가능)
           </div>
           <textarea id="editor-qa-ans-${q.id}" class="custom-textarea" style="width: 100%; min-height: 80px; padding: 10px; font-size: 0.82rem; line-height: 1.4; resize: none; border-radius: 10px; background: rgba(0, 0, 0, 0.2); border: 1px solid var(--glass-border); color: var(--text-main); outline: none;" placeholder="답변을 입력해 주세요...">${escapeHtml(currentDraftValue)}</textarea>
           <button class="btn btn-secondary btn-send-qa-reply" data-question-id="${q.id}" style="align-self: flex-end; padding: 6px 14px; font-size: 0.8rem; font-weight: 600; border-radius: 8px; border: none; cursor: pointer;">
-            <i class="fa-solid fa-paper-plane"></i> 답변 전송 완료
+            답변 전송 완료
           </button>
         </div>
       `;
@@ -543,7 +538,7 @@ function renderDashboardQuestions(questions) {
           ${escapeHtml(q.student_name)} <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: normal;">(${escapeHtml(q.instrument || '전공 미지정')})</span>
         </span>
         <div style="display: flex; align-items: center; gap: 8px;">
-          <span style="font-size: 0.72rem; color: var(--text-muted);"><i class="fa-regular fa-clock"></i> ${timeText}</span>
+          <span style="font-size: 0.72rem; color: var(--text-muted);">${timeText}</span>
           <span class="badge" style="font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; ${badgeStyle}">${badgeText}</span>
         </div>
       </div>
@@ -595,7 +590,7 @@ function renderDashboardQuestions(questions) {
         
         const result = await res.json();
         if (result.success) {
-          showToast('입시생에게 최종 답변 피드백이 전송되었습니다! 🎓', 'success');
+          showToast('입시생에게 최종 답변 피드백이 전송되었습니다!', 'success');
           refreshDashboard(); // 즉시 대시보드 리프레시
         } else {
           showToast(result.message || '답변 전송에 실패했습니다.', 'error');
@@ -610,7 +605,7 @@ function renderDashboardQuestions(questions) {
   });
 }
 
-// 👔 [원생 관리] 등록 원생 명부 전체 목록 조회 및 렌더링
+// [원생 관리] 등록 원생 명부 전체 목록 조회 및 렌더링
 async function loadAllStudentsForManagement() {
   const tbody = document.getElementById('mgmt-student-list');
   if (!tbody) return;
@@ -618,7 +613,7 @@ async function loadAllStudentsForManagement() {
   tbody.innerHTML = `
     <tr>
       <td colspan="6" style="text-align: center; padding: 30px 0;">
-        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--neon-mint); margin-bottom: 10px;"></i>
+        <span class="spinner"></span>
         <p style="font-size: 0.8rem; color: var(--text-muted);">원생 명단을 조회 중입니다...</p>
       </td>
     </tr>
@@ -655,7 +650,7 @@ async function loadAllStudentsForManagement() {
           <td style="font-size: 0.8rem; color: var(--text-muted);">${regDate}</td>
           <td style="text-align: center;">
             <button class="btn-table-action" onclick="deleteStudent(${s.id})">
-              <i class="fa-solid fa-trash-can"></i> 삭제
+              삭제
             </button>
           </td>
         `;
@@ -668,7 +663,7 @@ async function loadAllStudentsForManagement() {
   }
 }
 
-// 👔 [원생 관리] 특정 원생 삭제 처리 (소프트 딜리트)
+// [원생 관리] 특정 원생 삭제 처리 (소프트 딜리트)
 async function deleteStudent(studentId) {
   if (!confirm('정말로 이 입시생을 명부에서 삭제하시겠습니까?\n삭제 후 해당 원생은 명부 및 학생 로그인 목록에서 즉시 제거되나, 기존 질문 기록 및 누적 연습 이력은 AI 학습 패턴 분석을 위해 안전하게 보존됩니다.')) {
     return;
@@ -704,7 +699,7 @@ async function deleteStudent(studentId) {
   }
 }
 
-// 👔 [선생님 계정 관리] 전체 선생님 계정 목록 조회 및 렌더링 (원장 전용)
+// [선생님 계정 관리] 전체 선생님 계정 목록 조회 및 렌더링 (원장 전용)
 async function loadTeacherAccounts() {
   const tbody = document.getElementById('mgmt-teacher-list');
   if (!tbody) return;
@@ -712,7 +707,7 @@ async function loadTeacherAccounts() {
   tbody.innerHTML = `
     <tr>
       <td colspan="6" style="text-align: center; padding: 30px 0;">
-        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--neon-mint); margin-bottom: 10px;"></i>
+        <span class="spinner"></span>
         <p style="font-size: 0.8rem; color: var(--text-muted);">선생님 계정을 조회 중입니다...</p>
       </td>
     </tr>
@@ -751,7 +746,7 @@ async function loadTeacherAccounts() {
         const actionCell = isDirector
           ? '<span class="badge" style="background: rgba(139, 92, 246, 0.1); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.2);">원장</span>'
           : `<button class="btn-table-action" onclick="toggleTeacherStatus(${t.id})">
-               <i class="fa-solid fa-power-off"></i> ${t.status === 'ACTIVE' ? '비활성화' : '활성화'}
+               ${t.status === 'ACTIVE' ? '비활성화' : '활성화'}
              </button>`;
 
         const tr = document.createElement('tr');
@@ -772,7 +767,7 @@ async function loadTeacherAccounts() {
   }
 }
 
-// 👔 [선생님 계정 관리] 파트 선생님 계정 활성/비활성 토글 (원장 전용)
+// [선생님 계정 관리] 파트 선생님 계정 활성/비활성 토글 (원장 전용)
 async function toggleTeacherStatus(teacherId) {
   if (!confirm('이 선생님 계정의 활성 상태를 전환하시겠습니까?\n비활성화하면 해당 계정으로 로그인이 즉시 차단됩니다.')) {
     return;
@@ -800,13 +795,13 @@ async function toggleTeacherStatus(teacherId) {
   }
 }
 
-// 👔 [숙제 관리] 탭 진입 시 학생 선택창 + 내가 낸 숙제 목록을 함께 로드
+// [숙제 관리] 탭 진입 시 학생 선택창 + 내가 낸 숙제 목록을 함께 로드
 async function loadHomeworkTab() {
   await populateHomeworkStudentSelect();
   await loadTeacherHomeworkList();
 }
 
-// 👔 [숙제 관리] 학생 선택 드롭다운 채우기 — 파트 선생님은 자기 파트 학생만(서버가 최종 검증하므로 여긴 UX용)
+// [숙제 관리] 학생 선택 드롭다운 채우기 — 파트 선생님은 자기 파트 학생만(서버가 최종 검증하므로 여긴 UX용)
 async function populateHomeworkStudentSelect() {
   const select = document.getElementById('homework-student-select');
   if (!select) return;
@@ -833,7 +828,7 @@ async function populateHomeworkStudentSelect() {
   }
 }
 
-// 👔 [숙제 관리] 내가 낸 숙제 목록 조회 및 렌더링
+// [숙제 관리] 내가 낸 숙제 목록 조회 및 렌더링
 async function loadTeacherHomeworkList() {
   const tbody = document.getElementById('homework-teacher-list');
   if (!tbody) return;
@@ -841,7 +836,7 @@ async function loadTeacherHomeworkList() {
   tbody.innerHTML = `
     <tr>
       <td colspan="5" style="text-align: center; padding: 30px 0;">
-        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.5rem; color: var(--neon-mint); margin-bottom: 10px;"></i>
+        <span class="spinner"></span>
         <p style="font-size: 0.8rem; color: var(--text-muted);">숙제 목록을 조회 중입니다...</p>
       </td>
     </tr>
@@ -874,7 +869,7 @@ async function loadTeacherHomeworkList() {
       homeworkList.forEach(hw => {
         const regDate = hw.createdAt ? new Date(hw.createdAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }) : '미지정';
         const attachmentCell = hw.attachmentUrl
-          ? `<a href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener" style="color: var(--neon-mint);"><i class="fa-solid fa-paperclip"></i> ${escapeHtml(hw.attachmentFilename)}</a>`
+          ? `<a href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener" style="color: var(--neon-mint);">${escapeHtml(hw.attachmentFilename)}</a>`
           : '-';
         const tr = document.createElement('tr');
         tr.innerHTML = `
@@ -893,7 +888,7 @@ async function loadTeacherHomeworkList() {
   }
 }
 
-// 👔 [실시간 대시보드] 특정 활성 원생 세션 강제 종료(완료) 처리
+// [실시간 대시보드] 특정 활성 원생 세션 강제 종료(완료) 처리
 async function forceEndSession(studentId) {
   if (!confirm('해당 학생의 실시간 연습 세션을 강제로 정상 완료 처리하시겠습니까?')) {
     return;
@@ -923,7 +918,7 @@ async function forceEndSession(studentId) {
   }
 }
 
-// 🧠 [AI 딥 러닝 분석] Gemini 패턴 분석 리포트 생성 및 렌더링 (24H 백그라운드 캐시 및 수동 즉시 갱신 연동)
+// [AI 딥 러닝 분석] Gemini 패턴 분석 리포트 생성 및 렌더링 (24H 백그라운드 캐시 및 수동 즉시 갱신 연동)
 async function generateAiReport(refresh = false) {
   const loading = document.getElementById('ai-analysis-loading');
   const placeholder = document.getElementById('ai-analysis-placeholder');
@@ -940,7 +935,7 @@ async function generateAiReport(refresh = false) {
     loading.style.display = 'block';
   } else {
     // 자동 캐시 조회 시 버튼에 스피너 가볍게 표시 가능
-    btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> 분석 데이터 조회중...';
+    btn.innerHTML = '<span class="spinner"></span> 분석 데이터 조회중...';
     btn.disabled = true;
   }
   
@@ -961,7 +956,7 @@ async function generateAiReport(refresh = false) {
     }
     
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 분석 리포트 즉시 갱신하기';
+    btn.innerHTML = 'AI 분석 리포트 즉시 갱신하기';
     
     if (result.success && result.report) {
       placeholder.style.display = 'none';
@@ -970,13 +965,13 @@ async function generateAiReport(refresh = false) {
       // 갱신 시각 및 출처 배지 스타일링
       const isBg = result.source === '24H_BACKGROUND_AI';
       const sourceBadgeHtml = isBg 
-        ? `<span class="badge" style="background: rgba(139, 92, 246, 0.12); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.25); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-clock-rotate-left"></i> 24H 서버 자동 분석</span>`
-        : `<span class="badge" style="background: rgba(0, 242, 254, 0.12); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.25); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-solid fa-bolt"></i> 수동 즉시 갱신됨</span>`;
+        ? `<span class="badge" style="background: rgba(139, 92, 246, 0.12); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.25); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">24H 서버 자동 분석</span>`
+        : `<span class="badge" style="background: rgba(0, 242, 254, 0.12); color: var(--neon-mint); border: 1px solid rgba(0, 242, 254, 0.25); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">수동 즉시 갱신됨</span>`;
         
       const dateText = new Date(result.created_at).toLocaleString('ko-KR', {
         month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
       });
-      const timeBadgeHtml = `<span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--glass-border); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;"><i class="fa-regular fa-clock"></i> 마지막 분석: ${dateText}</span>`;
+      const timeBadgeHtml = `<span class="badge" style="background: rgba(255,255,255,0.05); color: var(--text-muted); border: 1px solid var(--glass-border); font-size: 0.75rem; padding: 4px 10px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px;">마지막 분석: ${dateText}</span>`;
       
       const badgeContainerHtml = `
         <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; align-items: center; justify-content: flex-end;">
@@ -989,7 +984,7 @@ async function generateAiReport(refresh = false) {
       resultBox.innerHTML = badgeContainerHtml + parseMarkdownToHtml(result.report);
       
       if (refresh) {
-        showToast('Gemini AI 분석 리포트가 즉각 갱신되었습니다! 💡', 'success');
+        showToast('Gemini AI 분석 리포트가 즉각 갱신되었습니다!', 'success');
       }
     } else {
       placeholder.style.display = 'block';
@@ -1003,16 +998,16 @@ async function generateAiReport(refresh = false) {
     placeholder.style.display = 'block';
     resultBox.style.display = 'none';
     btn.disabled = false;
-    btn.innerHTML = '<i class="fa-solid fa-wand-magic-sparkles"></i> AI 분석 리포트 발행하기';
+    btn.innerHTML = 'AI 분석 리포트 발행하기';
     showToast('서버 연결 실패', 'error');
     console.error('generateAiReport Error:', err);
   }
 }
 
-// 💡 헬퍼: 고정밀 프론트엔드 마크다운 파서
+// 헬퍼: 고정밀 프론트엔드 마크다운 파서
 function parseMarkdownToHtml(md) {
   return md
-    .replace(/### (.*?)\n/g, '<h3 style="color: var(--neon-mint); font-weight: 600; margin-top: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;"><i class="fa-solid fa-square-poll-vertical"></i> $1</h3>')
+    .replace(/### (.*?)\n/g, '<h3 style="color: var(--neon-mint); font-weight: 600; margin-top: 25px; border-bottom: 1px solid var(--glass-border); padding-bottom: 8px;">$1</h3>')
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/^\* (.*?)$/gm, '<li style="margin-left: 15px; margin-bottom: 6px; list-style-type: square; color: var(--text-body);">$1</li>')
     .replace(/> (.*?)$/gm, '<blockquote style="border-left: 4px solid var(--neon-purple); background: rgba(255,255,255,0.02); padding: 12px 16px; margin: 15px 0; border-radius: 4px; font-style: italic; color: var(--text-main);">$1</blockquote>')
@@ -1032,7 +1027,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
-// 📶 [교사 대시보드 와이파이 안심 복구 시스템] 실시간 네트워크 연결 상태 자동 감지 및 자동 재가동
+// [교사 대시보드 와이파이 안심 복구 시스템] 실시간 네트워크 연결 상태 자동 감지 및 자동 재가동
 window.addEventListener('offline', () => {
   const banner = document.getElementById('offline-warning-banner');
   if (banner) banner.classList.add('active');
@@ -1061,7 +1056,7 @@ window.addEventListener('online', async () => {
     statusLamp.innerHTML = '<span class="dot live"></span> 보안 게이트 작동중';
   }
   
-  showToast('와이파이가 무사히 연결되었습니다! 대시보드 보안 동기화를 즉각 재가동합니다. 📶✨', 'success');
+  showToast('와이파이가 무사히 연결되었습니다! 대시보드 보안 동기화를 즉각 재가동합니다.', 'success');
   
   // 5초 동기화 폴링 핫 리스타트!
   if (typeof refreshDashboard === 'function') {
@@ -1078,7 +1073,7 @@ window.addEventListener('online', async () => {
 });
 
 // ==========================================
-// 📚 AI 커리큘럼 학습 관리 로직
+// AI 커리큘럼 학습 관리 로직
 // ==========================================
 
 async function loadCurriculumContent() {
@@ -1161,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await res.json();
         if (result.success) {
           showToast('파일 분석이 완료되었습니다. 챗봇 창을 확인해 주세요.', 'success');
-          appendCurriculumChat('AI 마스터', `📄 **[파일 분석 완료: ${file.name}]**\n\n${result.analysis}`);
+          appendCurriculumChat('AI 마스터', `**[파일 분석 완료: ${file.name}]**\n\n${result.analysis}`);
           fileInput.value = ''; // 폼 초기화
         } else {
           showToast(result.message || '분석 중 오류 발생', 'error');
@@ -1242,7 +1237,7 @@ function appendCurriculumChat(sender, message, isMe = false) {
 }
 
 // ==========================================
-// 🎓 AI 오늘의 꿀팁 관리 (선생님 대시보드)
+// AI 오늘의 꿀팁 관리 (선생님 대시보드)
 // ==========================================
 
 async function loadInsightManager() {
@@ -1266,14 +1261,14 @@ async function loadInsightManager() {
         const date = new Date(item.created_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
         const isOn = item.is_active === 1;
         const typeLabel = {
-          timeplan: '⏱️ 딥워크 타임라인',
-          mental_book_review: '📚 멘탈 도서 리뷰',
-          audition_mindset: '🧠 합격 마인드 세팅',
-          deep_work_practice: '💪 딥워크·신체 관리',
+          timeplan: '딥워크 타임라인',
+          mental_book_review: '멘탈 도서 리뷰',
+          audition_mindset: '합격 마인드 세팅',
+          deep_work_practice: '딥워크·신체 관리',
           // 파트별 분리 이전(구버전)에 생성된 행 호환용
-          guitar_timeplan: '⏱️ 딥워크 타임라인',
-          seoul_arts_mindset: '🧠 합격 마인드 세팅',
-        }[item.insight_type] || '🤖 AI 콘텐츠';
+          guitar_timeplan: '딥워크 타임라인',
+          seoul_arts_mindset: '합격 마인드 세팅',
+        }[item.insight_type] || 'AI 콘텐츠';
         const partBadge = item.part
           ? `<span class="badge" style="background: rgba(139, 92, 246, 0.12); color: var(--neon-purple); border: 1px solid rgba(139, 92, 246, 0.25); font-size: 0.68rem; padding: 2px 8px; border-radius: 6px; margin-left: 6px;">${escapeHtml(item.part)}</span>`
           : '';
@@ -1290,7 +1285,7 @@ async function loadInsightManager() {
                      color: ${isOn ? '#00f2fe' : '#f87171'}; 
                      padding: 6px 14px; border-radius: 8px; font-size: 0.8rem; font-weight: 700; cursor: pointer;"
               data-active="${item.is_active}">
-              ${isOn ? '✅ 노출중' : '🚫 숨김'}
+              ${isOn ? '노출중' : '숨김'}
             </button>
           </div>
         `;
@@ -1298,7 +1293,6 @@ async function loadInsightManager() {
     } else {
       container.innerHTML = `
         <div class="empty-placeholder" style="padding: 30px 0;">
-          <i class="fa-solid fa-clock" style="color: #a78bfa;"></i>
           <p>아직 생성된 AI 꿀팁이 없습니다. 서버 시작 후 20초 후 자동 생성됩니다.</p>
         </div>
       `;
@@ -1320,7 +1314,7 @@ async function toggleInsight(id, btn) {
     const result = await res.json();
     if (result.success) {
       const isOn = result.is_active === 1;
-      btn.textContent = isOn ? '✅ 노출중' : '🚫 숨김';
+      btn.textContent = isOn ? '노출중' : '숨김';
       btn.style.background = isOn ? 'rgba(0,242,254,0.15)' : 'rgba(239,68,68,0.1)';
       btn.style.border = `1px solid ${isOn ? 'rgba(0,242,254,0.3)' : 'rgba(239,68,68,0.2)'}`;
       btn.style.color = isOn ? '#00f2fe' : '#f87171';
