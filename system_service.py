@@ -192,6 +192,12 @@ def requirements_changed(old_commit, new_commit):
     return "requirements.txt" in r.stdout.strip().splitlines()
 
 
+def remote_is_ancestor_of_local(local_commit, remote_commit):
+    """원격 커밋이 로컬 커밋의 조상인가 — 즉 아직 push하지 않은 로컬 커밋이 있는가."""
+    r = run_git("merge-base", "--is-ancestor", remote_commit, local_commit)
+    return r.returncode == 0
+
+
 def has_uncommitted_changes():
     r = run_git("status", "--porcelain")
     return bool(r.stdout.strip())
@@ -227,6 +233,18 @@ def check_and_deploy_updates():
     remote_commit = get_remote_commit()
     if not local_commit or not remote_commit or local_commit == remote_commit:
         return  # already up to date, or git state unreadable
+
+    # local != remote에는 "원격이 앞섬(=배포해야 함)"과 "로컬이 앞섬(=아직 push 안 함)"이
+    # 섞여 있는데, 구분 없이 원격으로 reset --hard 해버리면 push하지 않은 로컬 커밋이
+    # 통째로 사라진다. 2026-09-21에 실제로 커밋 5개(안드로이드 앱 소스 포함)가 이렇게
+    # 날아갔다 — reflog로 되살렸지만, 애초에 덮어쓰지 않는 게 맞다.
+    if remote_is_ancestor_of_local(local_commit, remote_commit):
+        log_deploy(
+            f"Local is ahead of {GIT_REMOTE}/{GIT_BRANCH} "
+            f"(local={local_commit[:8]}, remote={remote_commit[:8]}) - skipping deploy. "
+            f"Push the local commits to deploy them; resetting here would delete them."
+        )
+        return
 
     log_deploy(f"New commit detected: {local_commit[:8]} -> {remote_commit[:8]}. Deploying...")
     reqs_changed = requirements_changed(local_commit, remote_commit)
