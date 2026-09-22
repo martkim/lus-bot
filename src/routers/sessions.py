@@ -7,7 +7,7 @@ from src.errors import NotFoundError, ConflictError
 from src.services import session_service
 from src.dto.sessions import (
     SessionControlRequest, SessionStartResponse, SessionEndResponse, ForceEndSessionResponse,
-    GoalProgressResponse,
+    GoalProgressResponse, TodaySummaryResponse,
 )
 
 logger = logging.getLogger("passion_mate")
@@ -25,6 +25,20 @@ async def get_today_goal_progress(student_id: int):
     except Exception as e:
         logger.exception("오늘의 목표 조회 실패")
         raise HTTPException(status_code=500, detail={"success": False, "message": "오늘의 목표 조회 중 오류 발생", "error": str(e)})
+
+
+@router.get("/api/sessions/summary/{student_id}", response_model=TodaySummaryResponse)
+async def get_today_summary(student_id: int):
+    """학생 본인의 오늘 기록 타임라인과 연속 일수.
+
+    학생 화면은 그동안 교사 전용 /api/dashboard/status를 불러 자기 것만 걸러 썼는데,
+    인증에 막혀 401이 나고 있었다(오늘의 기록이 한 번도 표시되지 않았다)."""
+    try:
+        summary = session_service.get_today_summary(student_id)
+        return TodaySummaryResponse(success=True, data=summary)
+    except Exception as e:
+        logger.exception("오늘 요약 조회 실패")
+        raise HTTPException(status_code=500, detail={"success": False, "message": "오늘 요약 조회 중 오류 발생", "error": str(e)})
 
 
 @router.post("/api/sessions/start", response_model=SessionStartResponse)

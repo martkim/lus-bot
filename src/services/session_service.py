@@ -1,10 +1,11 @@
 import logging
-from datetime import datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from src import db
 from src.errors import NotFoundError, ConflictError
 from src.dto.sessions import (
     SessionControlRequest, SessionStartedDTO, SessionEndedDTO, ForceEndedDTO, GoalProgressDTO,
+    SessionEntryDTO, TodaySummaryDTO,
 )
 
 logger = logging.getLogger("passion_mate")
@@ -46,6 +47,57 @@ def get_today_goal_progress(student_id: int) -> GoalProgressDTO:
         blocks=GOAL_BLOCK_COUNT,
         filledBlocks=filled,
         partialFill=partial,
+    )
+
+
+def _compute_streak_days(practice_dates: list) -> int:
+    """오늘부터 거슬러 올라가며 하루도 빠지지 않은 날 수를 센다.
+
+    오늘 아직 연습하지 않았어도 어제까지 이어져 있으면 연속은 살아 있는 것으로 본다.
+    아침에 앱을 열자마자 '연속 0일'이 떠 버리면 이어 온 기록이 끊긴 것처럼 보인다."""
+    if not practice_dates:
+        return 0
+
+    days = {date.fromisoformat(d) for d in practice_dates if d}
+    if not days:
+        return 0
+
+    today = date.today()
+    if today in days:
+        cursor = today
+    elif (today - timedelta(days=1)) in days:
+        cursor = today - timedelta(days=1)
+    else:
+        return 0
+
+    streak = 0
+    while cursor in days:
+        streak += 1
+        cursor -= timedelta(days=1)
+    return streak
+
+
+def get_today_summary(student_id: int) -> TodaySummaryDTO:
+    """학생 본인의 오늘 기록과 연속 일수. 상단 요약과 타임라인이 같이 쓴다."""
+    logger.info(f"[GET_TODAY_SUMMARY] 시작 student_id={student_id}")
+    today_local_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+    since_iso = today_local_start.astimezone(timezone.utc).isoformat()
+
+    rows = db.get_student_today_sessions(student_id, since_iso)
+    sessions = [
+        SessionEntryDTO(
+            startTime=row["start_time"],
+            endTime=row["end_time"],
+            durationMinutes=row["duration_minutes"] or 0,
+        )
+        for row in rows
+    ]
+
+    return TodaySummaryDTO(
+        sessions=sessions,
+        sessionCount=len(sessions),
+        totalMinutes=sum(s.durationMinutes for s in sessions),
+        streakDays=_compute_streak_days(db.get_student_practice_dates(student_id)),
     )
 
 

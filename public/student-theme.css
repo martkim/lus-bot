@@ -788,3 +788,210 @@ body.student-light .checkbox-container input:checked ~ .plan-text {
   color: var(--n-800);
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   Today 레이아웃 (Oura 앱 구조 적용)
+   --------------------------------------------------------------------------
+   Oura가 5개 탭을 Today/Vitals/My Health 3개로 접으면서 쓴 구조를 따른다.
+     1) 상단 스코어 숏컷  - 오늘 상태를 한 줄로 훑고, 누르면 해당 카드로 간다
+     2) One Big Thing     - 지금 할 일 하나 (여기서는 타이머)
+     3) 타임라인          - 하루가 어떻게 흘러갔는지
+     4) 접힌 카드         - 카드는 목적지가 아니라 문이다
+   색은 의미가 있을 때만 쓴다. 강조색은 퍼플 하나로 유지한다.
+   ========================================================================== */
+.today-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 0 2px;
+}
+
+.today-date {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.today-streak {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--p-700);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 4칸 고정 그리드. 가로 스크롤로 두면 4번째 칸이 잘려 있는 걸 모르고 지나친다. */
+.score-shortcuts {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.score-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 74px;
+  padding: 10px 8px;
+  background: #fff;
+  border: 1px solid var(--n-200);
+  border-radius: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.score-chip:hover {
+  background: var(--bg-secondary);
+  border-color: var(--n-300);
+}
+
+.score-chip-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* 숫자가 바뀔 때 옆 칸이 밀리지 않도록 tabular-nums를 건다 */
+.score-chip-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.score-chip-sub {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- 접힌 카드 ---------------------------------------------------------- */
+.disclosure summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+/* 사파리는 ::marker가 아니라 이 의사요소로 삼각형을 그린다 */
+.disclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.disclosure-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 48px;
+}
+
+.disclosure-title {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+/* 펼침 표시는 글자 대신 선 두 개로 만든 +/- 기호 — 아이콘 폰트를 쓰지 않기로 했다 */
+.disclosure-mark {
+  position: relative;
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+}
+
+.disclosure-mark::before,
+.disclosure-mark::after {
+  content: '';
+  position: absolute;
+  background: var(--text-muted);
+  border-radius: 1px;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.disclosure-mark::before {
+  top: 9px;
+  left: 2px;
+  width: 16px;
+  height: 2px;
+}
+
+.disclosure-mark::after {
+  top: 2px;
+  left: 9px;
+  width: 2px;
+  height: 16px;
+}
+
+.disclosure[open] .disclosure-mark::after {
+  transform: rotate(90deg);
+  opacity: 0;
+}
+
+.disclosure-body {
+  padding-top: 14px;
+  margin-top: 14px;
+  border-top: 1px solid var(--n-200);
+}
+
+/* --- 접힌 카드 안의 Q&A --------------------------------------------------- */
+.section-desc {
+  font-size: 0.85rem;
+  color: var(--text-body);
+  line-height: 1.5;
+  margin: 0 0 14px;
+}
+
+.qa-input-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+body.student-light .custom-textarea {
+  width: 100%;
+  min-height: 84px;
+  padding: 12px 14px;
+  font-size: 0.92rem;
+  font-family: inherit;
+  line-height: 1.5;
+  resize: vertical;
+  color: var(--text-main);
+  background: var(--bg-secondary);
+  border: 1px solid var(--n-200);
+  border-radius: 12px;
+  outline: none;
+}
+
+body.student-light .custom-textarea:focus {
+  border-color: var(--p-600);
+  box-shadow: 0 0 0 4px var(--neon-purple-glow);
+}
+
+.btn-qa-submit {
+  align-self: flex-end;
+  min-height: 44px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.qa-history-title {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin: 0 0 10px;
+}
+
+.qa-history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

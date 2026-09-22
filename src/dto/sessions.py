@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -42,6 +42,25 @@ class GoalProgressDTO(BaseModel):
 class GoalProgressResponse(BaseModel):
     success: bool
     data: GoalProgressDTO
+
+
+class SessionEntryDTO(BaseModel):
+    startTime: str
+    endTime: str
+    durationMinutes: int
+
+
+class TodaySummaryDTO(BaseModel):
+    """학생 화면 상단 요약 — 한 번의 호출로 타임라인과 지표를 함께 내려준다."""
+    sessions: List[SessionEntryDTO]
+    sessionCount: int
+    totalMinutes: int
+    streakDays: int      # 오늘(또는 어제)부터 거슬러 며칠 연속으로 연습했는지
+
+
+class TodaySummaryResponse(BaseModel):
+    success: bool
+    data: TodaySummaryDTO
 
 
 class ForceEndedDTO(BaseModel):

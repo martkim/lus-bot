@@ -1211,3 +1211,49 @@ def update_daily_goal_minutes(student_id, minutes):
         return cursor.rowcount > 0
     finally:
         conn.close()
+
+
+def get_student_today_sessions(student_id, since_iso):
+    """학생 본인의 오늘 완료 세션 목록 (학생 화면 타임라인용).
+
+    지금까지 학생 화면은 교사 전용 /api/dashboard/status를 호출해 전체 학생의
+    타임라인을 받아 자기 이름으로 걸러 쓰고 있었다. 인증이 걸려 401로 막히는 데다,
+    통과했더라도 남의 연습 기록까지 내려받는 셈이라 본인 것만 조회하도록 분리한다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT start_time, end_time, duration_minutes
+            FROM sessions
+            WHERE student_id = ? AND status = 'COMPLETED' AND end_time >= ?
+            ORDER BY end_time DESC
+            """,
+            (student_id, since_iso)
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_student_practice_dates(student_id, limit=400):
+    """학생이 연습을 완료한 날짜 목록 (최신순). 연속 일수 계산용.
+
+    날짜 경계는 로컬 기준이어야 해서 SQLite의 date()에 'localtime'을 준다.
+    UTC로 자르면 밤 9시 이후 연습이 다음 날로 밀려 연속이 끊긴 것처럼 보인다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            SELECT DISTINCT date(end_time, 'localtime') AS practice_date
+            FROM sessions
+            WHERE student_id = ? AND status = 'COMPLETED' AND end_time IS NOT NULL
+            ORDER BY practice_date DESC
+            LIMIT ?
+            """,
+            (student_id, limit)
+        )
+        return [row["practice_date"] for row in cursor.fetchall()]
+    finally:
+        conn.close()

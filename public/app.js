@@ -98,7 +98,13 @@ const dom = {
 
   // 개인 숙제 관련 DOM 요소
   personalHomeworkSection: document.getElementById('personal-homework-section'),
-  personalHomeworkList: document.getElementById('personal-homework-list')
+  personalHomeworkList: document.getElementById('personal-homework-list'),
+
+  // Today 상단 요약 (날짜 / 연속 일수 / 스코어 숏컷)
+  todayHead: document.getElementById('today-head'),
+  todayDate: document.getElementById('today-date'),
+  todayStreak: document.getElementById('today-streak'),
+  scoreShortcuts: document.getElementById('score-shortcuts')
 };
 
 // 2. 초기 기동 함수
@@ -136,6 +142,21 @@ async function initApp() {
 
 // 4. 이벤트 리스너 리스트
 function setupEventListeners() {
+  // --- 스코어 숏컷: 지표를 보여주는 동시에 해당 카드로 데려가는 문 ---
+  if (dom.scoreShortcuts) {
+    dom.scoreShortcuts.addEventListener('click', (e) => {
+      const chip = e.target.closest('[data-scroll-to]');
+      if (!chip) return;
+      const target = document.getElementById(chip.dataset.scrollTo);
+      if (!target) return;
+
+      // 접힌 카드로 보낼 때는 펴 주지 않으면 눌러도 아무 일도 없어 보인다.
+      const details = target.querySelector('details');
+      if (details) details.open = true;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+  }
+
   // --- 내 연습 계획 ---
   if (dom.planAddForm) {
     dom.planAddForm.addEventListener('submit', handlePlanAdd);
@@ -558,51 +579,78 @@ function updateTimerDigits() {
 }
 
 // 12. 특정 학생의 당일 완료된 연습 이력 렌더링
+// Oura 'Today' 상단 요약 — 오늘 기록 타임라인과 스코어 숏컷이 같은 응답을 쓴다.
+// 예전에는 교사 전용 /api/dashboard/status를 불러 전체 학생 타임라인에서 자기 이름을
+// 걸러 썼는데, 인증에 막혀 401이 떨어져 '오늘의 기록'이 늘 비어 있었다.
 async function loadPersonalHistory(studentId) {
   try {
-    const res = await fetch('/api/dashboard/status');
+    const res = await fetch(`/api/sessions/summary/${studentId}`);
     const result = await res.json();
+    if (!result.success || !result.data) return;
 
-    if (result.success) {
-      // 오늘 타임라인 내역 중 현재 선택된 학생의 완료 세션만 필터링
-      const mySessions = result.data.timeline.filter(sess => sess.name === state.selectedStudent.name);
-
-      dom.personalHistorySection.style.display = 'block';
-      dom.personalSessionsList.innerHTML = '';
-
-      if (mySessions.length === 0) {
-        dom.personalSessionsList.innerHTML = `
-          <div class="empty-placeholder">
-            <p>아직 오늘 기록된 연습 내역이 없습니다.</p>
-          </div>
-        `;
-        return;
-      }
-
-      mySessions.forEach(sess => {
-        // 시간 파싱 (로컬 시간으로 보기 좋게 포매팅)
-        const formatTime = (isoStr) => {
-          const date = new Date(isoStr);
-          return date.toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false });
-        };
-
-        const item = document.createElement('div');
-        item.className = 'history-item';
-        item.innerHTML = `
-          <div class="item-left">
-            <div class="item-title">연습 세션 완료</div>
-            <div class="item-subtitle">${formatTime(sess.start_time)} ~ ${formatTime(sess.end_time)}</div>
-          </div>
-          <div class="item-right">
-            <span class="duration-tag">${sess.duration_minutes}분 집중</span>
-          </div>
-        `;
-        dom.personalSessionsList.appendChild(item);
-      });
-    }
+    renderTodayHead(result.data);
+    renderSessionTimeline(result.data.sessions);
+    updateScoreChip('session', String(result.data.sessionCount), '회');
   } catch (err) {
-    console.error('loadPersonalHistory Error:', err);
+    // 기록을 못 불러와도 타이머는 계속 쓸 수 있어야 한다.
   }
+}
+
+function renderTodayHead(summary) {
+  if (dom.todayHead) {
+    dom.todayHead.style.display = 'flex';
+  }
+  if (dom.todayDate) {
+    dom.todayDate.textContent = new Date().toLocaleDateString('ko-KR', {
+      month: 'long', day: 'numeric', weekday: 'short'
+    });
+  }
+  if (dom.todayStreak) {
+    // 연속 0일은 굳이 알리지 않는다 — 시작도 전에 실패를 먼저 보여 줄 이유가 없다.
+    dom.todayStreak.textContent = summary.streakDays > 0
+      ? `${summary.streakDays}일 연속`
+      : '';
+  }
+}
+
+function renderSessionTimeline(sessions) {
+  if (!dom.personalHistorySection || !dom.personalSessionsList) return;
+  dom.personalHistorySection.style.display = 'block';
+  dom.personalSessionsList.innerHTML = '';
+
+  if (!sessions || sessions.length === 0) {
+    dom.personalSessionsList.innerHTML =
+      '<div class="empty-placeholder"><p>아직 오늘 완료된 연습 기록이 없습니다.</p></div>';
+    return;
+  }
+
+  const formatTime = (isoStr) => new Date(isoStr).toLocaleTimeString('ko-KR', {
+    hour: '2-digit', minute: '2-digit', hour12: false
+  });
+
+  sessions.forEach((sess) => {
+    const item = document.createElement('div');
+    item.className = 'history-item';
+    item.innerHTML = `
+      <div class="item-left">
+        <div class="item-title">연습 세션 완료</div>
+        <div class="item-subtitle">${escapeHtml(formatTime(sess.startTime))} ~ ${escapeHtml(formatTime(sess.endTime))}</div>
+      </div>
+      <div class="item-right">
+        <span class="duration-tag">${sess.durationMinutes}분 집중</span>
+      </div>
+    `;
+    dom.personalSessionsList.appendChild(item);
+  });
+}
+
+// 스코어 숏컷 한 칸을 갱신한다. 값과 단위를 나눠 두어야 큰 숫자만 눈에 들어온다.
+function updateScoreChip(key, value, sub) {
+  const valueEl = document.getElementById(`chip-${key}`);
+  const subEl = document.getElementById(`chip-${key}-sub`);
+  if (valueEl) valueEl.textContent = value;
+  if (subEl && sub !== undefined) subEl.textContent = sub;
+  if (dom.scoreShortcuts) dom.scoreShortcuts.style.display = 'grid';
 }
 
 // 13. 예쁜 토스트 팝업 알림 함수
@@ -779,6 +827,12 @@ function renderDailyGoal(d) {
 
   dom.goalCount.textContent = `${formatMinutes(d.doneMinutes)} / ${formatMinutes(d.goalMinutes)}`;
 
+  // 상단 숏컷에는 달성률만 큰 숫자로 올리고, 실제 분은 보조로 붙인다.
+  const percent = d.goalMinutes > 0
+    ? Math.min(999, Math.round((d.doneMinutes / d.goalMinutes) * 100))
+    : 0;
+  updateScoreChip('practice', `${percent}%`, formatMinutes(d.doneMinutes));
+
   const left = Math.max(0, d.goalMinutes - d.doneMinutes);
   if (dom.goalFoot) {
     dom.goalFoot.innerHTML = left === 0
@@ -839,6 +893,7 @@ function renderPersonalPlans(data) {
   });
 
   updatePlanSlotCount(plans.length);
+  updateScoreChip('plan', `${plans.filter((p) => p.done).length}/${plans.length}`, '완료');
 }
 
 // 슬롯이 꽉 차면 입력창을 잠가, 눌러 본 뒤에야 거절당하는 일이 없게 한다.
@@ -1207,6 +1262,9 @@ function processStudentLogout() {
   }
   // 목표 편집창이 열린 채로 퇴장하면 다음 사람 화면에 그대로 펼쳐져 있다.
   closeGoalEditor();
+  // 상단 요약은 앞사람의 수치라 반드시 같이 치운다.
+  if (dom.todayHead) dom.todayHead.style.display = 'none';
+  if (dom.scoreShortcuts) dom.scoreShortcuts.style.display = 'none';
   if (dom.personalQaSection) {
     dom.personalQaSection.style.display = 'none';
   }
@@ -1382,10 +1440,12 @@ async function loadStudentHomework(studentId) {
     if (!result.success) return;
 
     const list = result.data;
+    updateScoreChip('homework', String(list.length), '건');
+
     if (list.length === 0) {
       dom.personalHomeworkList.innerHTML = `
-        <div class="empty-placeholder" style="padding: 15px 0;">
-          <p style="font-size: 0.8rem; color: var(--text-muted);">아직 등록된 숙제가 없습니다.</p>
+        <div class="empty-placeholder">
+          <p>아직 등록된 숙제가 없습니다.</p>
         </div>
       `;
       return;

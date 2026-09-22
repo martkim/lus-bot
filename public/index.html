@@ -109,7 +109,37 @@
           </div>
         </div>
 
-        <!-- 메인 타이머 카드 -->
+        <!-- Oura 'Today' 구조를 따른다: 상단 지표 바 -> 지금 할 일 하나 -> 타임라인 -> 접힌 카드들.
+             스코어 숏컷은 지표를 보여주는 동시에 아래 해당 카드로 데려가는 문이다. -->
+        <div class="today-head" id="today-head" style="display: none;">
+          <span class="today-date" id="today-date"></span>
+          <span class="today-streak" id="today-streak"></span>
+        </div>
+
+        <div class="score-shortcuts" id="score-shortcuts" style="display: none;">
+          <button type="button" class="score-chip" data-scroll-to="daily-goal-section">
+            <span class="score-chip-label">연습량</span>
+            <span class="score-chip-value" id="chip-practice">0%</span>
+            <span class="score-chip-sub" id="chip-practice-sub">0분</span>
+          </button>
+          <button type="button" class="score-chip" data-scroll-to="personal-plan-section">
+            <span class="score-chip-label">계획</span>
+            <span class="score-chip-value" id="chip-plan">0/0</span>
+            <span class="score-chip-sub" id="chip-plan-sub">완료</span>
+          </button>
+          <button type="button" class="score-chip" data-scroll-to="personal-history-section">
+            <span class="score-chip-label">세션</span>
+            <span class="score-chip-value" id="chip-session">0</span>
+            <span class="score-chip-sub" id="chip-session-sub">회</span>
+          </button>
+          <button type="button" class="score-chip" data-scroll-to="personal-homework-section">
+            <span class="score-chip-label">숙제</span>
+            <span class="score-chip-value" id="chip-homework">0</span>
+            <span class="score-chip-sub" id="chip-homework-sub">건</span>
+          </button>
+        </div>
+
+        <!-- One Big Thing — 지금 이 순간 해야 할 단 하나 -->
         <div class="timer-section">
           <div class="timer-outer-ring" id="timer-ring">
             <div class="timer-inner-ring">
@@ -179,49 +209,56 @@
           </form>
         </div>
 
-        <!-- AI 오늘의 서울예대 꿀팁 위젯 -->
-        <div id="ai-daily-insight-zone" style="margin-top: 15px;"></div>
-
-        <!-- 선생님께 직접 질문하는 실시간 Q&A 칸 -->
-        <div class="glass-card plan-card" id="personal-qa-section" style="display: none; margin-top: 15px;">
-          <h3>선생님께 질문하기 (Q&A)</h3>
-          <p class="section-desc" style="font-size: 0.82rem; color: var(--text-muted); margin-bottom: 12px; line-height: 1.4;">
-            연습 중 막히는 부분이나 전공 상담 질문을 보내면 선생님의 대시보드로 실시간 자동 전송됩니다. (AI 추천 답변 초안 제공)
-          </p>
-          <div class="qa-input-wrapper" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 15px;">
-            <textarea id="student-qa-input" class="custom-textarea" placeholder="질문 내용을 입력하세요... (예: 빠른 구간에서 자꾸 박자가 밀려요)" style="width: 100%; min-height: 70px; padding: 12px; font-size: 0.88rem; resize: none; border-radius: 12px; background: var(--bg-tertiary); border: 1px solid var(--glass-border); color: var(--text-main); outline: none;" required></textarea>
-            <button id="btn-student-qa-submit" class="btn btn-secondary" style="align-self: flex-end; padding: 8px 16px; border-radius: 8px; font-weight: 600; font-size: 0.85rem; border: none; cursor: pointer;">
-              질문 보내기
-            </button>
-          </div>
-          
-          <div class="personal-qa-history">
-            <h4 style="font-size: 0.88rem; font-weight: 600; margin-bottom: 10px; color: var(--neon-mint); display: flex; align-items: center; gap: 6px;">
-              보낸 질문 내역
-            </h4>
-            <div id="student-qa-list" class="qa-history-list" style="display: flex; flex-direction: column; gap: 8px;">
-              <!-- 동적 질문 히스토리 렌더링 -->
-            </div>
-          </div>
-        </div>
-
-        <!-- 선생님이 내주신 개인 숙제 -->
-        <div class="glass-card plan-card" id="personal-homework-section" style="display: none; margin-top: 15px;">
-          <h3>내 숙제</h3>
-          <div id="personal-homework-list" class="plan-list">
-            <!-- JS로 숙제 목록 동적 생성 -->
-          </div>
-        </div>
-
-        <!-- 오늘 본인의 연습 세션 이력 -->
+        <!-- 타임라인 — Oura Today의 '하루가 어떻게 흘러갔는지' 자리 -->
         <div class="glass-card history-card" id="personal-history-section" style="display: none;">
           <h3>오늘의 기록</h3>
           <div id="personal-sessions" class="history-list">
-            <!-- 오늘의 기록 목록이 들어옴 -->
             <div class="empty-placeholder">
               <p>아직 오늘 완료된 연습 기록이 없습니다.</p>
             </div>
           </div>
+        </div>
+
+        <!-- 여기부터는 접힌 카드. 필요할 때 열어 보는 것들이라 기본은 닫아 둔다.
+             (꿀팁 위젯 자리가 여기 있었는데, 어느 JS도 채우지 않는 빈 div였다.
+              꿀팁은 전용 탭이 따로 있으므로 그대로 걷어냈다.) -->
+        <div class="glass-card plan-card disclosure-card" id="personal-qa-section" style="display: none;">
+          <details class="disclosure">
+            <summary class="disclosure-head">
+              <span class="disclosure-title">선생님께 질문하기</span>
+              <span class="disclosure-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="disclosure-body">
+              <p class="section-desc">
+                연습 중 막히는 부분이나 전공 상담 질문을 보내면 선생님의 대시보드로 실시간 자동 전송됩니다.
+              </p>
+              <div class="qa-input-wrapper">
+                <textarea id="student-qa-input" class="custom-textarea"
+                          placeholder="질문 내용을 입력하세요 (예: 빠른 구간에서 자꾸 박자가 밀려요)" required></textarea>
+                <button id="btn-student-qa-submit" class="btn btn-secondary btn-qa-submit">질문 보내기</button>
+              </div>
+              <div class="personal-qa-history">
+                <h4 class="qa-history-title">보낸 질문 내역</h4>
+                <div id="student-qa-list" class="qa-history-list">
+                  <!-- 동적 질문 히스토리 렌더링 -->
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="glass-card plan-card disclosure-card" id="personal-homework-section" style="display: none;">
+          <details class="disclosure">
+            <summary class="disclosure-head">
+              <span class="disclosure-title">내 숙제</span>
+              <span class="disclosure-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="disclosure-body">
+              <div id="personal-homework-list" class="plan-list">
+                <!-- JS로 숙제 목록 동적 생성 -->
+              </div>
+            </div>
+          </details>
         </div>
       </section>
 
