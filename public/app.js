@@ -27,8 +27,8 @@ const state = {
   timerInterval: null,
   startTime: null,
   qaPollingInterval: null,
-  goalMinutes: 180,   // 목표 편집창을 열 때 기본값으로 쓴다 (서버 응답으로 갱신)
-  planMaxSlots: 10    // 계획 슬롯 상한 — 서버가 알려주는 값으로 덮어쓴다
+  planMaxSlots: 10,   // 계획 슬롯 상한 — 서버가 알려주는 값으로 덮어쓴다
+  activePlanId: null  // 지금 타이머가 돌고 있는 계획 슬롯 (없으면 자유 연습)
 };
 
 // 1. DOM 요소 취득
@@ -72,17 +72,8 @@ const dom = {
   planAddInput: document.getElementById('plan-add-input'),
   btnPlanAdd: document.getElementById('btn-plan-add'),
 
-  // 오늘의 목표(시간 블록) DOM 요소
-  dailyGoalSection: document.getElementById('daily-goal-section'),
-  goalBlocks: document.getElementById('goal-blocks'),
-  goalCount: document.getElementById('goal-count'),
-  goalFoot: document.getElementById('goal-foot'),
-  btnGoalEdit: document.getElementById('btn-goal-edit'),
-  goalEditor: document.getElementById('goal-editor'),
-  goalInputHours: document.getElementById('goal-input-hours'),
-  goalInputMins: document.getElementById('goal-input-mins'),
-  btnGoalSave: document.getElementById('btn-goal-save'),
-  btnGoalCancel: document.getElementById('btn-goal-cancel'),
+  // 타이머가 도는 동안 '무엇을 연습 중인지' 보여주는 줄
+  timerSubject: document.getElementById('timer-subject'),
 
   // AI 튜터 챗봇 DOM 요소
   chatMessages: document.getElementById('chat-messages'),
@@ -163,11 +154,19 @@ function setupEventListeners() {
   }
   // 슬롯은 렌더링될 때마다 새로 만들어지므로, 목록에 한 번만 걸어 두고 위임한다.
   if (dom.personalPlanList) {
-    dom.personalPlanList.addEventListener('change', (e) => {
-      const planId = e.target.dataset && e.target.dataset.planCheck;
-      if (planId) handlePlanCheck(Number(planId), e.target.checked, e.target);
-    });
     dom.personalPlanList.addEventListener('click', (e) => {
+      const startId = e.target.dataset && e.target.dataset.planStart;
+      if (startId) {
+        const item = e.target.closest('[data-plan-id]');
+        const text = item ? item.querySelector('.plan-text').textContent.trim() : '';
+        startPractice(text, Number(startId));
+        return;
+      }
+      const endId = e.target.dataset && e.target.dataset.planEnd;
+      if (endId) {
+        endPractice();
+        return;
+      }
       const editId = e.target.dataset && e.target.dataset.planEdit;
       if (editId) {
         handlePlanEdit(Number(editId));
@@ -177,33 +176,6 @@ function setupEventListeners() {
       if (deleteId) handlePlanDelete(Number(deleteId));
     });
   }
-
-  // --- 오늘의 목표 시간 설정 ---
-  if (dom.btnGoalEdit) {
-    dom.btnGoalEdit.addEventListener('click', () => {
-      if (dom.goalEditor && dom.goalEditor.hidden) {
-        openGoalEditor();
-      } else {
-        closeGoalEditor();
-      }
-    });
-  }
-  if (dom.btnGoalSave) {
-    dom.btnGoalSave.addEventListener('click', handleGoalSave);
-  }
-  if (dom.btnGoalCancel) {
-    dom.btnGoalCancel.addEventListener('click', closeGoalEditor);
-  }
-  // 숫자 칸에서 엔터를 치면 저장으로 이어지게 한다 (모바일 키보드의 '완료' 포함).
-  [dom.goalInputHours, dom.goalInputMins].forEach((input) => {
-    if (!input) return;
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        handleGoalSave();
-      }
-    });
-  });
 
   // 하단 탭바 뷰 전환 처리
   dom.tabItems.forEach(item => {
@@ -361,6 +333,8 @@ function handleStudentSelection(studentId) {
     state.startTime = new Date(student.active_session_start);
 
     // 타이머 UI 복구 가동
+    state.activeSession.label = student.active_session_label || null;
+    state.activePlanId = student.active_session_plan_id || null;
     resumeTimerUI();
   } else {
     // 진행 중인 연습이 없다면 타이머 UI 초기화
@@ -369,9 +343,6 @@ function handleStudentSelection(studentId) {
 
   // 본인이 직접 쓴 연습 계획 슬롯
   loadPersonalPlan(studentId);
-
-  // 오늘의 목표 블록
-  loadDailyGoal(studentId);
 
   // 오늘의 개인 연습 기록 내역도 리프레시
   loadPersonalHistory(studentId);
@@ -400,8 +371,17 @@ function handleStudentSelection(studentId) {
 }
 
 // 7. 연습 시작 API 호출
-async function startPractice() {
+async function startPractice(label, planId) {
   if (!state.selectedStudent) return;
+
+  // 계획 슬롯이 아니라 큰 버튼으로 시작한 경우엔 무엇을 연습할지 물어본다.
+  // 비워 두고 넘어가도 시작은 되게 한다 — 적으라고 막아 세우면 타이머를 안 쓰게 된다.
+  if (label === undefined) {
+    const typed = window.prompt('무엇을 연습하시나요? (비워 두어도 됩니다)', '');
+    if (typed === null) return;   // 취소
+    label = typed.trim();
+    planId = null;
+  }
 
   dom.btnTimerToggle.disabled = true; // 통신 도중 중복클릭 방지
 
@@ -409,7 +389,11 @@ async function startPractice() {
     const res = await fetch('/api/sessions/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId: state.selectedStudent.id })
+      body: JSON.stringify({
+        studentId: state.selectedStudent.id,
+        label: label || null,
+        planId: planId || null
+      })
     });
 
     const result = await res.json();
@@ -417,12 +401,16 @@ async function startPractice() {
     if (result.success) {
       state.activeSession = {
         id: result.data.sessionId,
-        start_time: result.data.startTime
+        start_time: result.data.startTime,
+        label: result.data.label
       };
+      state.activePlanId = result.data.planId || null;
       state.startTime = new Date(result.data.startTime);
 
       // 타이머 가동 UI 전환
       resumeTimerUI();
+      // 시작 버튼이 '완료'로 바뀌어야 하므로 계획 목록을 다시 그린다
+      await loadPersonalPlan(state.selectedStudent.id);
       showToast(`${state.selectedStudent.name} 학생의 연습 기록을 시작합니다. 화이팅!`, 'success');
 
       // 학생 리스트 재로딩하여 내부 상태의 active_session_id 동기화
@@ -466,9 +454,12 @@ async function endPractice() {
       const duration = result.data ? result.data.durationMinutes : 0;
       showToast(`연습이 정상 종료되었습니다! 총 ${duration}분 동안 집중하셨네요. 대단합니다!`, 'success');
       resetTimerUI();
+      if (state.selectedStudent) {
+        await loadPersonalPlan(state.selectedStudent.id);
+        await loadPersonalHistory(state.selectedStudent.id);
+      }
       await loadStudents();
       loadPersonalHistory(state.selectedStudent.id);
-      loadDailyGoal(state.selectedStudent.id);
     } else {
       throw new Error(result.message || '연습을 종료하지 못했습니다.');
     }
@@ -532,6 +523,7 @@ function resumeTimerUI() {
   // 버튼 스타일 변경 (연습 중지 모드)
   dom.btnTimerToggle.textContent = '연습 완료하기';
   dom.btnTimerToggle.className = 'btn btn-primary btn-lg end-mode';
+  renderTimerSubject();
 
   dom.timerRing.classList.add('active');
   dom.timerStatusText.textContent = '연습 중';
@@ -550,6 +542,8 @@ function resetTimerUI() {
 
   dom.btnTimerToggle.textContent = '연습 시작하기';
   dom.btnTimerToggle.className = 'btn btn-primary btn-lg';
+  state.activePlanId = null;
+  renderTimerSubject();
 
   dom.timerRing.classList.remove('active');
   dom.timerTime.textContent = '00:00:00';
@@ -591,6 +585,7 @@ async function loadPersonalHistory(studentId) {
     renderTodayHead(result.data);
     renderSessionTimeline(result.data.sessions);
     updateScoreChip('session', String(result.data.sessionCount), '회');
+    updateScoreChip('practice', formatMinutes(result.data.totalMinutes), '오늘');
   } catch (err) {
     // 기록을 못 불러와도 타이머는 계속 쓸 수 있어야 한다.
   }
@@ -631,13 +626,14 @@ function renderSessionTimeline(sessions) {
   sessions.forEach((sess) => {
     const item = document.createElement('div');
     item.className = 'history-item';
+    // 무엇을 연습했는지가 제목이다. 적지 않고 시작한 세션만 '연습 세션'으로 남는다.
     item.innerHTML = `
       <div class="item-left">
-        <div class="item-title">연습 세션 완료</div>
+        <div class="item-title">${escapeHtml(sess.label || '연습 세션')}</div>
         <div class="item-subtitle">${escapeHtml(formatTime(sess.startTime))} ~ ${escapeHtml(formatTime(sess.endTime))}</div>
       </div>
       <div class="item-right">
-        <span class="duration-tag">${sess.durationMinutes}분 집중</span>
+        <span class="duration-tag">${sess.durationMinutes}분</span>
       </div>
     `;
     dom.personalSessionsList.appendChild(item);
@@ -651,6 +647,15 @@ function updateScoreChip(key, value, sub) {
   if (valueEl) valueEl.textContent = value;
   if (subEl && sub !== undefined) subEl.textContent = sub;
   if (dom.scoreShortcuts) dom.scoreShortcuts.style.display = 'grid';
+}
+
+// 타이머 안에 '지금 무엇을 연습 중인지' 한 줄로 띄운다.
+// 시간만 흐르면 나중에 기록을 봐도 뭘 했는지 알 수 없어서, 연습 중에도 계속 보이게 둔다.
+function renderTimerSubject() {
+  if (!dom.timerSubject) return;
+  const label = state.activeSession && state.activeSession.label;
+  dom.timerSubject.textContent = label || '';
+  dom.timerSubject.style.display = label ? 'block' : 'none';
 }
 
 // 13. 예쁜 토스트 팝업 알림 함수
@@ -794,53 +799,6 @@ function formatMinutes(min) {
   return `${m}분`;
 }
 
-async function loadDailyGoal(studentId) {
-  if (!dom.dailyGoalSection || !dom.goalBlocks) return;
-  try {
-    const res = await fetch(`/api/sessions/today/${studentId}`);
-    const result = await res.json();
-    if (!result.success || !result.data) return;
-    renderDailyGoal(result.data);
-    dom.dailyGoalSection.style.display = 'block';
-  } catch (err) {
-    // 목표 표시는 부가 정보라, 실패해도 타이머 같은 핵심 기능을 막지 않는다.
-  }
-}
-
-function renderDailyGoal(d) {
-  // 편집창에 들어갈 기본값은 항상 현재 목표. 열 때마다 다시 채워야
-  // 저장을 취소하고 다시 열었을 때 직전에 끄적인 값이 남지 않는다.
-  state.goalMinutes = d.goalMinutes;
-
-  dom.goalBlocks.innerHTML = '';
-  for (let i = 0; i < d.blocks; i++) {
-    const block = document.createElement('div');
-    block.className = 'goal-block';
-    if (i < d.filledBlocks) {
-      block.classList.add('filled');
-    } else if (i === d.filledBlocks && d.partialFill > 0) {
-      block.classList.add('partial');
-      block.style.setProperty('--fill', `${d.partialFill}%`);
-    }
-    dom.goalBlocks.appendChild(block);
-  }
-
-  dom.goalCount.textContent = `${formatMinutes(d.doneMinutes)} / ${formatMinutes(d.goalMinutes)}`;
-
-  // 상단 숏컷에는 달성률만 큰 숫자로 올리고, 실제 분은 보조로 붙인다.
-  const percent = d.goalMinutes > 0
-    ? Math.min(999, Math.round((d.doneMinutes / d.goalMinutes) * 100))
-    : 0;
-  updateScoreChip('practice', `${percent}%`, formatMinutes(d.doneMinutes));
-
-  const left = Math.max(0, d.goalMinutes - d.doneMinutes);
-  if (dom.goalFoot) {
-    dom.goalFoot.innerHTML = left === 0
-      ? '오늘 목표를 다 채웠어요!'
-      : `목표까지 <strong>${formatMinutes(left)}</strong> 남았어요`;
-  }
-}
-
 // ==========================================
 // 15. 내 연습 계획 - 학생이 직접 쓰는 슬롯
 // ==========================================
@@ -875,16 +833,29 @@ function renderPersonalPlans(data) {
   }
 
   plans.forEach((plan) => {
+    const running = state.activePlanId === plan.id;
     const item = document.createElement('div');
-    item.className = 'plan-item' + (plan.done ? ' done' : '');
+    item.className = 'plan-item' + (plan.done ? ' done' : '') + (running ? ' running' : '');
     item.dataset.planId = plan.id;
+
+    // 지금 이 계획으로 타이머가 돌고 있으면 '완료', 아니면 '시작'.
+    // 다른 계획이 돌고 있는 동안에는 시작 버튼을 잠근다 — 세션은 한 번에 하나다.
+    let action;
+    if (running) {
+      action = `<button type="button" class="plan-run plan-run-end" data-plan-end="${plan.id}">완료</button>`;
+    } else if (state.activeSession) {
+      action = `<button type="button" class="plan-run" disabled>시작</button>`;
+    } else {
+      action = `<button type="button" class="plan-run" data-plan-start="${plan.id}">시작</button>`;
+    }
+
     item.innerHTML = `
-      <label class="checkbox-container">
-        <input type="checkbox" data-plan-check="${plan.id}"${plan.done ? ' checked' : ''}>
-        <span class="checkmark"></span>
+      <div class="plan-main">
+        <span class="plan-state">${running ? '진행 중' : (plan.done ? '완료' : '')}</span>
         <span class="plan-text">${escapeHtml(plan.content)}</span>
-      </label>
+      </div>
       <div class="plan-item-actions">
+        ${action}
         <button type="button" class="plan-action" data-plan-edit="${plan.id}">수정</button>
         <button type="button" class="plan-action plan-action-danger" data-plan-delete="${plan.id}">삭제</button>
       </div>
@@ -967,18 +938,6 @@ async function patchPlan(planId, body) {
   return result;
 }
 
-async function handlePlanCheck(planId, done, checkbox) {
-  try {
-    await patchPlan(planId, { done });
-    const item = dom.personalPlanList.querySelector(`[data-plan-id="${planId}"]`);
-    if (item) item.classList.toggle('done', done);
-  } catch (err) {
-    // 서버가 거절했으면 체크 표시를 되돌려 화면과 저장 상태를 일치시킨다.
-    if (checkbox) checkbox.checked = !done;
-    showToast(err.message, 'error');
-  }
-}
-
 async function handlePlanEdit(planId) {
   const item = dom.personalPlanList.querySelector(`[data-plan-id="${planId}"]`);
   const current = item ? item.querySelector('.plan-text').textContent.trim() : '';
@@ -1014,57 +973,6 @@ async function handlePlanDelete(planId) {
     await loadPersonalPlan(state.selectedStudent.id);
   } catch (err) {
     showToast('계획을 삭제하지 못했습니다. 연결 상태를 확인해 주세요.', 'error');
-  }
-}
-
-// ==========================================
-// 15-1. 오늘의 목표 시간 직접 설정
-// ==========================================
-function openGoalEditor() {
-  if (!dom.goalEditor) return;
-  // 열 때마다 현재 목표로 다시 채운다. 그래야 저장을 취소하고 다시 열었을 때
-  // 직전에 끄적여 둔 값이 남아 있지 않다.
-  const minutes = state.goalMinutes || 180;
-  dom.goalInputHours.value = Math.floor(minutes / 60);
-  dom.goalInputMins.value = minutes % 60;
-  dom.goalEditor.hidden = false;
-  dom.btnGoalEdit.setAttribute('aria-expanded', 'true');
-  dom.goalInputHours.focus();
-}
-
-function closeGoalEditor() {
-  if (!dom.goalEditor) return;
-  dom.goalEditor.hidden = true;
-  dom.btnGoalEdit.setAttribute('aria-expanded', 'false');
-}
-
-async function handleGoalSave() {
-  if (!state.selectedStudent) return;
-
-  // 빈 칸은 0으로 본다. 둘 다 비우면 0분이 되어 서버의 범위 검사에 걸린다.
-  const hours = parseInt(dom.goalInputHours.value, 10) || 0;
-  const mins = parseInt(dom.goalInputMins.value, 10) || 0;
-  const goalMinutes = hours * 60 + mins;
-
-  dom.btnGoalSave.disabled = true;
-  try {
-    const res = await fetch('/api/students/daily-goal', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ studentId: state.selectedStudent.id, goalMinutes })
-    });
-    const result = await res.json();
-    if (!res.ok) {
-      showToast(planErrorMessage(result, '목표 시간을 바꾸지 못했습니다.'), 'error');
-      return;
-    }
-    closeGoalEditor();
-    await loadDailyGoal(state.selectedStudent.id);
-    showToast(`오늘의 목표를 ${formatMinutes(goalMinutes)}으로 정했습니다.`, 'success');
-  } catch (err) {
-    showToast('목표 시간을 바꾸지 못했습니다. 연결 상태를 확인해 주세요.', 'error');
-  } finally {
-    dom.btnGoalSave.disabled = false;
   }
 }
 
@@ -1261,7 +1169,6 @@ function processStudentLogout() {
     if (dom.planAddInput) dom.planAddInput.value = '';
   }
   // 목표 편집창이 열린 채로 퇴장하면 다음 사람 화면에 그대로 펼쳐져 있다.
-  closeGoalEditor();
   // 상단 요약은 앞사람의 수치라 반드시 같이 치운다.
   if (dom.todayHead) dom.todayHead.style.display = 'none';
   if (dom.scoreShortcuts) dom.scoreShortcuts.style.display = 'none';

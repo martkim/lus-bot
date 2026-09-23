@@ -5,11 +5,15 @@ from pydantic import BaseModel
 class SessionControlRequest(BaseModel):
     studentId: int
     client_end_time: Optional[str] = None
+    label: Optional[str] = None     # 이번 세션에서 무엇을 연습하는지
+    planId: Optional[int] = None    # 계획 슬롯에서 시작했다면 그 슬롯 id
 
 
 class SessionStartedDTO(BaseModel):
     sessionId: int
     startTime: str
+    label: Optional[str] = None
+    planId: Optional[int] = None
 
 
 class SessionStartResponse(BaseModel):
@@ -48,6 +52,7 @@ class SessionEntryDTO(BaseModel):
     startTime: str
     endTime: str
     durationMinutes: int
+    label: Optional[str] = None
 
 
 class TodaySummaryDTO(BaseModel):

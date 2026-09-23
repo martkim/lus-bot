@@ -42,6 +42,18 @@ async def get_manifest(request: Request):
     return FileResponse(os.path.join(PUBLIC_DIR, "manifest.json"), headers=_asset_headers(request))
 
 
+# 앱 아이콘. 라우트가 없으면 맨 아래 캐치올이 가로채 index.html을 200으로 돌려주고,
+# 브라우저는 HTML을 PNG로 읽으려다 실패해 홈 화면 아이콘이 빈 채로 남는다.
+@router.get("/icon-192.png")
+async def get_icon_192(request: Request):
+    return FileResponse(os.path.join(PUBLIC_DIR, "icon-192.png"), headers=_asset_headers(request))
+
+
+@router.get("/icon-512.png")
+async def get_icon_512(request: Request):
+    return FileResponse(os.path.join(PUBLIC_DIR, "icon-512.png"), headers=_asset_headers(request))
+
+
 @router.get("/style.css")
 async def get_style(request: Request):
     return FileResponse(os.path.join(PUBLIC_DIR, "style.css"), headers=_asset_headers(request))

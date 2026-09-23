@@ -21,6 +21,9 @@ class StudentDTO(BaseModel):
     created_at: Optional[str] = None
     active_session_id: Optional[int] = None
     active_session_start: Optional[str] = None
+    # 새로고침해도 '무엇을 연습 중이었는지'를 화면에 되살리기 위해 함께 내려준다
+    active_session_label: Optional[str] = None
+    active_session_plan_id: Optional[int] = None
 
 
 class StudentListResponse(BaseModel):

@@ -11,6 +11,7 @@ from src.dto.sessions import (
 logger = logging.getLogger("passion_mate")
 
 GOAL_BLOCK_COUNT = 6  # 학생 화면의 '오늘의 목표' 칸 수 (CSS 그리드와 맞춰져 있음)
+MAX_LABEL_LENGTH = 60  # 연습 내용 한 줄 — 타이머 아래에 그대로 띄우므로 짧게 자른다
 
 
 def _compute_duration_minutes(start_time_str: str, end_dt: datetime) -> int:
@@ -89,6 +90,7 @@ def get_today_summary(student_id: int) -> TodaySummaryDTO:
             startTime=row["start_time"],
             endTime=row["end_time"],
             durationMinutes=row["duration_minutes"] or 0,
+            label=row["label"],
         )
         for row in rows
     ]
@@ -108,9 +110,15 @@ def start_session(payload: SessionControlRequest) -> SessionStartedDTO:
     if active_session:
         raise ConflictError("이미 진행 중인 연습 세션이 존재합니다. 먼저 기존 연습을 종료해 주세요.")
 
+    # 무엇을 연습하는지는 비워 둘 수 있게 한다. 적으라고 막아 세우면 바로 시작하고
+    # 싶을 때 걸림돌이 되고, 그러면 타이머 자체를 안 쓰게 된다.
+    label = (payload.label or "").strip()[:MAX_LABEL_LENGTH] or None
+
     now_iso = datetime.now(timezone.utc).isoformat()
-    new_session_id = db.create_session(student_id, now_iso)
-    return SessionStartedDTO(sessionId=new_session_id, startTime=now_iso)
+    new_session_id = db.create_session(student_id, now_iso, label, payload.planId)
+    return SessionStartedDTO(
+        sessionId=new_session_id, startTime=now_iso, label=label, planId=payload.planId
+    )
 
 
 def end_session(payload: SessionControlRequest) -> SessionEndedDTO:
@@ -131,6 +139,12 @@ def end_session(payload: SessionControlRequest) -> SessionEndedDTO:
 
     duration_minutes = _compute_duration_minutes(active_session["start_time"], now_dt)
     db.end_session(active_session["id"], now_iso, duration_minutes)
+
+    # 계획 슬롯에서 시작한 세션이면 그 슬롯을 오늘 완료로 표시한다.
+    # 따로 체크를 누르게 하면 연습을 끝내고도 목록이 안 채워진 채 남는다.
+    plan_id = active_session["plan_id"]
+    if plan_id:
+        db.set_practice_plan_done(plan_id, student_id, datetime.now().strftime("%Y-%m-%d"))
 
     return SessionEndedDTO(
         sessionId=active_session["id"],

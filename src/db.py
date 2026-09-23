@@ -194,6 +194,20 @@ def init_db():
             cursor.execute("ALTER TABLE students ADD COLUMN daily_goal_minutes INTEGER DEFAULT 180")
             print("[DB Migration] Added column 'daily_goal_minutes' to 'students' table.")
 
+        # sessions 테이블 컬럼 자동 마이그레이션
+        #   label   — 이 세션에서 '무엇을' 연습했는지. 시간만 쌓이면 나중에 돌아봤을 때
+        #             뭘 했는지 알 수 없어서, 시작할 때 받아 세션에 붙인다.
+        #   plan_id — 계획 슬롯에서 시작한 경우 그 슬롯. 문구 대조가 아니라 id로 묶어야
+        #             슬롯 문구를 수정해도 연결이 끊기지 않는다.
+        cursor.execute("PRAGMA table_info(sessions)")
+        session_columns = [row["name"] for row in cursor.fetchall()]
+        if "label" not in session_columns:
+            cursor.execute("ALTER TABLE sessions ADD COLUMN label TEXT")
+            print("[DB Migration] Added column 'label' to 'sessions' table.")
+        if "plan_id" not in session_columns:
+            cursor.execute("ALTER TABLE sessions ADD COLUMN plan_id INTEGER")
+            print("[DB Migration] Added column 'plan_id' to 'sessions' table.")
+
         # questions 테이블 컬럼 자동 마이그레이션 (ai_answer, teacher_answer 추가)
         cursor.execute("PRAGMA table_info(questions)")
         question_columns = [row["name"] for row in cursor.fetchall()]
@@ -265,7 +279,9 @@ def get_active_students_with_session():
         cursor.execute("""
             SELECT s.*,
                    sess.id as active_session_id,
-                   sess.start_time as active_session_start
+                   sess.start_time as active_session_start,
+                   sess.label as active_session_label,
+                   sess.plan_id as active_session_plan_id
             FROM students s
             LEFT JOIN sessions sess ON s.id = sess.student_id AND sess.status = 'ACTIVE'
             WHERE s.status = 'ACTIVE'
@@ -425,12 +441,14 @@ def get_today_goal_progress(student_id, since_iso):
 
 
 def get_active_session(student_id):
-    """학생의 진행 중인 세션(id, start_time)을 조회."""
+    """학생의 진행 중인 세션을 조회. 새로고침해도 무엇을 연습 중이었는지 복원해야
+    하므로 label과 plan_id까지 함께 돌려준다."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, start_time FROM sessions WHERE student_id = ? AND status = 'ACTIVE'",
+            "SELECT id, start_time, label, plan_id FROM sessions "
+            "WHERE student_id = ? AND status = 'ACTIVE'",
             (student_id,)
         )
         row = cursor.fetchone()
@@ -439,14 +457,17 @@ def get_active_session(student_id):
         conn.close()
 
 
-def create_session(student_id, start_time_iso):
-    """새 연습 세션을 시작하고 새로 생성된 id를 반환."""
+def create_session(student_id, start_time_iso, label=None, plan_id=None):
+    """새 연습 세션을 시작하고 새로 생성된 id를 반환.
+
+    label은 '무엇을 연습하는지'로, 타이머가 도는 동안 화면에 그대로 띄운다."""
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO sessions (student_id, start_time, status) VALUES (?, ?, 'ACTIVE')",
-            (student_id, start_time_iso)
+            "INSERT INTO sessions (student_id, start_time, status, label, plan_id) "
+            "VALUES (?, ?, 'ACTIVE', ?, ?)",
+            (student_id, start_time_iso, label, plan_id)
         )
         conn.commit()
         return cursor.lastrowid
@@ -1224,7 +1245,7 @@ def get_student_today_sessions(student_id, since_iso):
         cursor = conn.cursor()
         cursor.execute(
             """
-            SELECT start_time, end_time, duration_minutes
+            SELECT start_time, end_time, duration_minutes, label
             FROM sessions
             WHERE student_id = ? AND status = 'COMPLETED' AND end_time >= ?
             ORDER BY end_time DESC

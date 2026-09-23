@@ -117,10 +117,10 @@
         </div>
 
         <div class="score-shortcuts" id="score-shortcuts" style="display: none;">
-          <button type="button" class="score-chip" data-scroll-to="daily-goal-section">
-            <span class="score-chip-label">연습량</span>
-            <span class="score-chip-value" id="chip-practice">0%</span>
-            <span class="score-chip-sub" id="chip-practice-sub">0분</span>
+          <button type="button" class="score-chip" data-scroll-to="personal-history-section">
+            <span class="score-chip-label">연습 시간</span>
+            <span class="score-chip-value" id="chip-practice">0분</span>
+            <span class="score-chip-sub" id="chip-practice-sub">오늘</span>
           </button>
           <button type="button" class="score-chip" data-scroll-to="personal-plan-section">
             <span class="score-chip-label">계획</span>
@@ -146,6 +146,7 @@
               <div class="timer-display">
                 <div class="timer-digits" id="timer-time">00:00:00</div>
                 <div class="timer-label" id="timer-status-text">대기 중</div>
+                <div class="timer-subject" id="timer-subject"></div>
               </div>
             </div>
           </div>
@@ -159,37 +160,6 @@
           <!-- 타이머 버튼 제어 -->
           <div class="timer-controls">
             <button id="btn-timer-toggle" class="btn btn-primary btn-lg" disabled>연습 시작하기</button>
-          </div>
-        </div>
-
-        <!-- 오늘의 목표 — 연습한 만큼 칸이 채워지고, 목표 시간은 학생이 직접 정한다 -->
-        <div class="goal-card" id="daily-goal-section" style="display: none;">
-          <div class="goal-head">
-            <span class="goal-title">오늘의 목표</span>
-            <button type="button" id="btn-goal-edit" class="goal-edit-btn">시간 설정</button>
-          </div>
-          <div class="goal-count" id="goal-count">0분 / 0분</div>
-          <div class="goal-blocks" id="goal-blocks"></div>
-          <div class="goal-foot" id="goal-foot"></div>
-
-          <!-- 목표 시간 입력 — 평소엔 접어두고 '시간 설정'을 눌렀을 때만 편다 -->
-          <div class="goal-editor" id="goal-editor" hidden>
-            <div class="goal-editor-fields">
-              <label class="goal-editor-field">
-                <span>시간</span>
-                <input type="number" id="goal-input-hours" class="goal-input"
-                       min="0" max="14" step="1" inputmode="numeric">
-              </label>
-              <label class="goal-editor-field">
-                <span>분</span>
-                <input type="number" id="goal-input-mins" class="goal-input"
-                       min="0" max="59" step="5" inputmode="numeric">
-              </label>
-            </div>
-            <div class="goal-editor-actions">
-              <button type="button" id="btn-goal-cancel" class="btn-goal-cancel">취소</button>
-              <button type="button" id="btn-goal-save" class="btn-goal-save">저장</button>
-            </div>
           </div>
         </div>
 
@@ -222,31 +192,6 @@
         <!-- 여기부터는 접힌 카드. 필요할 때 열어 보는 것들이라 기본은 닫아 둔다.
              (꿀팁 위젯 자리가 여기 있었는데, 어느 JS도 채우지 않는 빈 div였다.
               꿀팁은 전용 탭이 따로 있으므로 그대로 걷어냈다.) -->
-        <div class="glass-card plan-card disclosure-card" id="personal-qa-section" style="display: none;">
-          <details class="disclosure">
-            <summary class="disclosure-head">
-              <span class="disclosure-title">선생님께 질문하기</span>
-              <span class="disclosure-mark" aria-hidden="true"></span>
-            </summary>
-            <div class="disclosure-body">
-              <p class="section-desc">
-                연습 중 막히는 부분이나 전공 상담 질문을 보내면 선생님의 대시보드로 실시간 자동 전송됩니다.
-              </p>
-              <div class="qa-input-wrapper">
-                <textarea id="student-qa-input" class="custom-textarea"
-                          placeholder="질문 내용을 입력하세요 (예: 빠른 구간에서 자꾸 박자가 밀려요)" required></textarea>
-                <button id="btn-student-qa-submit" class="btn btn-secondary btn-qa-submit">질문 보내기</button>
-              </div>
-              <div class="personal-qa-history">
-                <h4 class="qa-history-title">보낸 질문 내역</h4>
-                <div id="student-qa-list" class="qa-history-list">
-                  <!-- 동적 질문 히스토리 렌더링 -->
-                </div>
-              </div>
-            </div>
-          </details>
-        </div>
-
         <div class="glass-card plan-card disclosure-card" id="personal-homework-section" style="display: none;">
           <details class="disclosure">
             <summary class="disclosure-head">
@@ -301,6 +246,31 @@
             <button type="submit" class="btn-chat-send" id="btn-chat-send">보내기</button>
           </form>
         </div>
+        <div class="glass-card plan-card disclosure-card" id="personal-qa-section" style="display: none; margin-top: 15px;">
+          <details class="disclosure">
+            <summary class="disclosure-head">
+              <span class="disclosure-title">선생님께 직접 질문하기</span>
+              <span class="disclosure-mark" aria-hidden="true"></span>
+            </summary>
+            <div class="disclosure-body">
+              <p class="section-desc">
+                연습 중 막히는 부분이나 전공 상담 질문을 보내면 선생님의 대시보드로 실시간 자동 전송됩니다.
+              </p>
+              <div class="qa-input-wrapper">
+                <textarea id="student-qa-input" class="custom-textarea"
+                          placeholder="질문 내용을 입력하세요 (예: 빠른 구간에서 자꾸 박자가 밀려요)" required></textarea>
+                <button id="btn-student-qa-submit" class="btn btn-secondary btn-qa-submit">질문 보내기</button>
+              </div>
+              <div class="personal-qa-history">
+                <h4 class="qa-history-title">보낸 질문 내역</h4>
+                <div id="student-qa-list" class="qa-history-list">
+                  <!-- 동적 질문 히스토리 렌더링 -->
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+
       </section>
       
     </main>
