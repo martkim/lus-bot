@@ -48,6 +48,14 @@ android {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
+        // 임시: 아이콘 B안을 실기기 런처에서 C안과 나란히 보기 위한 빌드.
+        // applicationId가 달라야 두 앱이 동시에 설치되므로 접미사를 붙인다.
+        // 아이콘을 고르고 나면 이 블록과 src/iconb를 통째로 지운다.
+        create("iconb") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".iconb"
+            buildConfigField("boolean", "WEBVIEW_DEBUGGABLE", "true")
+        }
     }
 
     buildFeatures {

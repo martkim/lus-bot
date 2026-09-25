@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 아이콘 비교용 임시 빌드. 런처에서 C안과 구분하려고 이름만 다르게 둔다. -->
+<resources>
+    <string name="app_name">버스트인 B</string>
+</resources>
