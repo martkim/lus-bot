@@ -1,5 +1,6 @@
 import time
 import datetime
+import json
 import sqlite3
 import shutil
 import os
@@ -52,6 +53,14 @@ LAST_CRASH_MARKER = LOGS_DIR / "last_seen_unexpected_shutdown.txt"
 PORT = 8088
 PUBLIC_URL = "https://passionmate.app"  # Named Tunnel, fixed domain (was an ephemeral trycloudflare.com URL)
 CHECK_INTERVAL_SECONDS = 300  # 5 minutes
+# 이 PC는 USB 무선랜으로만 인터넷에 붙어 있다(내장 이더넷은 배선 불가).
+# 무선 어댑터가 빠지면 cloudflared 프로세스는 멀쩡히 살아 있는 채로 터널만 죽어서,
+# 프로세스 존재 여부로는 알아챌 수 없다. 그래서 공개 주소로 직접 받아 본다.
+WIFI_ADAPTER_NAME = "Wi-Fi 2"
+# 한 번의 실패로 움직이면 Cloudflare 쪽 일시 장애에도 터널을 재시작하게 된다.
+# 5분 주기이므로 2회 연속이면 최소 5분간 외부에서 안 보였다는 뜻이다.
+PUBLIC_FAIL_THRESHOLD = 2
+_public_fail_streak = 0
 ERROR_PATTERN = re.compile(r"traceback|error|exception", re.IGNORECASE)
 GIT_REMOTE = "origin"
 GIT_BRANCH = "main"
@@ -102,6 +111,26 @@ def log_deploy(message):
     print(f"[Deploy] {message}")
 
 
+def signal_qa_agent(reason, detail):
+    """Ask the in-app QA agent to verify what is now running.
+
+    The watchdog and the uvicorn server are separate processes, so this drops a
+    small JSON file that the agent's watch loop (src/background.py) picks up and
+    deletes. Deliberately written with stdlib only and wrapped in a bare except:
+    a QA trigger must never be able to break a deploy."""
+    try:
+        payload = {
+            "reason": reason,
+            "detail": detail,
+            "at": datetime.datetime.now().isoformat(timespec="seconds"),
+        }
+        with open(LOGS_DIR / "qa_agent_trigger.json", "w", encoding="utf-8") as f:
+            json.dump(payload, f, ensure_ascii=False)
+        log_deploy(f"QA agent triggered ({reason}).")
+    except Exception as e:
+        print(f"[Deploy] QA agent trigger failed (ignored): {e}")
+
+
 def is_port_open(port, host="127.0.0.1", timeout=2):
     try:
         with socket.create_connection((host, port), timeout=timeout):
@@ -116,6 +145,110 @@ def is_server_responsive():
             return resp.status == 200
     except (urllib.error.URLError, OSError):
         return False
+
+
+def stop_cloudflared():
+    """살아 있는 cloudflared를 먼저 내린다. 이걸 빼먹으면 터널이 죽었다고
+    판단해 새로 띄울 때마다 죽은 프로세스 옆에 하나씩 더 쌓인다."""
+    try:
+        subprocess.run(
+            ["taskkill", "/F", "/IM", "cloudflared.exe"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=15, **_NO_WINDOW_KWARGS,
+        )
+        time.sleep(2)
+    except Exception as e:
+        log_attention(f"Could not stop cloudflared before restart: {e}")
+
+
+def is_publicly_reachable(timeout=15):
+    """공개 도메인이 실제로 응답하는지. 이 요청은 인터넷을 한 바퀴 돌아
+    Cloudflare를 거쳐 이 PC로 돌아오므로, 무선랜/터널/서버 중 하나라도
+    끊겨 있으면 실패한다 - 로컬 점검이 못 보는 구간을 전부 덮는다."""
+    try:
+        req = urllib.request.Request(
+            PUBLIC_URL, headers={"User-Agent": "burstin-watchdog"}
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            return resp.status == 200
+    except Exception:
+        return False
+
+
+def has_internet(timeout=5):
+    """인터넷 자체가 살아 있는지. 터널만 죽은 것인지 무선랜이 빠진 것인지
+    구분해야 복구 방법이 갈린다. DNS로 이름을 풀지 않고 IP로 바로 붙어서,
+    DNS 장애를 네트워크 장애로 잘못 읽지 않게 한다."""
+    for host, port in (("1.1.1.1", 443), ("8.8.8.8", 53)):
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def reset_wifi_adapter():
+    """USB 무선 어댑터를 껐다 켠다. 관리자 권한이 필요하다.
+
+    워치독은 현재 일반 권한으로 돌기 때문에 대개 실패한다. 실패해도 그대로
+    기록만 남기고 넘어간다 - 권한이 없다는 이유로 나머지 복구까지 멈출 이유는 없다."""
+    try:
+        result = subprocess.run(
+            ["netsh", "interface", "set", "interface",
+             f"name={WIFI_ADAPTER_NAME}", "admin=disabled"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=20, **_NO_WINDOW_KWARGS,
+        )
+        if result.returncode != 0:
+            log_attention(
+                f"Wi-Fi adapter reset needs admin rights and was refused "
+                f"({result.stderr.strip()[:120] or result.stdout.strip()[:120]}). "
+                f"Run the watchdog elevated to enable this recovery step."
+            )
+            return False
+        time.sleep(3)
+        subprocess.run(
+            ["netsh", "interface", "set", "interface",
+             f"name={WIFI_ADAPTER_NAME}", "admin=enabled"],
+            capture_output=True, text=True, encoding="utf-8", errors="replace",
+            timeout=20, **_NO_WINDOW_KWARGS,
+        )
+        # 어댑터가 다시 열거되고 AP에 붙을 시간을 준다
+        time.sleep(20)
+        return has_internet()
+    except Exception as e:
+        log_attention(f"Wi-Fi adapter reset failed: {e}")
+        return False
+
+
+def recover_public_access():
+    """로컬은 멀쩡한데 외부에서 안 보일 때의 복구 순서.
+
+    네트워크가 살아 있으면 터널만 죽은 것이므로 cloudflared만 다시 띄우면 된다.
+    네트워크 자체가 끊겼으면 터널을 재시작해도 붙을 곳이 없어 어댑터부터 되살린다."""
+    if has_internet():
+        log_attention(
+            "Server answers on localhost but the public URL does not - "
+            "internet is up, so the tunnel is the broken part. Restarting cloudflared."
+        )
+        stop_cloudflared()
+        start_cloudflared()
+        return
+
+    log_attention(
+        "No internet connectivity - the USB Wi-Fi adapter looks down. "
+        "Attempting an adapter reset before touching the tunnel."
+    )
+    if reset_wifi_adapter():
+        log_attention("Wi-Fi adapter came back. Restarting cloudflared on top of it.")
+        stop_cloudflared()
+        start_cloudflared()
+    else:
+        log_attention(
+            "Wi-Fi adapter did not recover. The site stays unreachable from outside "
+            "until the network returns; the local server itself is still running."
+        )
 
 
 def rotate_if_large(path, max_bytes=10 * 1024 * 1024):
@@ -247,6 +380,7 @@ def check_and_deploy_updates():
         return
 
     log_deploy(f"New commit detected: {local_commit[:8]} -> {remote_commit[:8]}. Deploying...")
+    upload_detail = f"{local_commit[:8]} -> {remote_commit[:8]}"
     reqs_changed = requirements_changed(local_commit, remote_commit)
 
     if has_uncommitted_changes():
@@ -278,6 +412,8 @@ def check_and_deploy_updates():
 
     if is_server_responsive():
         log_deploy(f"Deploy succeeded - now running {remote_commit[:8]}.")
+        # 새 코드가 지금 돌고 있다. 그 상태를 곧바로 QA 에이전트가 검증하게 한다.
+        signal_qa_agent("deploy", f"deploy succeeded {upload_detail}")
         return
 
     log_attention(f"Deploy to {remote_commit[:8]} failed health check - rolling back to {local_commit[:8]}.")
@@ -286,6 +422,8 @@ def check_and_deploy_updates():
 
     if is_server_responsive():
         log_deploy(f"Rollback to {local_commit[:8]} succeeded.")
+        # 되돌아간 코드가 정말 멀쩡한지는 별개 문제다. 롤백 후에도 한 번 검증한다.
+        signal_qa_agent("deploy", f"rollback to {local_commit[:8]} after failed deploy {upload_detail}")
     else:
         log_attention("CRITICAL: rollback also failed to respond. Manual intervention needed.")
 
@@ -372,9 +510,12 @@ def check_db():
         return "error"
 
 
-def append_monitor_line(server_up, tunnel_up, db_status):
+def append_monitor_line(server_up, tunnel_up, db_status, public_up=None):
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    line = f"{ts} | server={'UP' if server_up else 'DOWN'} tunnel={'UP' if tunnel_up else 'DOWN'} db={db_status} errors=watchdog\n"
+    # public은 '외부에서 실제로 보이는가'다. server/tunnel이 UP인데 이것만
+    # DOWN이면 무선랜이 빠진 것이므로, 한 줄만 봐도 어디가 끊겼는지 구분된다.
+    public = "" if public_up is None else f" public={'UP' if public_up else 'DOWN'}"
+    line = f"{ts} | server={'UP' if server_up else 'DOWN'} tunnel={'UP' if tunnel_up else 'DOWN'}{public} db={db_status} errors=watchdog\n"
     with open(MONITOR_LOG, "a", encoding="utf-8") as f:
         f.write(line)
 
@@ -398,9 +539,22 @@ def watchdog_cycle():
         start_cloudflared()
         tunnel_up = is_cloudflared_running()
 
+    # 여기까지는 전부 127.0.0.1 점검이다. USB 무선랜이 빠져도 전부 통과하므로,
+    # 실제로 외부에서 보이는지는 공개 주소로 직접 받아 봐야만 알 수 있다.
+    global _public_fail_streak
+    public_up = is_publicly_reachable()
+    if public_up:
+        _public_fail_streak = 0
+    else:
+        _public_fail_streak += 1
+        if _public_fail_streak >= PUBLIC_FAIL_THRESHOLD:
+            recover_public_access()
+            _public_fail_streak = 0
+            public_up = is_publicly_reachable()
+
     scan_server_errors()
     db_status = check_db()
-    append_monitor_line(is_port_open(PORT), tunnel_up, db_status)
+    append_monitor_line(is_port_open(PORT), tunnel_up, db_status, public_up)
 
 
 def run_daily_backup_and_integrity_check():
