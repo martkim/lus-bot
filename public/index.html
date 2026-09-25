@@ -1,61 +1,90 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="dark">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>버스트인 — 음악 입시 실기 연습 관리</title>
-  
+
+  <!-- 저장된 테마를 스타일시트보다 먼저 적용한다. 이 줄이 늦으면 다크로 들어온
+       사용자에게 흰 화면이 한 번 번쩍인다(FOUC). -->
+  <script>
+    (function () {
+      var theme = 'dark';
+      try {
+        if (localStorage.getItem('student_theme') === 'light') theme = 'light';
+      } catch (e) { /* 프라이빗 모드 등 접근 불가 — 기본 다크로 둔다 */ }
+      document.documentElement.setAttribute('data-theme', theme);
+    })();
+  </script>
+
   <!-- 모바일 웹앱 PWA 설정 -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="버스트인">
+  <meta name="theme-color" content="#0a0b0d" id="meta-theme-color">
   <link rel="manifest" href="/manifest.json">
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
-  
-  <!-- 구글 폰트 및 아이콘 라이브러리 -->
+
+  <!-- 서체: 수치/본문은 중립 그로테스크(Inter), 헤드라인은 세리프(Noto Serif KR).
+       Oura가 쓰는 '가는 산세리프 수치 + 세리프 헤드라인' 대비를 그대로 가져왔다. -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;500;600&display=swap" rel="stylesheet">
 
   <!-- 스타일 시트 -->
   <link rel="stylesheet" href="/style.css">
-  <!-- 학생 화면 전용 화이트 테마 (style.css를 선생님 화면과 공유하므로 뒤에서 덮어쓴다) -->
+  <!-- 학생 화면 전용 Oura 디자인 시스템 (style.css를 선생님 화면과 공유하므로 뒤에서 덮어쓴다) -->
   <link rel="stylesheet" href="/student-theme.css">
 </head>
-<body class="student-light">
-  
+<body class="student-app">
+
   <!-- 와이파이 오프라인 자동 감지 경고 배너 -->
   <div id="offline-warning-banner" class="network-status-banner">
     <div class="wifi-pulse-dot"></div>
     <span>학원 와이파이가 끊겼습니다. 연결 복구 시 즉시 자동 재연결됩니다. [오프라인 백업 모드]</span>
   </div>
-  
+
   <!-- 전체 앱 레이아웃 -->
   <div class="app-container">
-    
-    <!-- 1. 헤더 영역 — 로고 없이 연결 상태만 두는 최소 바 -->
+
+    <!-- 1. 헤더 — Oura 상단 바 구조: [상태] · [워드마크] · [설정] -->
     <header class="app-header header-minimal">
       <div class="status-indicator">
-        <span id="header-connection-status"><span class="dot live"></span> 실시간 연결됨</span>
+        <span id="header-connection-status"><span class="dot live"></span> 연결됨</span>
       </div>
+      <div class="app-wordmark">버스트인</div>
+      <button type="button" class="theme-toggle" id="btn-theme-toggle"
+              aria-label="밝은 화면으로 전환" title="화면 밝기 전환">
+        <!-- 다크일 때 보이는 해(=밝게 전환) -->
+        <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="4.2"/>
+          <path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6"/>
+        </svg>
+        <!-- 라이트일 때 보이는 달(=어둡게 전환) -->
+        <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.5 14.2A8.6 8.6 0 0 1 9.8 3.5a8.6 8.6 0 1 0 10.7 10.7z"/>
+        </svg>
+      </button>
     </header>
 
     <!-- 2. 메인 컨텐츠 영역 (뷰포트) -->
     <main class="app-content">
-      
+
       <!-- [탭 1] 학생 연습 타이머 화면 (Default) -->
       <section id="view-timer" class="app-view active">
         <div class="glass-card welcome-card" id="login-welcome-card">
           <h2>오늘도 한 걸음 더 성장해봐요</h2>
           <p>아이디와 비밀번호를 입력해 입장해 주세요. 처음이시면 가입부터 진행해 주세요.</p>
-          
+
           <!-- 아이디/비밀번호 로그인 영역 -->
           <div class="input-group select-student-container" id="login-form-container">
             <label for="student-username-input">아이디</label>
             <div class="login-input-wrapper">
               <input type="text" id="student-username-input" class="custom-input-text" placeholder="아이디를 입력하세요..." autocomplete="off">
             </div>
-            <label for="student-password-input" style="margin-top: 8px;">비밀번호</label>
+            <label for="student-password-input" style="margin-top: 12px;">비밀번호</label>
             <div class="login-input-wrapper">
               <input type="password" id="student-password-input" class="custom-input-text" placeholder="비밀번호를 입력하세요..." autocomplete="off">
               <button id="btn-student-login" class="btn btn-secondary btn-login-submit">입장</button>
@@ -73,15 +102,15 @@
                 <option value="">이름을 선택하세요...</option>
               </select>
             </div>
-            <label for="signup-username-input" style="margin-top: 8px;">사용할 아이디</label>
+            <label for="signup-username-input" style="margin-top: 12px;">사용할 아이디</label>
             <div class="login-input-wrapper">
               <input type="text" id="signup-username-input" class="custom-input-text" placeholder="아이디를 입력하세요..." autocomplete="off">
             </div>
-            <label for="signup-password-input" style="margin-top: 8px;">사용할 비밀번호</label>
+            <label for="signup-password-input" style="margin-top: 12px;">사용할 비밀번호</label>
             <div class="login-input-wrapper">
               <input type="password" id="signup-password-input" class="custom-input-text" placeholder="비밀번호를 입력하세요... (4자 이상)" autocomplete="off">
             </div>
-            <label for="signup-mbti-select" style="margin-top: 8px;">MBTI</label>
+            <label for="signup-mbti-select" style="margin-top: 12px;">MBTI</label>
             <div class="login-input-wrapper">
               <select id="signup-mbti-select" class="custom-input-text">
                 <option value="ISTJ">ISTJ</option>
@@ -103,14 +132,15 @@
               </select>
               <button id="btn-student-signup" class="btn btn-secondary btn-login-submit">가입하기</button>
             </div>
-            <p style="margin-top: 10px; font-size: 0.85rem;">
-              이미 가입하셨나요? <a href="#" id="btn-back-to-login" style="color: var(--neon-mint); font-weight: 600;">로그인으로 돌아가기</a>
+            <p class="login-switch">
+              이미 가입하셨나요? <a href="#" id="btn-back-to-login" class="login-switch-link">로그인으로 돌아가기</a>
             </p>
           </div>
         </div>
 
-        <!-- Oura 'Today' 구조를 따른다: 상단 지표 바 -> 지금 할 일 하나 -> 타임라인 -> 접힌 카드들.
-             스코어 숏컷은 지표를 보여주는 동시에 아래 해당 카드로 데려가는 문이다. -->
+        <!-- Oura 'Today' 구조를 따른다: 날짜 머리말 -> 스코어 링 -> 히어로 하나
+             -> 타임라인 -> 접힌 카드들.
+             스코어 링은 지표를 보여주는 동시에 아래 해당 카드로 데려가는 문이다. -->
         <div class="today-head" id="today-head" style="display: none;">
           <span class="today-date" id="today-date"></span>
           <span class="today-streak" id="today-streak"></span>
@@ -118,36 +148,67 @@
 
         <div class="score-shortcuts" id="score-shortcuts" style="display: none;">
           <button type="button" class="score-chip" data-scroll-to="personal-history-section">
+            <span class="score-chip-ring">
+              <span class="score-chip-value" id="chip-practice">0분</span>
+              <span class="score-chip-sub" id="chip-practice-sub">오늘</span>
+            </span>
             <span class="score-chip-label">연습 시간</span>
-            <span class="score-chip-value" id="chip-practice">0분</span>
-            <span class="score-chip-sub" id="chip-practice-sub">오늘</span>
           </button>
           <button type="button" class="score-chip" data-scroll-to="personal-plan-section">
+            <span class="score-chip-ring">
+              <span class="score-chip-value" id="chip-plan">0/0</span>
+              <span class="score-chip-sub" id="chip-plan-sub">완료</span>
+            </span>
             <span class="score-chip-label">계획</span>
-            <span class="score-chip-value" id="chip-plan">0/0</span>
-            <span class="score-chip-sub" id="chip-plan-sub">완료</span>
           </button>
           <button type="button" class="score-chip" data-scroll-to="personal-history-section">
+            <span class="score-chip-ring">
+              <span class="score-chip-value" id="chip-session">0</span>
+              <span class="score-chip-sub" id="chip-session-sub">회</span>
+            </span>
             <span class="score-chip-label">세션</span>
-            <span class="score-chip-value" id="chip-session">0</span>
-            <span class="score-chip-sub" id="chip-session-sub">회</span>
           </button>
           <button type="button" class="score-chip" data-scroll-to="personal-homework-section">
+            <span class="score-chip-ring">
+              <span class="score-chip-value" id="chip-homework">0</span>
+              <span class="score-chip-sub" id="chip-homework-sub">건</span>
+            </span>
             <span class="score-chip-label">숙제</span>
-            <span class="score-chip-value" id="chip-homework">0</span>
-            <span class="score-chip-sub" id="chip-homework-sub">건</span>
           </button>
         </div>
 
-        <!-- One Big Thing — 지금 이 순간 해야 할 단 하나 -->
+        <!-- One Big Thing — Oura 스코어 화면의 뼈대를 그대로 쓴다.
+             아크 게이지(오늘 계획 달성률) → 마크 → 큰 수치(타이머) → 대문자 상태
+             → 세리프 헤드라인 → 본문(지금 연습 중인 것) → 알약 버튼 -->
         <div class="timer-section">
-          <div class="timer-outer-ring" id="timer-ring">
-            <div class="timer-inner-ring">
-              <div class="timer-display">
-                <div class="timer-digits" id="timer-time">00:00:00</div>
-                <div class="timer-label" id="timer-status-text">대기 중</div>
-                <div class="timer-subject" id="timer-subject"></div>
-              </div>
+          <div class="hero" id="timer-ring">
+            <!-- 아크는 pathLength=100으로 정규화해 두어, JS가 --arc에 퍼센트만 넣으면 된다 -->
+            <svg class="hero-arc" viewBox="0 32 320 124" role="img"
+                 aria-labelledby="hero-arc-title">
+              <title id="hero-arc-title">오늘 계획 달성률 게이지</title>
+              <path class="arc-track" d="M 16 132 A 170 170 0 0 1 304 132" pathLength="100"/>
+              <path class="arc-fill" d="M 16 132 A 170 170 0 0 1 304 132" pathLength="100"/>
+              <circle class="arc-dot" cx="54.1" cy="69.4" r="2.4"/>
+              <circle class="arc-dot" cx="122.6" cy="40.2" r="2.4"/>
+              <circle class="arc-dot" cx="197.4" cy="40.2" r="2.4"/>
+              <circle class="arc-dot" cx="265.9" cy="69.4" r="2.4"/>
+              <!-- 끝단 라벨은 아크 '바깥 아래'에 둔다. 회전 기준점을 끝점에 두면
+                   글자가 안쪽으로 뻗으며 아크 선을 가로지른다(실기기에서 100이 그랬다). -->
+              <text class="arc-cap" x="20" y="152" transform="rotate(-45 20 152)">0</text>
+              <text class="arc-cap" x="300" y="152" text-anchor="end" transform="rotate(45 300 152)">100</text>
+            </svg>
+
+            <div class="hero-mark" id="hero-arc-value">0</div>
+            <div class="hero-mark-label">계획 달성</div>
+
+            <div class="hero-metric" id="timer-time">00:00:00</div>
+            <div class="hero-caps" id="timer-status-text">대기 중</div>
+            <h2 class="hero-headline" id="hero-headline">준비되면 시작해요</h2>
+            <p class="hero-copy" id="timer-subject"></p>
+
+            <!-- 타이머 버튼 제어 -->
+            <div class="timer-controls">
+              <button id="btn-timer-toggle" class="btn btn-primary btn-lg" disabled>연습 시작하기</button>
             </div>
           </div>
 
@@ -156,18 +217,22 @@
             <span class="badge-name" id="info-name">김지우</span>
             <button id="btn-student-logout" class="btn-logout" title="다른 이름으로 로그인">퇴장</button>
           </div>
-
-          <!-- 타이머 버튼 제어 -->
-          <div class="timer-controls">
-            <button id="btn-timer-toggle" class="btn btn-primary btn-lg" disabled>연습 시작하기</button>
-          </div>
         </div>
 
         <!-- 내 연습 계획 — 학생이 직접 쓰는 슬롯 목록 -->
         <div class="glass-card plan-card" id="personal-plan-section" style="display: none;">
-          <div class="plan-head">
-            <h3>내 연습 계획</h3>
-            <span class="plan-slot-count" id="plan-slot-count"></span>
+          <div class="card-head">
+            <span class="card-head-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 6.5l2 2 3.5-3.5M4 14.5l2 2 3.5-3.5M13 7h7M13 15h7"/>
+              </svg>
+            </span>
+            <span class="card-head-text">
+              <span class="card-head-title">내 연습 계획</span>
+              <span class="card-head-status is-progress plan-slot-count" id="plan-slot-count"></span>
+            </span>
+            <span class="card-head-mark" aria-hidden="true"></span>
           </div>
           <div id="personal-plan-list" class="plan-list">
             <!-- JS로 본인이 작성한 계획 슬롯 렌더링 -->
@@ -181,7 +246,20 @@
 
         <!-- 타임라인 — Oura Today의 '하루가 어떻게 흘러갔는지' 자리 -->
         <div class="glass-card history-card" id="personal-history-section" style="display: none;">
-          <h3>오늘의 기록</h3>
+          <div class="card-head">
+            <span class="card-head-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                   stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="8.4"/>
+                <path d="M12 7.4V12l3.1 1.9"/>
+              </svg>
+            </span>
+            <span class="card-head-text">
+              <span class="card-head-title">오늘의 기록</span>
+              <span class="card-head-status is-good">TODAY</span>
+            </span>
+            <span class="card-head-mark" aria-hidden="true"></span>
+          </div>
           <div id="personal-sessions" class="history-list">
             <div class="empty-placeholder">
               <p>아직 오늘 완료된 연습 기록이 없습니다.</p>
@@ -190,13 +268,24 @@
         </div>
 
         <!-- 여기부터는 접힌 카드. 필요할 때 열어 보는 것들이라 기본은 닫아 둔다.
-             (꿀팁 위젯 자리가 여기 있었는데, 어느 JS도 채우지 않는 빈 div였다.
-              꿀팁은 전용 탭이 따로 있으므로 그대로 걷어냈다.) -->
+             Oura가 말하는 '카드는 목적지가 아니라 문이다'에 해당하는 자리. -->
         <div class="glass-card plan-card disclosure-card" id="personal-homework-section" style="display: none;">
           <details class="disclosure">
-            <summary class="disclosure-head">
-              <span class="disclosure-title">내 숙제</span>
-              <span class="disclosure-mark" aria-hidden="true"></span>
+            <summary>
+              <span class="card-head">
+                <span class="card-head-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M6.5 3.5h7L18 8v12.5H6.5z"/>
+                    <path d="M13.2 3.6V8.3H18M9.4 12.6h5.2M9.4 16.2h5.2"/>
+                  </svg>
+                </span>
+                <span class="card-head-text">
+                  <span class="card-head-title">내 숙제</span>
+                  <span class="card-head-status is-warn">선생님이 내준 것</span>
+                </span>
+                <span class="card-head-mark" aria-hidden="true"></span>
+              </span>
             </summary>
             <div class="disclosure-body">
               <div id="personal-homework-list" class="plan-list">
@@ -208,19 +297,27 @@
       </section>
 
 
-      
       <!-- [탭 2] 오늘의 서울예대 꿀팁 전용 화면 -->
       <section id="view-daily-tip" class="app-view">
         <div class="glass-card welcome-card">
-          <h2>오늘의 서울예대 입시 꿀팁</h2>
-          <p>AI가 매일 자정, 서울예대 합격을 위한 최신 꿀팁·화성학 퀴즈·추천 도서를 자동으로 준비해 놓습니다!</p>
+          <h2>오늘의 입시 꿀팁</h2>
+          <p>매일 실제 연구 논문 한 편을 골라 쉬운 말로 풀어 드립니다. 관련 인터뷰 영상은 자막을 직접 확인한 것만 붙입니다.</p>
         </div>
-        <div id="daily-tip-content" style="margin-top: 15px;">
+        <div id="daily-tip-content">
           <div class="empty-placeholder" id="daily-tip-loading" style="padding: 60px 0;">
             <span class="spinner" aria-hidden="true"></span>
             <p>AI 꿀팁 불러오는 중...</p>
           </div>
         </div>
+
+        <!-- 입시 정보 센터 — 선생님이 승인한 공고만 여기 나온다 -->
+        <section class="admission-section" id="admission-section" hidden>
+          <div class="admission-head">
+            <span class="admission-heading">입시 정보</span>
+            <span class="admission-count" id="admission-count"></span>
+          </div>
+          <div id="admission-list"></div>
+        </section>
       </section>
 
       <!-- [탭 3] AI 튜터 Q&A 화면 -->
@@ -240,17 +337,30 @@
               </div>
             </div>
           </div>
-          
+
           <form id="chat-form" class="chat-input-form">
             <input type="text" id="chat-input" placeholder="질문을 입력하세요..." required autocomplete="off">
             <button type="submit" class="btn-chat-send" id="btn-chat-send">보내기</button>
           </form>
         </div>
-        <div class="glass-card plan-card disclosure-card" id="personal-qa-section" style="display: none; margin-top: 15px;">
+
+        <div class="glass-card plan-card disclosure-card" id="personal-qa-section" style="display: none;">
           <details class="disclosure">
-            <summary class="disclosure-head">
-              <span class="disclosure-title">선생님께 직접 질문하기</span>
-              <span class="disclosure-mark" aria-hidden="true"></span>
+            <summary>
+              <span class="card-head">
+                <span class="card-head-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+                       stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 13.4c0 2.5-2.4 4.5-5.4 4.5-.7 0-1.4-.1-2-.3L8.6 19.3l.5-2.4c-1.3-.8-2.1-2.1-2.1-3.5 0-2.5 2.4-4.5 5.4-4.5s7.6 2 7.6 4.5z"/>
+                    <path d="M7.4 11.6C5.3 11 4 9.6 4 8c0-2.2 2.5-4 5.6-4 2.8 0 5.1 1.5 5.5 3.4"/>
+                  </svg>
+                </span>
+                <span class="card-head-text">
+                  <span class="card-head-title">선생님께 직접 질문하기</span>
+                  <span class="card-head-status">실시간 전송</span>
+                </span>
+                <span class="card-head-mark" aria-hidden="true"></span>
+              </span>
             </summary>
             <div class="disclosure-body">
               <p class="section-desc">
@@ -272,18 +382,32 @@
         </div>
 
       </section>
-      
+
     </main>
 
-    <!-- 3. 하단 탭 내비게이션 바 -->
+    <!-- 3. 하단 탭 — Oura의 떠 있는 알약 바 -->
     <nav class="app-navbar">
       <button class="nav-item active" data-target="view-timer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="13.4" r="7.6"/>
+          <path d="M12 9.6v3.8l2.6 1.6M9.4 2.8h5.2"/>
+        </svg>
         <span class="nav-text">연습 타이머</span>
       </button>
       <button class="nav-item" data-target="view-daily-tip">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 3.2l1.9 5.1 5.1 1.9-5.1 1.9-1.9 5.1-1.9-5.1L5 10.2l5.1-1.9z"/>
+          <path d="M18.4 17.2l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7z"/>
+        </svg>
         <span class="nav-text">오늘의 꿀팁</span>
       </button>
       <button class="nav-item" data-target="view-ai-chat">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M20.4 12.6c0 3.7-3.8 6.7-8.4 6.7-1 0-2-.1-2.9-.4l-5 1.7 1.2-4c-1.1-1.1-1.7-2.5-1.7-4 0-3.7 3.8-6.7 8.4-6.7s8.4 3 8.4 6.7z"/>
+        </svg>
         <span class="nav-text">AI 튜터</span>
       </button>
     </nav>

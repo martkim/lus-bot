@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import json
 import logging
 from datetime import datetime
 
@@ -169,6 +170,113 @@ def init_db():
             "CREATE INDEX IF NOT EXISTS idx_practice_plans_student ON practice_plans(student_id, sort_order)"
         )
 
+        # 10. 선생님 로그인 세션 (로그인 유지용 토큰)
+        #     예전엔 프런트가 비밀번호를 sessionStorage에 그대로 들고 있다가 매 요청 헤더에
+        #     실어 보냈다 — 탭/앱을 닫으면 사라져서 매번 다시 로그인해야 했고, 저장형 XSS가
+        #     터지면 비밀번호 자체가 새어나갔다. 이제 로그인할 때 난수 토큰을 한 번 발급하고
+        #     그 해시만 여기에 남긴다. 토큰이 새면 폐기하면 그만이고 비밀번호는 남지 않는다.
+        #     token_hash가 pbkdf2가 아니라 sha256인 이유: 토큰은 이미 256비트 난수라 무차별
+        #     대입 대상이 아닌데, pbkdf2(260,000회)를 쓰면 없애려던 매 요청 ~236ms가 되돌아온다.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS teacher_sessions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                teacher_id INTEGER NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                last_used_at TEXT NOT NULL,
+                expires_at TEXT NOT NULL,
+                FOREIGN KEY (teacher_id) REFERENCES teachers(id)
+            )
+        """)
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS idx_teacher_sessions_token ON teacher_sessions(token_hash)"
+        )
+
+        # 11. 근거 논문 코퍼스 — 오늘의 꿀팁이 기대는 '사실' 저장소.
+        #     Crossref에서 DOI로 실존이 확인된 논문만 들어온다(src/knowledge/crossref.py).
+        #     abstract가 근거 원문이라, 이게 없는 논문(has_evidence=0)은 꿀팁 생성에서 빠진다.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS research_papers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                doi TEXT NOT NULL UNIQUE,
+                title TEXT NOT NULL,
+                authors TEXT,
+                year INTEGER,
+                journal TEXT,
+                url TEXT,
+                open_access_url TEXT,
+                abstract TEXT,
+                topic TEXT,
+                angle TEXT,
+                cited_by INTEGER DEFAULT 0,
+                has_evidence INTEGER DEFAULT 0,
+                last_used_at TEXT,
+                use_count INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
+                verified_at TEXT,
+                created_at TEXT NOT NULL
+            )
+        """)
+
+        # 12. 자막을 실제로 받아 분석한 유튜브 영상.
+        #     transcript_excerpt가 비어 있으면 '내용을 확인 못 한 영상'이라 꿀팁에 못 붙인다.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS insight_videos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                video_id TEXT NOT NULL UNIQUE,
+                title TEXT NOT NULL,
+                channel TEXT,
+                url TEXT NOT NULL,
+                published_at TEXT,
+                duration_seconds INTEGER,
+                view_count INTEGER,
+                parts TEXT,
+                topic TEXT,
+                transcript_language TEXT,
+                transcript_chars INTEGER,
+                transcript_excerpt TEXT,
+                analysis_summary TEXT,
+                key_points TEXT,
+                relevance_score INTEGER DEFAULT 0,
+                source TEXT DEFAULT 'api_search',
+                analyzed_at TEXT,
+                last_used_at TEXT,
+                use_count INTEGER DEFAULT 0,
+                is_active INTEGER DEFAULT 1,
+                created_at TEXT NOT NULL
+            )
+        """)
+
+        # 13. 입시 정보 센터 — 매일 수집한 공고가 쌓이는 곳.
+        #     status는 pending -> approved/rejected. 승인된 것만 학생에게 나간다.
+        #     content_hash로 같은 공고가 매일 다시 들어오는 걸 막는다.
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS admission_info (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                content_hash TEXT NOT NULL UNIQUE,
+                category TEXT,
+                title TEXT NOT NULL,
+                summary TEXT,
+                school TEXT,
+                board_name TEXT,
+                parts TEXT,
+                posted_at TEXT,
+                deadline TEXT,
+                source_url TEXT,
+                source_type TEXT DEFAULT 'auto_crawl',
+                source_key TEXT,
+                status TEXT DEFAULT 'pending',
+                approved_by TEXT,
+                approved_at TEXT,
+                collected_at TEXT NOT NULL,
+                created_at TEXT NOT NULL
+            )
+        """)
+
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_papers_topic_active ON research_papers(topic, is_active)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_videos_active_topic ON insight_videos(is_active, topic)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_admission_status_posted ON admission_info(status, posted_at)")
+
         # students 테이블 컬럼 자동 마이그레이션 (age, mbti, status 추가)
         cursor.execute("PRAGMA table_info(students)")
         student_columns = [row["name"] for row in cursor.fetchall()]
@@ -224,6 +332,32 @@ def init_db():
         if "part" not in insight_columns:
             cursor.execute("ALTER TABLE ai_daily_insights ADD COLUMN part TEXT")
             print("[DB Migration] Added column 'part' to 'ai_daily_insights' table.")
+        # 꿀팁 한 장이 어떤 논문/영상에 근거했는지 되짚을 수 있어야 한다.
+        # content_json은 AI가 채운 구조화 원본 — HTML은 렌더러가 여기서 다시 만든다.
+        # (예전처럼 AI가 만든 HTML만 갖고 있으면 테마가 바뀌었을 때 다시 못 그린다)
+        if "paper_doi" not in insight_columns:
+            cursor.execute("ALTER TABLE ai_daily_insights ADD COLUMN paper_doi TEXT")
+            print("[DB Migration] Added column 'paper_doi' to 'ai_daily_insights' table.")
+        if "video_id" not in insight_columns:
+            cursor.execute("ALTER TABLE ai_daily_insights ADD COLUMN video_id TEXT")
+            print("[DB Migration] Added column 'video_id' to 'ai_daily_insights' table.")
+        if "content_json" not in insight_columns:
+            cursor.execute("ALTER TABLE ai_daily_insights ADD COLUMN content_json TEXT")
+            print("[DB Migration] Added column 'content_json' to 'ai_daily_insights' table.")
+
+        # 옛 꿀팁 카드 비활성화 — Gemini가 HTML을 통째로 만들던 시절의 카드는 흰 배경을
+        # 전제로 한 진한 글자색이 박혀 있어 다크 테마에서 글자가 안 보인다.
+        # 선생님 목록에 '활성'으로 남아 있으면 실수로 다시 노출될 수 있어 여기서 내린다.
+        # 조건은 학생 조회 쿼리(get_latest_active_insight)의 가드와 정확히 같게 둔다 —
+        # 처음엔 '<style>이 든 것'만 골랐는데, 그러면 <style> 없이 생성된 13건이 활성으로
+        # 남아 두 조건이 어긋났다. 기준은 하나여야 한다: content_json이 없으면 옛 카드다.
+        cursor.execute(
+            "UPDATE ai_daily_insights SET is_active = 0 "
+            "WHERE is_active = 1 AND content_json IS NULL"
+        )
+        if cursor.rowcount:
+            print(f"[DB Migration] Deactivated {cursor.rowcount} legacy insight cards "
+                  f"(AI-authored HTML, unreadable on the dark theme).")
 
         # 자주 조회되는 컬럼 인덱스 (실제 쿼리 패턴 기준 — get_active_session 등의
         # "WHERE student_id = ? AND status = 'ACTIVE'"류를 커버)
@@ -814,14 +948,22 @@ def has_todays_insight(today_str):
         conn.close()
 
 
-def create_daily_insight(insight_type, title, html_content, created_at_iso, part=None):
-    """오늘의 인사이트를 저장하고, 최근 180개(파트 6개 x 30일치)만 남기고 오래된 것은 정리."""
+def create_daily_insight(insight_type, title, html_content, created_at_iso, part=None,
+                         paper_doi=None, video_id=None, content_json=None):
+    """오늘의 인사이트를 저장하고, 최근 180개(파트 6개 x 30일치)만 남기고 오래된 것은 정리.
+
+    paper_doi / video_id는 이 카드가 어떤 근거에 기댔는지 되짚기 위한 것이고,
+    content_json은 AI가 채운 구조화 원본이다. HTML이 아니라 이 원본을 갖고 있어야
+    나중에 카드 디자인이 바뀌어도 지난 꿀팁을 다시 그릴 수 있다.
+    """
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "INSERT INTO ai_daily_insights (insight_type, title, html_content, is_active, created_at, part) VALUES (?, ?, ?, 1, ?, ?)",
-            (insight_type, title, html_content, created_at_iso, part)
+            "INSERT INTO ai_daily_insights "
+            "(insight_type, title, html_content, is_active, created_at, part, paper_doi, video_id, content_json) "
+            "VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)",
+            (insight_type, title, html_content, created_at_iso, part, paper_doi, video_id, content_json)
         )
         cursor.execute("""
             DELETE FROM ai_daily_insights
@@ -835,12 +977,24 @@ def create_daily_insight(insight_type, title, html_content, created_at_iso, part
 
 
 def get_latest_active_insight(part):
-    """특정 파트의 가장 최근 활성 인사이트 1건 (학생 화면용)."""
+    """특정 파트의 가장 최근 활성 인사이트 1건 (학생 화면용).
+
+    `content_json IS NOT NULL` 조건이 붙는 이유:
+    2026-09 이전 카드는 Gemini가 <style>까지 통째로 만든 HTML이라, 흰 배경을 전제로 한
+    진한 글자색(#454648 등)이 그 안에 박혀 있다. 학생 화면이 다크 테마로 바뀐 뒤 이 카드들은
+    글자가 배경에 묻혀 읽을 수 없다. 렌더러가 만든 카드만 content_json을 갖고 있으므로,
+    이 조건 하나로 옛 카드가 학생에게 다시 새어 나가는 경로를 막는다.
+
+    그날 생성이 실패해도 옛 카드로 흘러내려가지 않고 "준비 중"이 보인다 — 읽을 수 없는
+    카드를 보여주는 것보다 낫다.
+    """
     conn = get_db_connection()
     try:
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT * FROM ai_daily_insights WHERE is_active = 1 AND part = ? ORDER BY created_at DESC LIMIT 1",
+            "SELECT * FROM ai_daily_insights "
+            "WHERE is_active = 1 AND part = ? AND content_json IS NOT NULL "
+            "ORDER BY created_at DESC LIMIT 1",
             (part,)
         )
         row = cursor.fetchone()
@@ -1025,6 +1179,96 @@ def set_teacher_status(teacher_id, status):
         cursor = conn.cursor()
         cursor.execute("UPDATE teachers SET status = ? WHERE id = ?", (status, teacher_id))
         conn.commit()
+    finally:
+        conn.close()
+
+
+# ==========================================
+# Teacher sessions (로그인 유지 토큰)
+# ==========================================
+
+def create_teacher_session(teacher_id, token_hash, created_at_iso, expires_at_iso):
+    """발급한 토큰의 해시를 저장. 평문 토큰은 DB 어디에도 남지 않는다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO teacher_sessions (teacher_id, token_hash, created_at, last_used_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (teacher_id, token_hash, created_at_iso, created_at_iso, expires_at_iso)
+        )
+        conn.commit()
+        return cursor.lastrowid
+    finally:
+        conn.close()
+
+
+def get_teacher_by_session_token_hash(token_hash, now_iso):
+    """토큰 해시로 선생님을 한 번에 조회 — 인증이 필요한 모든 요청이 지나가는 경로라 쿼리 1번으로 끝낸다.
+
+    만료된 세션과 그 사이 비활성화된 계정은 여기서 걸러진 채로 나온다.
+    last_used_at을 함께 돌려주는 건 Service가 '만료를 미룰 만큼 시간이 지났는지' 판단하기 위해서다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT t.id, t.username, t.display_name, t.role, t.part, s.last_used_at "
+            "FROM teacher_sessions s JOIN teachers t ON t.id = s.teacher_id "
+            "WHERE s.token_hash = ? AND s.expires_at > ? AND t.status = 'ACTIVE'",
+            (token_hash, now_iso)
+        )
+        row = cursor.fetchone()
+        return dict(row) if row else None
+    finally:
+        conn.close()
+
+
+def touch_teacher_session(token_hash, now_iso, expires_at_iso):
+    """계속 쓰고 있는 세션이면 만료 시각을 뒤로 민다 (sliding expiry)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE teacher_sessions SET last_used_at = ?, expires_at = ? WHERE token_hash = ?",
+            (now_iso, expires_at_iso, token_hash)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def delete_teacher_session(token_hash):
+    """로그아웃 — 그 토큰 하나만 폐기."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM teacher_sessions WHERE token_hash = ?", (token_hash,))
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+def delete_teacher_sessions_by_teacher(teacher_id):
+    """그 선생님의 모든 세션을 끊는다 — 계정 비활성화처럼 즉시 쫓아내야 할 때."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM teacher_sessions WHERE teacher_id = ?", (teacher_id,))
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+def delete_expired_teacher_sessions(now_iso):
+    """만료된 세션 청소 — 놔두면 테이블이 계속 자란다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM teacher_sessions WHERE expires_at <= ?", (now_iso,))
+        conn.commit()
+        return cursor.rowcount
     finally:
         conn.close()
 
@@ -1276,5 +1520,395 @@ def get_student_practice_dates(student_id, limit=400):
             (student_id, limit)
         )
         return [row["practice_date"] for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# 근거 논문 코퍼스 (research_papers)
+# ----------------------------------------------------------------------------
+# 이 테이블에 들어온 논문은 전부 Crossref DOI로 실존이 확인된 것이다.
+# 꿀팁은 여기 있는 논문 없이는 만들어지지 않는다.
+# ============================================================================
+
+def upsert_research_paper(paper):
+    """논문 한 편을 저장한다. 같은 DOI가 이미 있으면 메타데이터만 갱신(사용 이력은 보존)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO research_papers
+                (doi, title, authors, year, journal, url, open_access_url, abstract,
+                 topic, angle, cited_by, has_evidence, verified_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(doi) DO UPDATE SET
+                title = excluded.title,
+                authors = excluded.authors,
+                year = excluded.year,
+                journal = excluded.journal,
+                url = excluded.url,
+                open_access_url = excluded.open_access_url,
+                abstract = excluded.abstract,
+                topic = excluded.topic,
+                angle = excluded.angle,
+                cited_by = excluded.cited_by,
+                has_evidence = excluded.has_evidence,
+                verified_at = excluded.verified_at
+        """, (
+            paper["doi"], paper["title"], json.dumps(paper.get("authors") or [], ensure_ascii=False),
+            paper.get("year"), paper.get("journal"), paper.get("url"), paper.get("open_access_url"),
+            paper.get("abstract"), paper.get("topic"), paper.get("angle"),
+            paper.get("cited_by") or 0, 1 if paper.get("has_evidence") else 0,
+            paper.get("verified_at"), datetime.now().isoformat(),
+        ))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _row_to_paper(row):
+    """DB 행을 서비스가 쓰는 논문 dict으로. authors는 JSON 문자열로 저장돼 있다."""
+    if row is None:
+        return None
+    paper = dict(row)
+    try:
+        paper["authors"] = json.loads(paper.get("authors") or "[]")
+    except (TypeError, ValueError):
+        paper["authors"] = []
+    return paper
+
+
+def pick_least_used_paper(topic=None):
+    """오늘 쓸 논문 한 편을 고른다 — 근거 초록이 있고, 가장 오랫동안 안 쓴 것부터.
+
+    last_used_at이 NULL(한 번도 안 쓴 것)이 먼저 나오도록 정렬한다. 그래야 코퍼스를
+    한 바퀴 다 돌고 나서야 재사용이 시작된다.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        sql = ("SELECT * FROM research_papers "
+               "WHERE is_active = 1 AND has_evidence = 1 ")
+        params = []
+        if topic:
+            sql += "AND topic = ? "
+            params.append(topic)
+        sql += "ORDER BY (last_used_at IS NOT NULL), last_used_at ASC, use_count ASC LIMIT 1"
+        cursor.execute(sql, params)
+        return _row_to_paper(cursor.fetchone())
+    finally:
+        conn.close()
+
+
+def mark_paper_used(doi, used_at_iso):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE research_papers SET last_used_at = ?, use_count = use_count + 1 WHERE doi = ?",
+            (used_at_iso, doi)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_paper_by_doi(doi):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM research_papers WHERE doi = ?", (doi,))
+        return _row_to_paper(cursor.fetchone())
+    finally:
+        conn.close()
+
+
+def get_all_papers(limit=200):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT * FROM research_papers ORDER BY topic, year DESC LIMIT ?", (limit,)
+        )
+        return [_row_to_paper(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def count_usable_papers():
+    """꿀팁 생성에 실제로 쓸 수 있는 논문 수(근거 초록 보유 + 활성)."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) AS c FROM research_papers WHERE is_active = 1 AND has_evidence = 1")
+        return cursor.fetchone()["c"]
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# 자막 분석을 마친 유튜브 영상 (insight_videos)
+# ============================================================================
+
+def upsert_insight_video(video):
+    """영상 한 건을 저장/갱신. video_id가 같으면 분석 결과를 덮어쓴다."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO insight_videos
+                (video_id, title, channel, url, published_at, duration_seconds, view_count,
+                 parts, topic, transcript_language, transcript_chars, transcript_excerpt,
+                 analysis_summary, key_points, relevance_score, source, analyzed_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(video_id) DO UPDATE SET
+                title = excluded.title,
+                channel = excluded.channel,
+                published_at = excluded.published_at,
+                duration_seconds = excluded.duration_seconds,
+                view_count = excluded.view_count,
+                parts = excluded.parts,
+                topic = excluded.topic,
+                transcript_language = excluded.transcript_language,
+                transcript_chars = excluded.transcript_chars,
+                transcript_excerpt = excluded.transcript_excerpt,
+                analysis_summary = excluded.analysis_summary,
+                key_points = excluded.key_points,
+                relevance_score = excluded.relevance_score,
+                analyzed_at = excluded.analyzed_at
+        """, (
+            video["video_id"], video["title"], video.get("channel"), video["url"],
+            video.get("published_at"), video.get("duration_seconds"), video.get("view_count"),
+            json.dumps(video.get("parts") or [], ensure_ascii=False), video.get("topic"),
+            video.get("transcript_language"), video.get("transcript_chars"),
+            video.get("transcript_excerpt"), video.get("analysis_summary"),
+            json.dumps(video.get("key_points") or [], ensure_ascii=False),
+            video.get("relevance_score") or 0, video.get("source") or "api_search",
+            video.get("analyzed_at"), datetime.now().isoformat(),
+        ))
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _row_to_video(row):
+    if row is None:
+        return None
+    video = dict(row)
+    for field in ("parts", "key_points"):
+        try:
+            video[field] = json.loads(video.get(field) or "[]")
+        except (TypeError, ValueError):
+            video[field] = []
+    return video
+
+
+def get_known_video_ids():
+    """이미 본 영상 ID 집합 — 같은 영상을 두 번 분석해 AI 쿼터를 낭비하지 않기 위해."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT video_id FROM insight_videos")
+        return {row["video_id"] for row in cursor.fetchall()}
+    finally:
+        conn.close()
+
+
+def pick_video_for_part(part=None):
+    """꿀팁에 붙일 영상 하나. 해당 파트용을 먼저 보고, 없으면 파트 무관 영상으로.
+
+    transcript_excerpt가 있는 것만 고른다 — 자막을 못 받은 영상은 애초에 저장되지
+    않지만, 수동 등록분이나 과거 데이터에 대비한 안전장치다.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        base = ("SELECT * FROM insight_videos "
+                "WHERE is_active = 1 AND transcript_excerpt IS NOT NULL AND transcript_excerpt != '' ")
+        order = " ORDER BY (last_used_at IS NOT NULL), relevance_score DESC, last_used_at ASC LIMIT 1"
+
+        if part:
+            cursor.execute(base + "AND parts LIKE ? " + order, ('%"' + part + '"%',))
+            row = cursor.fetchone()
+            if row:
+                return _row_to_video(row)
+
+        cursor.execute(base + order)
+        return _row_to_video(cursor.fetchone())
+    finally:
+        conn.close()
+
+
+def mark_video_used(video_id, used_at_iso):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE insight_videos SET last_used_at = ?, use_count = use_count + 1 WHERE video_id = ?",
+            (used_at_iso, video_id)
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def get_video_by_id(video_id):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM insight_videos WHERE video_id = ?", (video_id,))
+        return _row_to_video(cursor.fetchone())
+    finally:
+        conn.close()
+
+
+def get_all_videos(limit=100):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM insight_videos ORDER BY created_at DESC LIMIT ?", (limit,))
+        return [_row_to_video(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def set_video_active_status(video_id, is_active):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE insight_videos SET is_active = ? WHERE video_id = ?", (is_active, video_id))
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+# ============================================================================
+# 입시 정보 센터 (admission_info)
+# ----------------------------------------------------------------------------
+# 자동 수집분은 pending으로 들어와 선생님 승인을 받아야 학생에게 나간다.
+# 선생님이 직접 넣은 것은 처음부터 approved.
+# ============================================================================
+
+def insert_admission_info(item):
+    """공고 한 건 저장. 같은 content_hash가 이미 있으면 조용히 무시(매일 같은 글 재수집 방지).
+
+    새로 저장됐으면 그 행의 id, 이미 있어서 건너뛰었으면 None.
+    """
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        now = datetime.now().isoformat()
+        cursor.execute("""
+            INSERT OR IGNORE INTO admission_info
+                (content_hash, category, title, summary, school, board_name, parts,
+                 posted_at, deadline, source_url, source_type, source_key, status,
+                 approved_by, approved_at, collected_at, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            item["content_hash"], item.get("category"), item["title"], item.get("summary"),
+            item.get("school"), item.get("board_name"),
+            json.dumps(item.get("parts") or [], ensure_ascii=False),
+            item.get("posted_at"), item.get("deadline"), item.get("source_url"),
+            item.get("source_type") or "auto_crawl", item.get("source_key"),
+            item.get("status") or "pending", item.get("approved_by"), item.get("approved_at"),
+            item.get("collected_at") or now, now,
+        ))
+        conn.commit()
+        return cursor.lastrowid if cursor.rowcount > 0 else None
+    finally:
+        conn.close()
+
+
+def _row_to_admission(row):
+    if row is None:
+        return None
+    info = dict(row)
+    try:
+        info["parts"] = json.loads(info.get("parts") or "[]")
+    except (TypeError, ValueError):
+        info["parts"] = []
+    return info
+
+
+def get_admission_info(status=None, part=None, limit=50):
+    """공고 목록. status를 주면 그 상태만, part를 주면 그 파트 대상 + 전 파트 공통 공고를."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        sql = "SELECT * FROM admission_info WHERE 1 = 1 "
+        params = []
+        if status:
+            sql += "AND status = ? "
+            params.append(status)
+        if part:
+            # parts가 비어 있으면 전 파트 공통 공고다.
+            sql += "AND (parts = '[]' OR parts LIKE ?) "
+            params.append('%"' + part + '"%')
+        # 작성일을 못 뽑은 건(날짜 추출 실패) 뒤로 민다.
+        sql += "ORDER BY (posted_at IS NULL), posted_at DESC, id DESC LIMIT ?"
+        params.append(limit)
+        cursor.execute(sql, params)
+        return [_row_to_admission(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def get_admission_info_by_id(info_id):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM admission_info WHERE id = ?", (info_id,))
+        return _row_to_admission(cursor.fetchone())
+    finally:
+        conn.close()
+
+
+def update_admission_info_fields(info_id, fields):
+    """AI가 분류한 결과(category/parts/deadline/summary)를 덮어쓴다."""
+    if not fields:
+        return 0
+    allowed = {"category", "summary", "parts", "deadline", "title"}
+    sets, params = [], []
+    for key, value in fields.items():
+        if key not in allowed:
+            continue
+        sets.append(key + " = ?")
+        params.append(json.dumps(value, ensure_ascii=False) if key == "parts" else value)
+    if not sets:
+        return 0
+    params.append(info_id)
+
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE admission_info SET " + ", ".join(sets) + " WHERE id = ?", params)
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+def set_admission_info_status(info_id, status, approved_by=None):
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE admission_info SET status = ?, approved_by = ?, approved_at = ? WHERE id = ?",
+            (status, approved_by, datetime.now().isoformat(), info_id)
+        )
+        conn.commit()
+        return cursor.rowcount
+    finally:
+        conn.close()
+
+
+def count_admission_info_by_status():
+    """선생님 대시보드 뱃지용 — 상태별 건수."""
+    conn = get_db_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT status, COUNT(*) AS c FROM admission_info GROUP BY status")
+        return {row["status"]: row["c"] for row in cursor.fetchall()}
     finally:
         conn.close()

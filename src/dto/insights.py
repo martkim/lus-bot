@@ -10,6 +10,9 @@ class InsightDTO(BaseModel):
     is_active: int
     created_at: str
     part: Optional[str] = None
+    # 이 꿀팁이 어떤 근거에 기댔는지 — 화면에서 되짚거나 문제가 생겼을 때 추적용.
+    paper_doi: Optional[str] = None
+    video_id: Optional[str] = None
 
 
 class DailyInsightResponse(BaseModel):

@@ -4,8 +4,8 @@
   "description": "실기 시험을 준비하는 음악 입시생의 연습량·멘탈·실전 훈련을 계측하듯 관리하는 앱",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#ffffff",
+  "background_color": "#0a0b0d",
+  "theme_color": "#0a0b0d",
   "orientation": "portrait",
   "scope": "/",
   "icons": [

@@ -27,7 +27,7 @@ load_dotenv()
 
 from src import db, background
 from src.curriculum_store import load_curriculum
-from src.routers import students, sessions, dashboard, qa, ai, insights, curriculum, teachers, homework, director, kakao, plans, pages
+from src.routers import students, sessions, dashboard, qa, ai, insights, curriculum, teachers, homework, director, kakao, plans, qa_agent, knowledge, pages
 
 # ==========================================
 # 로깅 설정 — 핸들링된 예외도 logs/app.log에 스택트레이스까지 남긴다.
@@ -97,6 +97,10 @@ app.include_router(kakao.router)
 # pages.router보다 먼저 등록해야 한다 — pages에 /{fallback_path:path} 캐치올이 있어서
 # 뒤에 등록하면 /api/plans 요청까지 캐치올이 먼저 가로챈다.
 app.include_router(plans.router)
+# QA 에이전트(자동 점검) — 이것도 pages 캐치올보다 먼저 등록해야 /api/qa-agent/*가 살아 있다.
+app.include_router(qa_agent.router)
+# 오늘의 꿀팁 근거 계층(논문/영상/입시정보). 역시 pages 캐치올보다 먼저.
+app.include_router(knowledge.router)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PUBLIC_DIR = os.path.join(BASE_DIR, "public")

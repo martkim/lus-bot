@@ -1,1010 +1,1520 @@
 /* ==========================================================================
-   학생 화면 전용 화이트 테마
+   버스트인 학생 화면 — Oura 앱 디자인 시스템
    --------------------------------------------------------------------------
-   style.css는 선생님 대시보드와 공유되므로 건드리지 않고, index.html에서만
-   이 파일을 뒤에 로드해 덮어쓴다. 선생님 화면은 기존 다크 테마 그대로 유지된다.
+   출처: instrument.com/work/oura-app 케이스 스터디의 실제 앱 스크린샷 분석.
+   style.css는 선생님 대시보드와 공유하므로 건드리지 않고, index.html에서만
+   이 파일을 뒤에 로드해 덮어쓴다. 선생님 화면은 기존 테마 그대로 유지된다.
 
-   설계 기준(2026 모바일 UI 레퍼런스 조사 반영):
-   - 화이트 배경 + 넉넉한 여백으로 정보 위계를 여백이 만들게 한다
-   - 카드는 테두리를 옅게, 그림자도 옅게 — 색 대비 대신 면 분리로 구분
-   - 터치 타겟은 최소 48dp, 주요 버튼은 56dp 이상 (중고생 한 손 조작 기준)
+   Oura가 쓰는 규칙 그대로:
+   1) 캔버스는 거의 검정, 카드는 테두리가 아니라 '색이 번지는 면'으로 구분한다.
+      카드마다 의미색 글로우를 좌상단에 깔아 스크롤만 해도 영역이 나뉜다.
+   2) 위계는 서체가 만든다.
+      큰 수치 = 가는 산세리프 / 헤드라인 = 세리프 / 상태 = 대문자 자간
+   3) 색은 의미일 때만 쓴다. 장식용 색은 없다.
+      (민트=좋음, 블루=정보, 라임=진행 중, 앰버=주의, 코랄=경고)
+   4) 데이터 시각화는 선 하나, 막대 하나까지 최소한으로.
+
+   테마: 기본 다크. html[data-theme="light"]로 화이트 전환.
+   전 토큰 WCAG 실측 검증 — 두 테마 × 실제로 얹히는 배경(캔버스/카드/입력면)
+   전 조합에서 4.5:1 이상. 가장 빡빡한 조합은 화이트의 라임(진행 중) 4.53:1.
    ========================================================================== */
 
-body.student-light {
-  /* --- 색상 스케일 -------------------------------------------------------
-     OKLCH(지각적 균일 명도)에서 L만 단계적으로 낮추고 C/H는 유지해 생성했다.
-     HSL로 눈대중해 고르면 같은 명도값이라도 색상마다 밝기가 달라 보여서,
-     대비가 색상별로 들쭉날쭉해진다(실제로 직전 팔레트는 WCAG 5건 미달이었다).
-     전 토큰 대비율 검증 완료 — 본문 4.5:1, UI 요소 3:1 기준 통과. */
-  --p-50: #edf2ff;
-  --p-500: #807df6;
-  --p-600: #6962d9;   /* 주버튼 — 흰 글씨 4.83:1 */
-  --p-700: #534daf;   /* 강조 텍스트 6.89:1 */
+/* ==========================================================================
+   1. 토큰
+   ========================================================================== */
+body.student-app {
+  /* --- 면 --------------------------------------------------------------- */
+  --canvas: #0a0b0d;        /* 페이지 바탕 — 순검정보다 살짝 띄워 OLED 번짐을 피한다 */
+  --surface: #17181b;       /* 카드 */
+  --surface-2: #1f2024;     /* 카드 위의 한 겹 더 (입력창, 인라인 블록) */
+  --chip: rgba(244, 241, 234, 0.08);        /* 원형 아이콘 칩 / 알약 버튼 바탕 */
+  --chip-strong: rgba(244, 241, 234, 0.14);
+  --hairline: rgba(244, 241, 234, 0.10);
+  --hairline-strong: rgba(244, 241, 234, 0.20);
 
-  --n-50: #f6f7f9;
-  --n-100: #ecedef;
-  --n-200: #dadbdd;
-  --n-300: #c3c4c6;
-  --n-600: #757678;   /* 보조 텍스트 4.55:1 */
-  --n-800: #454648;   /* 본문 9.45:1 */
-  --n-900: #2f3032;   /* 제목 13.21:1 */
+  /* --- 잉크 -------------------------------------------------------------- */
+  /* 순백(#fff)이 아니라 살짝 따뜻한 오프화이트. Oura 화면의 글자색 그대로다. */
+  --ink: #f4f1ea;
+  --ink-2: rgba(244, 241, 234, 0.74);   /* 본문 — 8.5:1 이상 */
+  --ink-3: rgba(244, 241, 234, 0.58);   /* 보조/캡션 — 5.7:1 이상 */
 
-  --ok-700: #216e42;  /* 성공/연결됨 6.22:1 */
-  --warn-700: #9b3738; /* 위험/퇴장 7.01:1 */
+  /* --- 의미색 ------------------------------------------------------------ */
+  --sem-good: #62cfae;      /* 좋음/완료   8.6:1 이상 */
+  --sem-info: #7fb0ff;      /* 정보/안내   7.4:1 이상 */
+  --sem-progress: #cdd95c;  /* 진행 중    10.6:1 이상 */
+  --sem-warn: #eeae5e;      /* 주의        8.4:1 이상 */
+  --sem-alert: #ef8577;     /* 경고/마감   6.4:1 이상 */
 
-  /* --- 기존 변수 매핑 (style.css가 이 이름들을 참조한다) --- */
-  --bg-primary: #ffffff;
-  --bg-secondary: var(--n-50);
-  --bg-tertiary: var(--n-100);
+  /* --- 카드 글로우 -------------------------------------------------------
+     Oura 카드의 정체성. 좌상단에서 의미색이 번져 나와 면을 구분한다.
+     카드마다 --card-glow만 바꿔 끼운다. */
+  --glow-good: rgba(98, 207, 174, 0.20);
+  --glow-info: rgba(127, 176, 255, 0.20);
+  --glow-progress: rgba(205, 217, 92, 0.16);
+  --glow-warn: rgba(238, 174, 94, 0.18);
+  --glow-alert: rgba(239, 133, 119, 0.18);
+  --glow-neutral: rgba(244, 241, 234, 0.07);
+  --card-glow: var(--glow-neutral);
 
-  --glass-bg: #ffffff;
-  --glass-bg-hover: var(--n-50);
-  --glass-border: var(--n-200);
-  --glass-border-glow: var(--n-300);
+  /* --- 서체 -------------------------------------------------------------- */
+  --font-sans: 'Inter', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-serif: 'Noto Serif KR', Georgia, 'Times New Roman', serif;
 
-  --neon-mint: var(--p-700);      /* 액센트를 퍼플 한 계열로 통일 — 민트/퍼플 혼재를 정리 */
-  --neon-mint-glow: rgba(105, 98, 217, 0.14);
-  --neon-purple: var(--p-600);
-  --neon-purple-glow: rgba(105, 98, 217, 0.18);
-  --neon-green: var(--ok-700);
-  --neon-green-glow: rgba(33, 110, 66, 0.14);
-  --neon-coral: var(--warn-700);
+  /* --- 모양 -------------------------------------------------------------- */
+  --r-card: 28px;
+  --r-field: 16px;
+  --r-pill: 999px;
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 
-  --text-main: var(--n-900);
-  --text-body: var(--n-800);
-  --text-muted: var(--n-600);
+  /* --- style.css가 참조하는 기존 변수 매핑 ------------------------------- */
+  --bg-primary: var(--canvas);
+  --bg-secondary: var(--surface);
+  --bg-tertiary: var(--surface-2);
+  --glass-bg: var(--surface);
+  --glass-bg-hover: var(--surface-2);
+  --glass-border: var(--hairline);
+  --glass-border-glow: var(--hairline-strong);
+  --neon-mint: var(--sem-good);
+  --neon-mint-glow: var(--glow-good);
+  --neon-purple: var(--ink);
+  --neon-purple-glow: var(--glow-neutral);
+  --neon-green: var(--sem-good);
+  --neon-green-glow: var(--glow-good);
+  --neon-coral: var(--sem-alert);
+  --text-main: var(--ink);
+  --text-body: var(--ink-2);
+  --text-muted: var(--ink-3);
 
-  background: var(--bg-primary);
-  color: var(--text-body);
+  font-family: var(--font-sans);
+  background: var(--canvas);
+  color: var(--ink-2);
+  -webkit-font-smoothing: antialiased;
 }
 
-/* 다크 테마에서 쓰던 배경 글로우/그라데이션 제거 */
-body.student-light::before,
-body.student-light::after {
+/* --- 화이트 전환 ----------------------------------------------------------
+   Oura 라이트 모드도 순백이 아니라 따뜻한 오프화이트다. 의미색은 흰 바탕에
+   그대로 쓰면 3:1도 안 나오므로 명도를 낮춘 별도 값을 쓴다. */
+html[data-theme="light"] body.student-app {
+  --canvas: #f6f4f0;
+  --surface: #ffffff;
+  --surface-2: #f2efea;
+  --chip: rgba(22, 23, 26, 0.06);
+  --chip-strong: rgba(22, 23, 26, 0.11);
+  --hairline: rgba(22, 23, 26, 0.10);
+  --hairline-strong: rgba(22, 23, 26, 0.20);
+
+  --ink: #16171a;                 /* 15.6:1 이상 */
+  --ink-2: #4b4d52;               /* 7.4:1 이상 */
+  /* 흰 배경(5.7:1)만 보고 고르면 카드 안쪽 면(#f2efea) 위에서 4.31:1로 미달한다.
+     가장 밝은 배경이 아니라 가장 어두운 배경을 기준으로 잡는다. */
+  --ink-3: #64666b;               /* 5.0:1 이상 */
+
+  --sem-good: #17795c;            /* 4.7:1 이상 */
+  --sem-info: #1f5fc4;            /* 5.2:1 이상 */
+  --sem-progress: #6b7212;        /* 4.5:1 이상 — 전 토큰 중 가장 빡빡하다 */
+  --sem-warn: #8a5309;            /* 5.5:1 이상 */
+  --sem-alert: #b03a2c;           /* 5.2:1 이상 */
+
+  --glow-good: rgba(23, 121, 92, 0.10);
+  --glow-info: rgba(31, 95, 196, 0.09);
+  --glow-progress: rgba(107, 114, 18, 0.10);
+  --glow-warn: rgba(138, 83, 9, 0.09);
+  --glow-alert: rgba(176, 58, 44, 0.08);
+  --glow-neutral: rgba(22, 23, 26, 0.04);
+}
+
+/* ==========================================================================
+   2. 페이지 골격
+   ========================================================================== */
+body.student-app {
+  background-image: none;
+  background-attachment: initial;
+}
+
+/* style.css의 배경 글로우/그라데이션 제거 */
+body.student-app::before,
+body.student-app::after {
   display: none !important;
 }
 
-/* .app-container는 변수가 아니라 rgba(8,12,20,.8)이 하드코딩돼 있어 변수 교체만으로는
-   배경이 어두운 채로 남는다. 페이지 전체 바탕이므로 여기서 직접 덮는다. */
-body.student-light .app-container {
-  background: var(--bg-primary);
-  border-left: 1px solid var(--glass-border);
-  border-right: 1px solid var(--glass-border);
+/* .app-container는 rgba(8,12,20,.8)이 하드코딩돼 있어 변수 교체만으로 안 바뀐다 */
+body.student-app .app-container {
+  background: var(--canvas);
+  border-left: 1px solid var(--hairline);
+  border-right: 1px solid var(--hairline);
 }
 
-/* --- 카드 ------------------------------------------------------------- */
-body.student-light .glass-card,
-body.student-light .plan-card,
-body.student-light .history-card,
-body.student-light .chat-card {
-  background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.04);
-  backdrop-filter: none;
+/* 떠 있는 탭바가 가리지 않도록 아래 여백을 키운다 */
+body.student-app .app-content {
+  padding: 8px 18px 132px;
 }
 
-body.student-light h2,
-body.student-light h3 {
-  color: var(--text-main);
-  text-shadow: none;
-}
-
-/* .plan-card는 청록 테두리를 !important로 박아두고 있어서, 화이트 테마에서
-   카드마다 테두리 색이 달라 보인다. 같은 위계의 카드는 같은 테두리로 통일한다. */
-body.student-light .plan-card,
-body.student-light .history-card,
-body.student-light .chat-card {
-  border-color: var(--n-200) !important;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.04);
-}
-
-/* --- 헤더 ------------------------------------------------------------- */
-body.student-light .app-header,
-body.student-light header {
-  background: rgba(255, 255, 255, 0.92);
-  border-bottom: 1px solid var(--glass-border);
-  backdrop-filter: saturate(180%) blur(12px);
-}
-
-body.student-light .logo-text,
-body.student-light .app-title {
-  color: var(--text-main);
-  text-shadow: none;
-}
-
-/* --- 입력 ------------------------------------------------------------- */
-body.student-light .custom-input-text,
-body.student-light select.custom-input-text,
-body.student-light textarea {
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  color: var(--text-main);
-  border-radius: 14px;
-  min-height: 52px;
-}
-
-body.student-light .custom-input-text::placeholder,
-body.student-light textarea::placeholder {
-  color: var(--text-muted);
-}
-
-body.student-light .custom-input-text:focus,
-body.student-light textarea:focus {
-  border-color: var(--neon-purple);
-  box-shadow: 0 0 0 4px var(--neon-purple-glow);
-  outline: none;
-}
-
-/* --- 버튼 ------------------------------------------------------------- */
-body.student-light .btn {
-  border-radius: 14px;
-  min-height: 52px;
-  font-weight: 700;
-}
-
-body.student-light .btn-primary {
-  background: var(--neon-purple);
-  border: none;
-  color: #fff;
-  box-shadow: 0 6px 16px var(--neon-purple-glow);
-}
-
-/* 비활성 버튼이 밝은 회색(#d9dce3) 위에 흰 글씨라 1.37:1 — 글자가 통째로 사라진다.
-   로그인 전에는 '연습 시작하기'가 이 상태라 버튼이 비어 보였다.
-   style.css의 .btn:disabled가 opacity:0.6까지 걸어 더 흐려지므로 그것도 되돌린다.
-   회색 배경과 not-allowed 커서만으로도 비활성인 건 충분히 읽힌다. */
-body.student-light .btn:disabled,
-body.student-light .btn-primary:disabled,
-body.student-light .btn-secondary:disabled {
-  background: var(--n-100);
-  color: var(--n-800);
-  opacity: 1;
-  box-shadow: none;
-}
-
-body.student-light .btn-secondary {
-  background: var(--neon-purple);
-  border: none;
-  color: #fff;
-}
-
-body.student-light .btn-lg {
-  min-height: 60px;
-  font-size: 1.05rem;
-}
-
-body.student-light .btn-logout {
-  background: #fff;
-  border: 1px solid var(--glass-border);
-  color: var(--neon-coral);
-}
-
-/* --- 타이머 ----------------------------------------------------------- */
-/* 링은 conic-gradient 배경으로 그려지고 가운데를 inner-ring이 덮어 도넛이 된다.
-   outer를 흰색으로 칠하면 흰 바탕에 묻혀 링이 사라지므로 회색 링을 유지한다. */
-body.student-light .timer-outer-ring {
-  background: conic-gradient(from 0deg, #e4e7ee 0%, #e4e7ee 100%);
-  box-shadow: 0 8px 28px rgba(16, 24, 40, 0.07);
-}
-
-body.student-light .timer-outer-ring.active {
-  background: conic-gradient(from 0deg, var(--neon-purple) 0%, var(--neon-mint) 50%, var(--neon-purple) 100%);
-  box-shadow: 0 0 36px rgba(109, 94, 246, 0.22);
-}
-
-body.student-light .timer-inner-ring {
-  background: #fff;
-  box-shadow: none;
-}
-
-body.student-light .timer-digits {
-  color: var(--text-main);
-  text-shadow: none;
-  font-variant-numeric: tabular-nums;
-}
-
-body.student-light .timer-label {
-  color: var(--text-muted);
-}
-
-body.student-light.is-practicing .timer-digits {
-  color: var(--neon-purple);
-}
-
-body.student-light .timer-info-badge {
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-}
-
-body.student-light .badge-instrument {
-  background: var(--neon-purple);
-  color: #fff;
-}
-
-body.student-light .badge-name {
-  color: var(--text-main);
-}
-
-/* --- 연습 계획 체크리스트 --------------------------------------------- */
-body.student-light .plan-item {
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-}
-
-body.student-light .plan-item:hover {
-  background: var(--bg-tertiary);
-  border-color: var(--glass-border-glow);
-}
-
-body.student-light .checkbox-container {
-  color: var(--text-body);
-}
-
-body.student-light .checkmark {
-  background: #fff;
-  border: 2px solid #cbd0d9;
-}
-
-body.student-light .checkbox-container input:checked ~ .checkmark {
-  background: var(--neon-purple);
-  border-color: var(--neon-purple);
-}
-
-/* --- 하단 탭 ---------------------------------------------------------- */
-body.student-light .app-navbar {
-  background: rgba(255, 255, 255, 0.96);
-  border-top: 1px solid var(--glass-border);
-  backdrop-filter: saturate(180%) blur(12px);
-  -webkit-backdrop-filter: saturate(180%) blur(12px);
-}
-
-body.student-light .nav-item {
-  color: var(--text-muted);
-  background: transparent;
-}
-
-body.student-light .nav-item.active,
-body.student-light .nav-item.active .nav-text {
-  color: var(--p-600);
-}
-
-/* --- 채팅 ------------------------------------------------------------- */
-body.student-light .chat-bubble-ai,
-body.student-light .msg-ai {
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  color: var(--text-body);
-}
-
-body.student-light .chat-bubble-user,
-body.student-light .msg-user {
-  background: var(--neon-purple);
-  color: #fff;
-}
+body.student-app ::-webkit-scrollbar-track { background: var(--canvas); }
+body.student-app ::-webkit-scrollbar-thumb { background: var(--hairline-strong); }
 
 /* ==========================================================================
-   오늘의 목표 — 시간 블록
-   하루 목표를 칸으로 나눠 연습한 만큼 채운다. 남은 칸이 눈에 보여야 "조금만 더"가
-   되므로, 채운 칸과 빈 칸의 대비를 분명히 두고 숫자도 함께 보여준다.
+   3. 상단 바 — Oura: [상태] · [워드마크] · [설정]
    ========================================================================== */
-body.student-light .goal-card {
-  background: #fff;
-  border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 22px 20px;
-  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.04);
-}
-
-.goal-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.goal-title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--text-main);
-}
-
-.goal-blocks {
+body.student-app .app-header,
+body.student-app .app-header.header-minimal {
+  position: sticky;
+  top: 0;
+  z-index: 100;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
-}
-
-/* 빈 칸도 "앞으로 채울 자리"라는 정보를 담고 있어서, 배경과 구분되지 않으면
-   목표가 몇 칸인지 읽히지 않는다. 직전 팔레트는 대비 1.14:1로 거의 안 보였다. */
-.goal-block {
-  aspect-ratio: 1 / 1;
-  border-radius: 12px;
-  background: var(--n-100);
-  border: 1.5px solid var(--n-300);
-  transition: background 0.3s ease, border-color 0.3s ease;
-}
-
-.goal-block.filled {
-  background: var(--p-600);
-  border-color: var(--p-600);
-}
-
-/* 일부만 채워진 칸 — 지금 진행 중인 블록임을 보여준다 */
-.goal-block.partial {
-  background: linear-gradient(to top, var(--p-600) var(--fill, 50%), var(--n-100) var(--fill, 50%));
-  border-color: var(--p-600);
-}
-
-.goal-foot {
-  margin-top: 14px;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-}
-
-.goal-foot strong {
-  color: var(--text-main);
-}
-
-/* ==========================================================================
-   타이포 스케일
-   비율 없이 눈대중으로 크기를 정하면 위계가 흐려진다. 1.25배(Major Third)
-   간격으로 고정하고, 본문은 16px 아래로 내리지 않는다 — 중고생이 연습실에서
-   폰을 멀리 두고 흘깃 보는 상황을 기준으로 잡았다.
-   ========================================================================== */
-body.student-light {
-  --fs-caption: 0.8125rem;  /* 13px — 보조 설명 */
-  --fs-body: 1rem;          /* 16px — 본문 최소 */
-  --fs-lead: 1.125rem;      /* 18px — 카드 내 강조문 */
-  --fs-title: 1.25rem;      /* 20px — 카드 제목 */
-  --fs-display: 1.75rem;    /* 28px — 화면 제목 */
-}
-
-body.student-light .glass-card p,
-body.student-light .plan-item,
-body.student-light .checkbox-container {
-  font-size: var(--fs-body);
-  line-height: 1.6;
-}
-
-body.student-light h2 {
-  font-size: var(--fs-display);
-  letter-spacing: -0.02em;
-  line-height: 1.3;
-}
-
-body.student-light h3 {
-  font-size: var(--fs-title);
-  letter-spacing: -0.01em;
-}
-
-/* 섹션 설명문은 본문보다 한 단계 작게 — 읽어야 할 것과 참고용을 분리 */
-body.student-light .plan-card > p,
-body.student-light .glass-card > p.section-desc {
-  font-size: var(--fs-caption);
-  color: var(--text-muted);
-}
-
-/* 숫자는 자리 폭을 고정해야 1초마다 글자가 흔들리지 않는다 */
-body.student-light .timer-digits,
-body.student-light .goal-count {
-  font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
-}
-
-/* --- 버튼 디테일 ------------------------------------------------------ */
-/* 누르는 순간 반응이 보여야 "먹었나?" 하고 두 번 누르지 않는다 */
-body.student-light .btn:active {
-  transform: translateY(1px) scale(0.99);
-}
-
-body.student-light .btn-primary:hover:not(:disabled) {
-  background: var(--p-700);
-}
-
-/* 포커스 링 — 키보드/스위치 접근성. 색만으로 상태를 알리지 않는다 */
-body.student-light .btn:focus-visible,
-body.student-light .nav-item:focus-visible {
-  outline: 3px solid var(--p-500);
-  outline-offset: 2px;
-}
-
-/* ==========================================================================
-   아이콘·이모지를 걷어낸 자리
-   ========================================================================== */
-
-/* 상태 배지는 흰 배경 위에 반투명 흰색으로 칠해져 있어 테두리째 사라진다 */
-body.student-light .status-indicator {
-  background: var(--n-50);
-  border: 1px solid var(--n-200);
-  color: var(--text-body);
-  font-weight: 500;
-}
-
-body.student-light .status-indicator .dot.live {
-  background: var(--ok-700);
-  box-shadow: none;
-}
-
-/* 채팅 입력줄은 rgba(8,12,20,.5)이 하드코딩돼 있어 흰 화면에서 혼자 검게 남는다 */
-body.student-light .chat-input-form {
-  background: var(--bg-secondary);
-  border: 1px solid var(--n-200);
-}
-
-body.student-light .chat-input-form:focus-within {
-  border-color: var(--p-600);
-  box-shadow: 0 0 0 4px var(--neon-purple-glow);
-}
-
-body.student-light .chat-input-form input {
-  color: var(--text-main);
-  min-height: 40px;
-}
-
-/* 글자만 남은 전송 버튼 */
-body.student-light .btn-chat-send {
-  background: var(--p-600);
-}
-
-body.student-light .btn-chat-send:hover {
-  background: var(--p-700);
-  box-shadow: none;
-}
-
-body.student-light .spinner {
-  color: var(--p-600);
-}
-
-body.student-light .text-danger {
-  color: var(--warn-700);
-}
-
-/* 토스트도 배경만 rgba(15,22,38,.95)로 하드코딩돼 있고 글자색은 --text-main을
-   따라간다. 그래서 화이트 테마에서는 검은 배경 위에 진회색 글씨(1.4:1)가 되어
-   '먼저 본인의 이름을 입력해 입장해 주세요' 같은 안내문이 통째로 안 보였다.
-   배경을 흰 카드로 돌리고, 성공/실패는 왼쪽 띠 색으로만 구분한다. */
-body.student-light .toast {
-  background: var(--bg-primary);
-  border: 1px solid var(--n-200);
-  color: var(--text-main);
-  box-shadow: 0 8px 24px rgba(15, 22, 38, 0.14);
-}
-
-body.student-light .toast.success {
-  border-left: 3px solid var(--ok-700);
-}
-
-body.student-light .toast.error {
-  border-left: 3px solid var(--warn-700);
-}
-
-/* ==========================================================================
-   오늘의 꿀팁 — AI가 만들어 보내는 HTML 카드
-   --------------------------------------------------------------------------
-   이 카드의 HTML과 <style>은 Gemini가 생성해 DB에 저장한 것이라 우리 토큰을
-   따르지 않는다. 다크 테마 시절 프롬프트로 만들어진 기존 카드들은 글자가
-   흰색(#fff, #e0e0e0)이어서 화이트 배경에서는 글씨가 통째로 보이지 않는다.
-   프롬프트는 라이트 기준으로 고쳐 놓았지만, 이미 저장된 카드도 읽혀야 하므로
-   여기서 색을 덮어쓴다. !important는 주입된 <style>을 이기기 위해 필요하다.
-   ========================================================================== */
-body.student-light #insight-widget-frame {
-  color: var(--text-body) !important;
-}
-
-body.student-light #insight-widget-frame * {
-  color: inherit !important;
-  text-shadow: none !important;
-}
-
-body.student-light #insight-widget-frame h1,
-body.student-light #insight-widget-frame h2,
-body.student-light #insight-widget-frame h3,
-body.student-light #insight-widget-frame h4,
-body.student-light #insight-widget-frame strong,
-body.student-light #insight-widget-frame b {
-  color: var(--text-main) !important;
-}
-
-/* 어두운 반투명 배경(rgba(255,255,255,0.05) 계열)은 흰 바탕에서 거의 흰색이 된다 */
-body.student-light #insight-widget-frame div,
-body.student-light #insight-widget-frame section,
-body.student-light #insight-widget-frame article,
-body.student-light #insight-widget-frame li {
-  background: transparent !important;
-  border-color: var(--n-200) !important;
-}
-
-body.student-light #insight-widget-frame > div {
-  background: var(--bg-primary) !important;
-  border: 1px solid var(--n-200) !important;
-  border-radius: 20px;
-}
-
-/* ==========================================================================
-   내 연습 계획 — 학생이 직접 쓰는 슬롯
-   --------------------------------------------------------------------------
-   전공별 고정 문구를 뿌리던 자리다. 이제 본인이 쓰고 지우므로, 각 줄에 수정/삭제가
-   붙고 아래에 입력줄이 생긴다. 아이콘을 쓰지 않기로 했으니 동작은 글자로 적는다.
-   ========================================================================== */
-.plan-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.plan-head h3 {
-  margin: 0;
-}
-
-.plan-slot-count {
-  flex-shrink: 0;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-/* 체크박스가 가로를 다 먹고 있어서, 수정/삭제가 들어갈 자리를 남겨 준다 */
-body.student-light .plan-item {
-  align-items: flex-start;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
   gap: 10px;
+  padding: 14px 18px 12px;
+  background: var(--canvas);
+  background: color-mix(in srgb, var(--canvas) 88%, transparent);
+  backdrop-filter: saturate(150%) blur(16px);
+  -webkit-backdrop-filter: saturate(150%) blur(16px);
+  border-bottom: none;
 }
 
-body.student-light .plan-item .checkbox-container {
-  width: auto;
-  flex: 1;
-}
-
-.plan-item-actions {
-  display: flex;
-  gap: 6px;
-  flex-shrink: 0;
-}
-
-.plan-action {
-  background: transparent;
-  border: 1px solid var(--n-200);
-  color: var(--text-body);
-  font-size: 0.78rem;
+/* 워드마크 — Oura의 ŌURA처럼 자간을 크게 벌린 한 덩어리 */
+.app-wordmark {
+  grid-column: 2;
+  justify-self: center;
+  font-size: 0.92rem;
   font-weight: 600;
-  font-family: inherit;
-  padding: 6px 12px;
-  min-height: 48px;
-  border-radius: 8px;
-  cursor: pointer;
+  letter-spacing: 0.34em;
+  text-indent: 0.34em;   /* 자간이 오른쪽에만 붙어 생기는 시각적 쏠림 보정 */
+  color: var(--ink);
   white-space: nowrap;
-  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-.plan-action:hover {
-  background: var(--n-100);
-  border-color: var(--n-300);
+body.student-app .status-indicator {
+  grid-column: 1;
+  justify-self: start;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
-.plan-action-danger {
-  color: var(--warn-700);
+/* 연결 상태는 문장을 다 읽히게 두지 않고 점 + 짧은 라벨로 줄인다 */
+body.student-app .status-indicator .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+  background: var(--sem-good);
+  box-shadow: none;
 }
 
-.plan-action-danger:hover {
-  background: #fdf2f2;
-  border-color: var(--warn-700);
-}
-
-/* 다 한 계획은 흐려지지만, 읽을 수는 있어야 한다 (취소선은 .plan-text에 이미 있다) */
-body.student-light .plan-item.done {
-  background: var(--bg-secondary);
-  border-color: var(--n-200);
-}
-
-/* style.css는 완료된 줄에 opacity:0.5와 회색을 함께 걸어, 둘이 겹치면 대비가
-   1.9:1까지 떨어진다. 어제 뭘 했는지 돌아볼 수 없으면 체크리스트의 의미가 없다.
-   완료 표시는 체크와 취소선이 이미 하고 있으니 투명도는 걷어내고 색만 낮춘다. */
-body.student-light .checkbox-container input:checked ~ .plan-text {
-  opacity: 1;
-  color: var(--text-body);
-}
-
-.plan-add-form {
-  display: flex;
-  gap: 8px;
-  margin-top: 14px;
-}
-
-.plan-add-input {
-  flex: 1;
-  min-width: 0;
-  min-height: 48px;
-  padding: 0 14px;
-  font-size: 0.95rem;
-  font-family: inherit;
-  color: var(--text-main);
-  background: var(--bg-secondary);
-  border: 1px solid var(--n-200);
-  border-radius: 12px;
-  outline: none;
-}
-
-.plan-add-input::placeholder {
-  color: var(--text-muted);
-}
-
-.plan-add-input:focus {
-  border-color: var(--p-600);
-  box-shadow: 0 0 0 4px var(--neon-purple-glow);
-}
-
-.plan-add-input:disabled {
-  background: var(--n-100);
-  color: var(--n-800);
-}
-
-.btn-plan-add {
-  flex-shrink: 0;
-  min-height: 48px;
-  padding: 0 18px;
-  background: var(--p-600);
+/* 테마 전환 버튼 — 원형 칩 (Oura의 우상단 설정 자리) */
+.theme-toggle {
+  grid-column: 3;
+  justify-self: end;
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: none;
-  border-radius: 12px;
-  color: #fff;
-  font-size: 0.95rem;
-  font-weight: 700;
-  font-family: inherit;
-  white-space: nowrap;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--ink);
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: background 0.2s var(--ease);
 }
 
-.btn-plan-add:hover {
-  background: var(--p-700);
-}
+.theme-toggle:hover { background: var(--chip-strong); }
+.theme-toggle svg { width: 18px; height: 18px; display: block; }
 
-.btn-plan-add:disabled {
-  background: var(--n-100);
-  color: var(--n-800);
-  cursor: not-allowed;
-}
+/* 아이콘 폰트를 쓰지 않기로 했으므로 해/달은 인라인 SVG 두 개를 토글한다 */
+.theme-toggle .icon-moon { display: none; }
+html[data-theme="light"] .theme-toggle .icon-sun { display: none; }
+html[data-theme="light"] .theme-toggle .icon-moon { display: block; }
 
 /* ==========================================================================
-   Today 레이아웃 (Oura 앱 구조 적용)
+   4. 오늘 머리말 + 스코어 링
    --------------------------------------------------------------------------
-   Oura가 5개 탭을 Today/Vitals/My Health 3개로 접으면서 쓴 구조를 따른다.
-     1) 상단 스코어 숏컷  - 오늘 상태를 한 줄로 훑고, 누르면 해당 카드로 간다
-     2) One Big Thing     - 지금 할 일 하나 (여기서는 타이머)
-     3) 타임라인          - 하루가 어떻게 흘러갔는지
-     4) 접힌 카드         - 카드는 목적지가 아니라 문이다
-   색은 의미가 있을 때만 쓴다. 강조색은 퍼플 하나로 유지한다.
+   Oura Today 최상단의 원형 스코어 줄. 원본은 가로 스크롤이라 마지막 칸이
+   잘려 있는데, 잘린 줄 모르고 지나치는 문제가 있어 4칸 고정 그리드로 둔다.
+   (원본의 '잘림으로 더 있음을 암시하는' 처리는 우리 칸 수에선 필요 없다.)
    ========================================================================== */
 .today-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 12px;
-  padding: 0 2px;
+  margin: 6px 2px 18px;
 }
 
 .today-date {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--text-main);
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink);
 }
 
 .today-streak {
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: var(--p-700);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--sem-progress);
   font-variant-numeric: tabular-nums;
 }
 
-/* 4칸 고정 그리드. 가로 스크롤로 두면 4번째 칸이 잘려 있는 걸 모르고 지나친다. */
 .score-shortcuts {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-bottom: 20px;
+  gap: 6px;
+  margin-bottom: 26px;
 }
 
 .score-chip {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  min-height: 74px;
-  padding: 10px 8px;
-  background: #fff;
-  border: 1px solid var(--n-200);
-  border-radius: 14px;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  background: none;
+  border: none;
   font-family: inherit;
   cursor: pointer;
-  text-align: left;
-  transition: border-color 0.2s ease, background 0.2s ease;
 }
 
-.score-chip:hover {
-  background: var(--bg-secondary);
-  border-color: var(--n-300);
+/* 원형 링 — 값이 들어앉는 자리. 테두리는 hairline, 값은 잉크. */
+.score-chip-ring {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 64px;
+  height: 64px;
+  padding: 6px;
+  border-radius: 50%;
+  border: 1px solid var(--hairline-strong);
+  background: var(--chip);
+  transition: background 0.2s var(--ease), border-color 0.2s var(--ease);
+}
+
+.score-chip:hover .score-chip-ring {
+  background: var(--chip-strong);
+  border-color: var(--ink-3);
+}
+
+/* '2시간 30분'처럼 긴 값은 링 안에서 두 줄로 접힌다.
+   글자를 줄여 뭉개는 대신 줄을 나누는 쪽이 읽힌다. */
+.score-chip-value {
+  font-size: 0.86rem;
+  font-weight: 400;
+  line-height: 1.15;
+  text-align: center;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  word-break: keep-all;
+}
+
+/* 단위는 링 안에서 숫자보다 작게 붙는다 */
+.score-chip-sub {
+  font-size: 0.56rem;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--ink-3);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .score-chip-label {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: var(--text-muted);
-}
-
-/* 숫자가 바뀔 때 옆 칸이 밀리지 않도록 tabular-nums를 건다 */
-.score-chip-value {
-  font-size: 1.15rem;
-  font-weight: 800;
-  color: var(--text-main);
-  font-variant-numeric: tabular-nums;
-  line-height: 1.2;
-}
-
-.score-chip-sub {
   font-size: 0.7rem;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--ink-3);
+  letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
+   5. 히어로 — Oura의 스코어 화면 구조 그대로
+      [아크 게이지 0↔100] → [원형 마크] → [큰 수치] → [대문자 라벨]
+      → [세리프 헤드라인] → [본문] → [알약 버튼]
+   ========================================================================== */
+body.student-app .timer-section {
+  margin: 4px 0 30px;
+}
+
+.hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  --arc: 0;   /* 0~100. JS가 오늘 계획 달성률로 채운다 */
+}
+
+.hero-arc {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+  overflow: visible;
+}
+
+.hero-arc .arc-track {
+  fill: none;
+  stroke: var(--hairline-strong);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+}
+
+/* pathLength=100으로 정규화해 두면 dashoffset에 퍼센트를 그대로 넣을 수 있다 */
+.hero-arc .arc-fill {
+  fill: none;
+  stroke: var(--ink);
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: calc(100 - var(--arc));
+  /* 0%일 때 dash 경계가 경로 끝과 정확히 겹쳐, 길이 0짜리 dash의 round cap이
+     끝점에 점 하나로 찍힌다(실기기에서 게이지가 꽉 찬 것처럼 오읽혔다).
+     opacity를 값에 물려 0일 때만 완전히 감춘다 — 1 이상은 어차피 1로 잘린다. */
+  opacity: calc(var(--arc) * 100);
+  transition: stroke-dashoffset 0.8s var(--ease), stroke 0.3s var(--ease),
+              opacity 0.3s var(--ease);
+}
+
+.hero.active .arc-fill { stroke: var(--sem-progress); }
+
+.hero-arc .arc-dot { fill: var(--ink-3); }
+
+.hero-arc .arc-cap {
+  fill: var(--ink-3);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* 아크 안쪽으로 끌어올려 게이지와 한 덩어리로 읽히게 한다 */
+.hero-mark {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  margin-top: -30px;
+  border-radius: 50%;
+  background: var(--chip);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  font-size: 0.86rem;
+  font-weight: 500;
+  color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
 
-/* --- 접힌 카드 ---------------------------------------------------------- */
-.disclosure summary {
-  list-style: none;
-  cursor: pointer;
-}
-
-/* 사파리는 ::marker가 아니라 이 의사요소로 삼각형을 그린다 */
-.disclosure summary::-webkit-details-marker {
-  display: none;
-}
-
-.disclosure-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 48px;
-}
-
-.disclosure-title {
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--text-main);
-}
-
-/* 펼침 표시는 글자 대신 선 두 개로 만든 +/- 기호 — 아이콘 폰트를 쓰지 않기로 했다 */
-.disclosure-mark {
-  position: relative;
-  flex-shrink: 0;
-  width: 20px;
-  height: 20px;
-}
-
-.disclosure-mark::before,
-.disclosure-mark::after {
-  content: '';
-  position: absolute;
-  background: var(--text-muted);
-  border-radius: 1px;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-
-.disclosure-mark::before {
-  top: 9px;
-  left: 2px;
-  width: 16px;
-  height: 2px;
-}
-
-.disclosure-mark::after {
-  top: 2px;
-  left: 9px;
-  width: 2px;
-  height: 16px;
-}
-
-.disclosure[open] .disclosure-mark::after {
-  transform: rotate(90deg);
-  opacity: 0;
-}
-
-.disclosure-body {
-  padding-top: 14px;
-  margin-top: 14px;
-  border-top: 1px solid var(--n-200);
-}
-
-/* --- 접힌 카드 안의 Q&A --------------------------------------------------- */
-.section-desc {
-  font-size: 0.85rem;
-  color: var(--text-body);
-  line-height: 1.5;
-  margin: 0 0 14px;
-}
-
-.qa-input-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 18px;
-}
-
-body.student-light .custom-textarea {
-  width: 100%;
-  min-height: 84px;
-  padding: 12px 14px;
-  font-size: 0.92rem;
-  font-family: inherit;
-  line-height: 1.5;
-  resize: vertical;
-  color: var(--text-main);
-  background: var(--bg-secondary);
-  border: 1px solid var(--n-200);
-  border-radius: 12px;
-  outline: none;
-}
-
-body.student-light .custom-textarea:focus {
-  border-color: var(--p-600);
-  box-shadow: 0 0 0 4px var(--neon-purple-glow);
-}
-
-.btn-qa-submit {
-  align-self: flex-end;
-  min-height: 44px;
-  padding: 0 18px;
-  border-radius: 12px;
-  font-size: 0.9rem;
-  font-weight: 700;
-}
-
-.qa-history-title {
-  font-size: 0.88rem;
-  font-weight: 700;
-  color: var(--text-main);
-  margin: 0 0 10px;
-}
-
-.qa-history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-/* ==========================================================================
-   실기기(SM-G960N, 384px) 실측에서 드러난 것들
-   ========================================================================== */
-
-/* 한글은 음절 하나하나가 글자라서, 기본값(break-word)이면 단어 한가운데서 잘린다.
-   실제로 384px 화면에서 '오늘도 한 걸음 더 성장해봐 / 요'로 끊겼다.
-   keep-all은 띄어쓰기에서만 줄을 바꾸고, 그래도 안 들어가는 긴 문자열(URL 등)은
-   overflow-wrap이 받아낸다. 390px 헤드리스에서는 우연히 한 줄에 들어가 안 보였다. */
-body.student-light,
-body.student-light h1,
-body.student-light h2,
-body.student-light h3,
-body.student-light h4,
-body.student-light p,
-body.student-light span,
-body.student-light div,
-body.student-light button,
-body.student-light label {
-  word-break: keep-all;
-  overflow-wrap: break-word;
-}
-
-/* .qa-text는 break-all이라 한글이 더 심하게 쪼개진다 — 같은 기준으로 맞춘다 */
-body.student-light .qa-text {
-  word-break: keep-all;
-  overflow-wrap: anywhere;
-}
-
-/* '가입하기'는 높이 17px짜리 글자 링크였다. 안드로이드 권장 터치 타겟은 48dp이고,
-   여기서 미끄러지면 가입 자체를 못 한다. 줄 안에 있는 링크라 padding으로 키운다. */
-.login-switch {
-  margin-top: 6px;
-  font-size: 0.9rem;
-  color: var(--text-body);
-}
-
-.login-switch-link {
-  display: inline-block;
-  padding: 12px 8px;
-  margin: -12px -8px;   /* 글줄 간격은 그대로 두고 누를 면적만 넓힌다 */
-  color: var(--p-700);
-  font-weight: 700;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-/* ==========================================================================
-   계획 슬롯이 타이머를 구동하는 구조
-   --------------------------------------------------------------------------
-   체크박스를 눌러 '했다'고 표시하는 대신, 슬롯에서 바로 연습을 시작하고
-   끝낼 수 있게 한다. 무엇을 연습 중인지가 타이머 안에도 그대로 뜬다.
-   ========================================================================== */
-
-/* 타이머 원 안, 상태 글자 아래 한 줄 */
-.timer-subject {
-  display: none;
-  margin-top: 6px;
-  max-width: 150px;
-  font-size: 0.85rem;
+.hero-mark-label {
+  margin-top: 9px;
+  font-size: 0.62rem;
   font-weight: 600;
-  line-height: 1.3;
-  color: var(--p-700);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* 큰 수치 — Oura의 88. 굵게가 아니라 크고 가늘게. */
+.hero-metric {
+  margin-top: 14px;
+  font-family: var(--font-sans);
+  font-size: clamp(2.9rem, 13vw, 3.7rem);
+  font-weight: 250;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+  text-shadow: none;
+}
+
+/* 대문자 상태 라벨 — Oura의 READINESS 자리 */
+.hero-caps {
+  margin-top: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  transition: color 0.3s var(--ease);
+}
+
+.hero.active .hero-caps { color: var(--sem-progress); }
+
+/* 세리프 헤드라인 — Go get em! 자리. 이 앱에서 세리프를 쓰는 유일한 곳 */
+.hero-headline {
+  margin: 16px 0 0;
+  font-family: var(--font-serif);
+  font-size: clamp(1.6rem, 7.2vw, 2.05rem);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: none;
   word-break: keep-all;
-  overflow-wrap: break-word;
 }
 
-body.student-light .plan-item {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
+.hero-copy {
+  margin: 12px 0 0;
+  max-width: 30ch;
+  font-size: 0.94rem;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--ink-2);
+  word-break: keep-all;
 }
 
-.plan-main {
+.hero .timer-controls {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
+  justify-content: center;
+  width: 100%;
 }
 
-/* 진행 중/완료를 글자로 적는다 — 아이콘을 쓰지 않기로 했으므로 상태도 글자다 */
-.plan-state {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--p-700);
-}
-
-body.student-light .plan-item.done .plan-state {
-  color: var(--ok-700);
-}
-
-body.student-light .plan-item.done .plan-text {
-  color: var(--text-muted);
-}
-
-/* 지금 돌고 있는 슬롯은 테두리로 드러낸다. 색이 상태를 말하게 하는 유일한 자리다. */
-body.student-light .plan-item.running {
-  background: var(--p-50);
-  border-color: var(--p-600);
-}
-
-.plan-run {
-  /* 실기기(SM-T590)에서 40px로 측정돼 이 파일 머리말의 48dp 기준에 미달했다.
-     연습을 시작하고 끝내는 버튼이라 여기서 빗나가면 기록 자체가 안 남는다. */
-  min-height: 48px;
-  padding: 0 18px;
-  background: var(--p-600);
+/* ==========================================================================
+   6. 버튼 — Oura는 전부 알약. 채운 버튼은 잉크색 하나뿐.
+   ========================================================================== */
+body.student-app .btn {
+  border-radius: var(--r-pill);
   border: none;
-  border-radius: 10px;
-  color: #fff;
-  font-size: 0.85rem;
-  font-weight: 700;
-  font-family: inherit;
-  white-space: nowrap;
-  cursor: pointer;
+  min-height: 50px;
+  padding: 0 26px;
+  font-family: var(--font-sans);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  box-shadow: none;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease), transform 0.12s var(--ease);
 }
 
-.plan-run:hover {
-  background: var(--p-700);
+body.student-app .btn:active:not(:disabled) { transform: scale(0.985); }
+
+/* 히어로의 Learn more — 반투명 알약 */
+body.student-app .btn-lg {
+  min-height: 56px;
+  margin-top: 26px;
+  min-width: 200px;
+  font-size: 1rem;
 }
 
-.plan-run:disabled {
-  background: var(--n-100);
-  color: var(--n-800);
+body.student-app .btn-primary {
+  background: var(--chip-strong);
+  color: var(--ink);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+body.student-app .btn-primary:hover:not(:disabled) {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+/* 연습 완료 = 되돌릴 수 없는 종료 동작이라 가장 강한 대비를 준다 */
+body.student-app .btn-primary.end-mode {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+body.student-app .btn-primary.end-mode:hover:not(:disabled) {
+  background: var(--ink-2);
+}
+
+body.student-app .btn-secondary {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+body.student-app .btn-secondary:hover:not(:disabled) { background: var(--ink-2); }
+
+/* 비활성은 투명도로 지우지 않는다. 흐려진 글자는 읽히지 않는 글자가 된다.
+   (과거 흰 글씨 1.37:1로 버튼이 통째로 비어 보인 사고가 여기서 났다) */
+body.student-app .btn:disabled,
+body.student-app .btn-primary:disabled,
+body.student-app .btn-secondary:disabled {
+  background: var(--chip);
+  color: var(--ink-3);
+  opacity: 1;
   cursor: not-allowed;
 }
 
-/* 완료는 되돌릴 수 없는 동작이라 시작 버튼과 색을 나눈다 */
-.plan-run-end {
-  background: var(--warn-700);
+/* ==========================================================================
+   7. 카드 — Oura의 인사이트 카드
+      테두리가 아니라 좌상단에서 번지는 의미색이 카드를 구분한다.
+   ========================================================================== */
+body.student-app .glass-card,
+body.student-app .plan-card,
+body.student-app .history-card,
+body.student-app .chat-card {
+  position: relative;
+  overflow: hidden;
+  margin-bottom: 14px;
+  padding: 22px 20px;
+  background: var(--surface);
+  border: none !important;
+  border-radius: var(--r-card);
+  box-shadow: none;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
 }
 
-.plan-run-end:hover {
-  background: #7d2c2d;
+body.student-app .glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(120% 90% at 8% 0%, var(--card-glow) 0%, transparent 62%);
+}
+
+body.student-app .glass-card > * { position: relative; }
+
+body.student-app .glass-card:hover {
+  background: var(--surface);
+  border-color: transparent;
+}
+
+/* 화이트 테마에서는 면끼리 붙어 버려 글로우만으로는 경계가 약하다 */
+html[data-theme="light"] body.student-app .glass-card,
+html[data-theme="light"] body.student-app .plan-card,
+html[data-theme="light"] body.student-app .history-card,
+html[data-theme="light"] body.student-app .chat-card {
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05), 0 10px 28px rgba(16, 24, 40, 0.05);
+}
+
+/* 카드별 의미색 배정 — 색이 곧 그 카드가 무엇에 대한 것인지다 */
+#personal-plan-section { --card-glow: var(--glow-progress); }
+#personal-history-section { --card-glow: var(--glow-good); }
+#personal-homework-section { --card-glow: var(--glow-warn); }
+#personal-qa-section { --card-glow: var(--glow-info); }
+#login-welcome-card { --card-glow: var(--glow-info); }
+#view-daily-tip .welcome-card { --card-glow: var(--glow-progress); }
+#view-ai-chat .welcome-card,
+#view-ai-chat .chat-card { --card-glow: var(--glow-info); }
+
+/* --- 카드 헤더: [원형 아이콘] [제목 / 대문자 상태] ... [꺾쇠] -------------- */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin-bottom: 18px;
+}
+
+.card-head-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--chip);
+  color: var(--ink);
+}
+
+.card-head-icon svg { width: 18px; height: 18px; display: block; }
+
+.card-head-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.card-head-title {
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: none;
+}
+
+/* 상태 라벨. 색이 의미를 나른다 — GOOD / MAKING PROGRESS 자리 */
+.card-head-status {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sem-info);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-head-status.is-good { color: var(--sem-good); }
+.card-head-status.is-progress { color: var(--sem-progress); }
+.card-head-status.is-warn { color: var(--sem-warn); }
+.card-head-status.is-muted { color: var(--ink-3); }
+
+/* 헤더 오른쪽 꺾쇠 — 아이콘 폰트 대신 테두리 두 변 */
+.card-head-mark {
+  flex-shrink: 0;
+  width: 9px;
+  height: 9px;
+  margin-left: auto;
+  border-top: 1.5px solid var(--ink-3);
+  border-right: 1.5px solid var(--ink-3);
+  transform: rotate(45deg);
+}
+
+/* 카드 안의 큰 수치 — 인사이트 카드의 84 / 845 active calories */
+.card-metric {
+  font-size: 2.1rem;
+  font-weight: 250;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.card-serif {
+  margin: 8px 0 0;
+  font-family: var(--font-serif);
+  font-size: 1.32rem;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+body.student-app h2,
+body.student-app h3,
+body.student-app h4 {
+  color: var(--ink);
+  background: none;
+  -webkit-text-fill-color: currentColor;
+  text-shadow: none;
+}
+
+/* 웰컴 카드 제목은 세리프로 — 화면마다 첫 문장이 이 앱의 목소리다 */
+body.student-app .welcome-card h2 {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.3;
+  margin-bottom: 10px;
+  word-break: keep-all;
+}
+
+body.student-app .welcome-card p {
+  font-size: 0.92rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  word-break: keep-all;
+}
+
+/* ==========================================================================
+   8. 접힌 카드 (내 숙제 / 선생님께 질문)
+   ========================================================================== */
+.disclosure summary { list-style: none; cursor: pointer; }
+.disclosure summary::-webkit-details-marker { display: none; }
+
+body.student-app .disclosure-card { padding: 18px 20px; }
+
+.disclosure .card-head { margin-bottom: 0; }
+.disclosure[open] .card-head { margin-bottom: 18px; }
+
+/* 펼침 표시는 같은 꺾쇠를 돌려 쓴다 — 닫힘은 오른쪽, 열림은 아래 */
+.disclosure .card-head-mark { transition: transform 0.25s var(--ease); }
+.disclosure[open] .card-head-mark { transform: rotate(135deg); }
+
+.disclosure-body {
+  padding-top: 16px;
+  border-top: 1px solid var(--hairline);
+}
+
+/* ==========================================================================
+   9. 목록 — 계획 / 기록 / 숙제
+      Oura의 목록은 칸막이가 없다. 행 사이 선 하나와 잉크 농도만으로 나눈다.
+   ========================================================================== */
+body.student-app .plan-list,
+body.student-app .history-list {
+  display: flex;
+  flex-direction: column;
+}
+
+body.student-app .plan-item,
+body.student-app .history-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  margin: 0;
+  background: none !important;
+  border: none !important;
+  border-bottom: 1px solid var(--hairline) !important;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+body.student-app .plan-item:last-child,
+body.student-app .history-item:last-child { border-bottom: none !important; }
+
+body.student-app .plan-item:hover,
+body.student-app .history-item:hover {
+  background: none !important;
+  transform: none;
+}
+
+.plan-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.item-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; flex: 1; }
+.item-right { flex-shrink: 0; }
+
+body.student-app .plan-text,
+body.student-app .item-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+/* 상태는 색 있는 대문자 한 조각으로 — 배지 박스를 만들지 않는다 */
+body.student-app .plan-state {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sem-progress);
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+body.student-app .plan-item.done .plan-state { color: var(--sem-good); }
+body.student-app .plan-item.done .plan-text { color: var(--ink-3); }
+body.student-app .plan-item:not(.done):not(.running) .plan-state { display: none; }
+
+body.student-app .item-subtitle {
+  font-size: 0.78rem;
+  font-weight: 400;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 시간 값은 수치니까 크고 가늘게 — 작고 굵은 배지로 만들지 않는다 */
+body.student-app .duration-tag {
+  font-size: 1.05rem;
+  font-weight: 300;
+  color: var(--ink);
+  background: none;
+  border: none;
+  padding: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.plan-item-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+body.student-app .plan-run {
+  min-height: 34px;
+  padding: 0 15px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--chip-strong);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+body.student-app .plan-run:hover:not(:disabled) { background: var(--ink); color: var(--canvas); }
+body.student-app .plan-run-end { background: var(--ink); color: var(--canvas); }
+body.student-app .plan-run:disabled { background: var(--chip); color: var(--ink-3); cursor: not-allowed; }
+
+body.student-app .plan-action {
+  min-height: 34px;
+  padding: 0 9px;
+  border: none;
+  background: none;
+  color: var(--ink-3);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.2s var(--ease);
+}
+
+body.student-app .plan-action:hover { color: var(--ink); }
+body.student-app .plan-action-danger:hover { color: var(--sem-alert); }
+
+/* 계획 추가 줄 — 입력창과 버튼이 한 알약 안에 들어간다 */
+.plan-add-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding: 5px 5px 5px 18px;
+  background: var(--surface-2);
+  border-radius: var(--r-pill);
+}
+
+body.student-app .plan-add-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.92rem;
+}
+
+body.student-app .plan-add-input::placeholder { color: var(--ink-3); }
+
+body.student-app .btn-plan-add {
+  flex-shrink: 0;
+  min-height: 42px;
+  padding: 0 20px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--canvas);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+body.student-app .btn-plan-add:hover:not(:disabled) { background: var(--ink-2); }
+body.student-app .btn-plan-add:disabled { background: var(--chip); color: var(--ink-3); cursor: not-allowed; }
+
+/* 슬롯 카운트는 카드 헤더의 상태 라벨 자리에 들어간다.
+   모양은 .card-head-status가 전부 정하므로 여기서는 아무것도 덮지 않는다. */
+
+/* ==========================================================================
+   10. 입력 / 로그인
+   ========================================================================== */
+body.student-app .custom-input-text,
+body.student-app select.custom-input-text,
+body.student-app textarea,
+body.student-app .custom-textarea {
+  width: 100%;
+  min-height: 52px;
+  padding: 14px 18px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  border-radius: var(--r-field);
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.95rem;
+}
+
+body.student-app .custom-input-text::placeholder,
+body.student-app textarea::placeholder { color: var(--ink-3); }
+
+body.student-app .custom-input-text:focus,
+body.student-app textarea:focus,
+body.student-app select.custom-input-text:focus {
+  outline: none;
+  border-color: var(--ink-3);
+  background: var(--surface-2);
+  box-shadow: none;
+}
+
+body.student-app .input-group label {
+  display: block;
+  margin-bottom: 7px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.login-input-wrapper { display: flex; gap: 8px; align-items: stretch; }
+
+/* style.css의 .btn-login-submit은 background/width/border-radius를 전부 !important로
+   박아 둬서, 일반 선언으로는 못 이긴다(실기기에서 이 버튼만 예전 보라색 그라데이션으로
+   남아 있었다). 선생님 화면은 그 규칙을 그대로 써야 하므로 여기서만 되돌린다. */
+body.student-app .btn-login-submit {
+  flex-shrink: 0;
+  width: auto !important;
+  min-height: 52px;
+  padding: 0 22px !important;
+  border-radius: var(--r-pill) !important;
+  background: var(--ink) !important;
+  color: var(--canvas) !important;
+  box-shadow: none !important;
+  font-size: 0.95rem !important;
+}
+
+body.student-app .btn-login-submit:hover {
+  transform: none;
+  background: var(--ink-2) !important;
+  box-shadow: none !important;
+}
+
+.login-switch { margin-top: 14px; font-size: 0.86rem; color: var(--ink-3); }
+body.student-app .login-switch-link,
+body.student-app .login-switch a { color: var(--ink); font-weight: 600; }
+
+/* 학생 이름 배지 줄 */
+body.student-app .timer-info-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 22px;
+  padding: 0;
+  background: none;
+  border: none;
+}
+
+body.student-app .badge-instrument,
+body.student-app .badge-name {
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  background: var(--chip);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+body.student-app .badge-name { color: var(--ink); }
+
+body.student-app .btn-logout {
+  min-height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--ink-3);
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+body.student-app .btn-logout:hover { background: var(--chip); color: var(--sem-alert); }
+
+body.student-app .checkmark {
+  background: var(--chip);
+  border: 1px solid var(--hairline-strong);
+}
+
+body.student-app .checkbox-container input:checked ~ .checkmark {
+  background: var(--sem-good);
+  border-color: var(--sem-good);
+}
+
+/* ==========================================================================
+   11. 채팅 (AI 튜터)
+   ========================================================================== */
+body.student-app .chat-messages-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 0 16px;
+}
+
+body.student-app .chat-message { display: flex; }
+body.student-app .chat-message.tutor { justify-content: flex-start; }
+body.student-app .chat-message.user { justify-content: flex-end; }
+
+body.student-app .message-bubble,
+body.student-app .chat-bubble-ai,
+body.student-app .msg-ai {
+  max-width: 84%;
+  padding: 14px 18px;
+  border: none;
+  border-radius: 22px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 0.92rem;
+  line-height: 1.62;
+  word-break: keep-all;
+}
+
+body.student-app .chat-message.user .message-bubble,
+body.student-app .chat-bubble-user,
+body.student-app .msg-user {
+  background: var(--ink);
+  color: var(--canvas);
+}
+
+body.student-app .chat-input-form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 5px 5px 18px;
+  background: var(--surface-2);
+  border: none;
+  border-radius: var(--r-pill);
+}
+
+body.student-app .chat-input-form input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 0.93rem;
+}
+
+body.student-app .chat-input-form input::placeholder { color: var(--ink-3); }
+
+body.student-app .btn-chat-send {
+  flex-shrink: 0;
+  min-height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  color: var(--canvas);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+body.student-app .btn-chat-send:hover:not(:disabled) { background: var(--ink-2); }
+
+.qa-input-wrapper { display: flex; flex-direction: column; gap: 12px; }
+body.student-app .btn-qa-submit { align-self: flex-start; }
+
+.section-desc { margin: 0 0 16px; font-size: 0.88rem; line-height: 1.6; color: var(--ink-2); word-break: keep-all; }
+
+.qa-history-title {
+  margin: 22px 0 10px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.qa-history-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* 보낸 질문 내역 — 카드 안의 카드가 되지 않게 면을 한 겹만 쓴다 */
+body.student-app .qa-history-item {
+  gap: 8px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: none;
+  border-radius: 18px;
+}
+
+body.student-app .qa-history-item:hover {
+  background: var(--surface-2);
+  border-color: transparent;
+}
+
+body.student-app .qa-time { font-size: 0.72rem; color: var(--ink-3); }
+
+/* 상태 배지도 대문자 한 조각으로. 배경 박스를 없애면 목록이 조용해진다.
+   (기존 #fbbf24 고정색은 화이트 테마에서 1.8:1로 읽히지 않았다) */
+body.student-app .qa-status-badge {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+body.student-app .qa-status-badge.waiting { color: var(--sem-warn); }
+body.student-app .qa-status-badge.answered { color: var(--sem-good); }
+
+body.student-app .qa-text {
+  font-size: 0.9rem;
+  color: var(--ink);
+  line-height: 1.55;
+  word-break: keep-all;
+}
+
+/* --- 숙제 행 --------------------------------------------------------------- */
+body.student-app .plan-due {
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sem-warn);
+  font-variant-numeric: tabular-nums;
+}
+
+body.student-app .plan-attachment {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding: 5px 12px;
+  border-radius: var(--r-pill);
+  background: var(--chip);
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--ink);
+  text-decoration: none;
+}
+
+body.student-app .plan-attachment:hover { background: var(--chip-strong); }
+
+/* --- 오늘의 꿀팁 ----------------------------------------------------------- */
+body.student-app .insight-head {
+  align-items: baseline;
+  margin: 4px 2px 16px;
+}
+
+body.student-app .insight-title {
+  font-family: var(--font-serif);
+  font-size: 1.5rem;
+  font-weight: 500;
+  line-height: 1.3;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+body.student-app .insight-date {
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+/* 꿀팁 카드 HTML은 이제 서버(src/knowledge/renderer.py)가 정해진 틀로 만든다.
+   예전에는 AI가 <style>까지 통째로 만들어 보내서, 프롬프트에 색을 적어줘야 했고
+   테마가 다크로 바뀐 뒤에도 "흰 배경이니 어두운 글자" 지시가 남아 글자가 안 보였다.
+   지금은 렌더러가 클래스만 붙이고 색은 전부 여기서 정한다 — 테마가 바뀌면 같이 바뀐다. */
+body.student-app #insight-widget-frame {
+  color: var(--ink-2);
+  font-size: 0.93rem;
+  line-height: 1.7;
+}
+
+body.student-app .tip-card { display: block; }
+
+body.student-app .tip-lede {
+  margin: 0 0 18px;
+  font-family: var(--font-serif);
+  font-size: 1.12rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+body.student-app .tip-block { margin: 0 0 20px; }
+
+body.student-app .tip-h {
+  margin: 0 0 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+  text-transform: none;
+}
+
+body.student-app .tip-block p {
+  margin: 0 0 8px;
+  color: var(--ink-2);
+  word-break: keep-all;
+}
+
+body.student-app .tip-steps {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--ink-2);
+}
+
+body.student-app .tip-steps li { margin-bottom: 7px; word-break: keep-all; }
+
+body.student-app .tip-caution {
+  padding: 12px 14px;
+  background: var(--chip);
+  border-left: 2px solid var(--sem-warn);
+  border-radius: 0 var(--r-field) var(--r-field) 0;
+}
+
+body.student-app .tip-caution .tip-h { color: var(--sem-warn); }
+
+/* --- 근거 논문 / 관련 영상 블록 --- */
+body.student-app .tip-source,
+body.student-app .tip-video {
+  display: block;
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-field);
+}
+
+body.student-app .tip-source-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+body.student-app .tip-source-link,
+body.student-app .tip-video-link {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--sem-info);
+  text-decoration: none;
+  word-break: break-word;
+}
+
+body.student-app .tip-source-link:hover,
+body.student-app .tip-video-link:hover { text-decoration: underline; }
+
+body.student-app .tip-source-meta,
+body.student-app .tip-video-channel {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.76rem;
+  color: var(--ink-3);
+}
+
+body.student-app .tip-video-summary {
+  margin: 10px 0 0;
+  font-size: 0.86rem;
+  color: var(--ink-2);
+  word-break: keep-all;
+}
+
+body.student-app .tip-video-quote {
+  margin: 10px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid var(--hairline-strong);
+  font-size: 0.84rem;
+  font-style: normal;
+  color: var(--ink-2);
+  word-break: keep-all;
+}
+
+body.student-app .tip-video-quote::before { content: '“'; }
+body.student-app .tip-video-quote::after { content: '”'; }
+
+body.student-app .tip-video-points {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 0.84rem;
+  color: var(--ink-2);
+}
+
+body.student-app .tip-video-points li { margin-bottom: 5px; word-break: keep-all; }
+
+body.student-app .tip-video-note {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.68rem;
+  color: var(--ink-3);
+}
+
+/* --- 입시 정보 센터 (꿀팁 탭 하단) --- */
+body.student-app .admission-section { margin-top: 26px; }
+
+body.student-app .admission-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 0 2px 12px;
+}
+
+body.student-app .admission-heading {
+  font-family: var(--font-serif);
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+body.student-app .admission-count {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ink-3);
+}
+
+body.student-app .admission-item {
+  display: block;
+  margin-bottom: 10px;
+  padding: 14px 16px;
+  background: var(--surface);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-field);
+  text-decoration: none;
+}
+
+body.student-app .admission-item:hover { border-color: var(--hairline-strong); }
+
+body.student-app .admission-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 7px;
+}
+
+body.student-app .admission-chip {
+  padding: 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--chip);
+  font-size: 0.66rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+body.student-app .admission-chip.is-deadline {
+  background: color-mix(in srgb, var(--sem-alert) 18%, transparent);
+  color: var(--sem-alert);
+}
+
+body.student-app .admission-date {
+  font-size: 0.66rem;
+  color: var(--ink-3);
+}
+
+body.student-app .admission-title {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--ink);
+  word-break: keep-all;
+}
+
+body.student-app .admission-summary {
+  display: block;
+  margin-top: 5px;
+  font-size: 0.8rem;
+  line-height: 1.55;
+  color: var(--ink-3);
+  word-break: keep-all;
+}
+
+body.student-app .text-danger { color: var(--sem-alert); }
+
+/* ==========================================================================
+   12. 하단 탭 — Oura: 떠 있는 반투명 알약 바
+   ========================================================================== */
+body.student-app .app-navbar {
+  position: fixed;
+  left: 50%;
+  bottom: calc(18px + env(safe-area-inset-bottom, 0px));
+  transform: translateX(-50%);
+  width: min(calc(100% - 36px), 444px);
+  height: 64px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 6px;
+  background: var(--surface-2);
+  background: color-mix(in srgb, var(--surface-2) 88%, transparent);
+  border: 1px solid var(--hairline);
+  border-top: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  -webkit-backdrop-filter: saturate(160%) blur(20px);
+  backdrop-filter: saturate(160%) blur(20px);
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="light"] body.student-app .app-navbar {
+  box-shadow: 0 8px 28px rgba(16, 24, 40, 0.12);
+}
+
+body.student-app .nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border: none;
+  border-radius: var(--r-pill);
+  background: none;
+  color: var(--ink-3);
+  text-shadow: none;
+  transition: background 0.2s var(--ease), color 0.2s var(--ease);
+}
+
+body.student-app .nav-item svg { width: 19px; height: 19px; display: block; }
+
+body.student-app .nav-text {
+  font-size: 0.68rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+body.student-app .nav-item.active {
+  background: var(--chip);
+  color: var(--ink);
+  text-shadow: none;
+}
+
+body.student-app .nav-item.active .nav-text { font-weight: 600; }
+
+/* ==========================================================================
+   13. 토스트 / 빈 상태 / 스피너 / 오프라인 배너
+   ========================================================================== */
+body.student-app #toast-container {
+  bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+}
+
+body.student-app .toast {
+  padding: 14px 20px;
+  background: var(--surface-2);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 500;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+body.student-app .toast.success { color: var(--sem-good); }
+body.student-app .toast.error { color: var(--sem-alert); }
+
+body.student-app .empty-placeholder {
+  padding: 30px 10px;
+  text-align: center;
+  color: var(--ink-3);
+  font-size: 0.88rem;
+  line-height: 1.6;
+  word-break: keep-all;
+}
+
+body.student-app .spinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  margin-bottom: 12px;
+  border: 2px solid var(--hairline-strong);
+  border-top-color: var(--ink);
+  border-radius: 50%;
+  animation: student-spin 0.9s linear infinite;
+}
+
+@keyframes student-spin { to { transform: rotate(360deg); } }
+
+/* 오프라인 배너는 경고색 위에 어두운 글자 — 잉크를 뒤집어야 읽힌다 */
+body.student-app .network-status-banner {
+  background: var(--sem-alert);
+  color: #16171a;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border: none;
+}
+
+body.student-app .wifi-pulse-dot { background: #16171a; }
+
+/* 포커스 링은 잉크 하나로 통일 — 키보드 사용자에게만 보인다 */
+body.student-app *:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.student-app *,
+  body.student-app *::before,
+  body.student-app *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

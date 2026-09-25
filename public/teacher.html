@@ -239,6 +239,9 @@
           <button class="teacher-tab-btn" data-target="teacher-sub-curriculum">
             AI 커리큘럼 학습 관리
           </button>
+          <button class="teacher-tab-btn" data-target="teacher-sub-admission">
+            입시정보 · 영상 관리
+          </button>
           <button class="teacher-tab-btn director-only" data-target="teacher-sub-accounts" id="btn-tab-accounts">
             선생님 계정 관리
           </button>
@@ -457,6 +460,76 @@
         </div>
 
         <!-- 5. [서브 뷰] AI 커리큘럼 학습 관리 -->
+        <!-- 입시정보 승인 + 꿀팁 영상 관리 -->
+        <div id="teacher-sub-admission" class="teacher-sub-view">
+          <div class="glass-card dashboard-card">
+            <h3>입시 정보 승인</h3>
+            <p class="section-desc" style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+              매일 대학 공식 게시판에서 자동 수집한 공고입니다.
+              <b>선생님이 승인한 것만</b> 학생 화면에 나타납니다. 자동 수집은 홈페이지 구조에 기대고 있어
+              가끔 엉뚱한 글을 가져올 수 있으니, 한 번 훑어보고 넘겨 주세요.
+            </p>
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px; flex-wrap: wrap;">
+              <button id="btn-collect-admission" class="btn btn-secondary" style="padding: 8px 14px; font-weight: bold;">
+                지금 수집하기
+              </button>
+              <span id="admission-status-counts" style="font-size: 0.82rem; color: var(--text-muted);"></span>
+            </div>
+            <div id="admission-pending-list"></div>
+          </div>
+
+          <div class="glass-card dashboard-card">
+            <h3>입시 정보 직접 등록</h3>
+            <p class="section-desc" style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+              자동 수집이 막혀 있는 학교(홈페이지가 수집을 금지한 곳)나, 현장에서 들은 정보를 직접 올립니다.
+              선생님이 넣은 정보는 승인 절차 없이 바로 학생에게 보입니다.
+            </p>
+            <form id="form-add-admission" style="display: grid; gap: 10px;">
+              <input type="text" id="admission-title" placeholder="제목 (필수)" required
+                     style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;">
+              <textarea id="admission-summary" placeholder="한 줄 설명 (선택)" rows="2"
+                        style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box; resize: vertical;"></textarea>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                <input type="text" id="admission-school" placeholder="학교명"
+                       style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;">
+                <select id="admission-category"
+                        style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;">
+                  <option value="모집요강">모집요강</option>
+                  <option value="실기일정">실기일정</option>
+                  <option value="입시설명회">입시설명회</option>
+                  <option value="합격발표">합격발표</option>
+                  <option value="등록서류">등록서류</option>
+                  <option value="기타" selected>기타</option>
+                </select>
+                <input type="date" id="admission-deadline"
+                       style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;">
+              </div>
+              <input type="url" id="admission-url" placeholder="원문 링크 (선택)"
+                     style="background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; width: 100%; box-sizing: border-box;">
+              <button type="submit" class="btn btn-primary" style="padding: 10px; font-weight: bold;">
+                등록하기
+              </button>
+            </form>
+          </div>
+
+          <div class="glass-card dashboard-card">
+            <h3>꿀팁 영상 관리</h3>
+            <p class="section-desc" style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 16px; line-height: 1.5;">
+              꿀팁 카드에 붙는 유튜브 영상입니다. <b>자막을 실제로 받아 분석한 영상만</b> 등록됩니다 —
+              자막이 없는 영상은 내용을 확인할 방법이 없어 거부됩니다.
+              <span id="video-search-state" style="display: block; margin-top: 6px;"></span>
+            </p>
+            <form id="form-add-video" style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap;">
+              <input type="text" id="video-url" placeholder="유튜브 영상 주소를 붙여넣으세요" required
+                     style="flex: 1 1 260px; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: #fff; padding: 10px; border-radius: 8px; box-sizing: border-box;">
+              <button type="submit" class="btn btn-primary" style="padding: 10px 16px; font-weight: bold;">
+                자막 분석 후 등록
+              </button>
+            </form>
+            <div id="video-list"></div>
+          </div>
+        </div>
+
         <div id="teacher-sub-curriculum" class="teacher-sub-view">
           <div class="glass-card dashboard-card">
             <h3>AI 튜터 커리큘럼 학습소</h3>

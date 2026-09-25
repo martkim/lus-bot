@@ -65,8 +65,7 @@ function setupDashboardListeners() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+            ...teacherAuthHeaders()
           },
           body: JSON.stringify({ name, instrument, age })
         });
@@ -124,8 +123,7 @@ function setupDashboardListeners() {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+            ...teacherAuthHeaders()
           },
           body: JSON.stringify({ username, password, display_name, part })
         });
@@ -180,8 +178,7 @@ function setupDashboardListeners() {
         const res = await fetch('/api/homework', {
           method: 'POST',
           headers: {
-            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+            ...teacherAuthHeaders()
           },
           body: formData
         });
@@ -225,8 +222,7 @@ async function exportStatsExcel() {
   try {
     const res = await fetch('/api/director/stats/export', {
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
 
@@ -261,10 +257,15 @@ async function refreshDashboard() {
     const res = await fetch('/api/dashboard/status', {
       method: 'GET',
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
+
+    // 5초마다 도는 이 폴링이 토큰 만료를 가장 먼저 만나는 지점이다. 여기서 걸러내지 않으면
+    // 만료된 뒤에도 대시보드가 빈 화면으로 계속 돌아가고, 선생님은 왜 데이터가 안 뜨는지
+    // 알 수 없다. handleAuthFailure가 로그인 화면으로 되돌리고 폴링도 멈춘다.
+    if (handleAuthFailure(res)) return;
+
     const result = await res.json();
 
     if (result.success) {
@@ -579,8 +580,7 @@ function renderDashboardQuestions(questions) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+            ...teacherAuthHeaders()
           },
           body: JSON.stringify({
             questionId: parseInt(qId),
@@ -673,8 +673,7 @@ async function deleteStudent(studentId) {
     const res = await fetch(`/api/admin/students/${studentId}`, {
       method: 'DELETE',
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
     
@@ -716,8 +715,7 @@ async function loadTeacherAccounts() {
   try {
     const res = await fetch('/api/teachers', {
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
     const result = await res.json();
@@ -777,8 +775,7 @@ async function toggleTeacherStatus(teacherId) {
     const res = await fetch(`/api/teachers/${teacherId}/toggle-status`, {
       method: 'PATCH',
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
 
@@ -845,8 +842,7 @@ async function loadTeacherHomeworkList() {
   try {
     const res = await fetch('/api/homework/teacher', {
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
     const result = await res.json();
@@ -899,8 +895,7 @@ async function forceEndSession(studentId) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       },
       body: JSON.stringify({ studentId: studentId })
     });
@@ -944,8 +939,7 @@ async function generateAiReport(refresh = false) {
     const res = await fetch(url, {
       method: 'GET',
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
     
@@ -1082,8 +1076,7 @@ async function loadCurriculumContent() {
   try {
     const res = await fetch('/api/curriculum', {
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
     const data = await res.json();
@@ -1109,8 +1102,7 @@ document.addEventListener('DOMContentLoaded', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+            ...teacherAuthHeaders()
           },
           body: JSON.stringify({ curriculum_content: newContent })
         });
@@ -1148,8 +1140,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const res = await fetch('/api/ai/analyze-file', {
           method: 'POST',
           headers: {
-            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+            ...teacherAuthHeaders()
           },
           body: formData
         });
@@ -1187,8 +1178,7 @@ document.addEventListener('DOMContentLoaded', () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-            'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+            ...teacherAuthHeaders()
           },
           body: JSON.stringify({ message: message })
         });
@@ -1250,8 +1240,7 @@ async function loadInsightManager() {
   try {
     const res = await fetch('/api/daily-insight/all', {
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
     const result = await res.json();
@@ -1307,8 +1296,7 @@ async function toggleInsight(id, btn) {
     const res = await fetch(`/api/daily-insight/${id}/toggle`, {
       method: 'PATCH',
       headers: {
-        'X-Teacher-Name': encodeURIComponent(sessionStorage.getItem('teacher_name') || ''),
-        'X-Teacher-Password': encodeURIComponent(sessionStorage.getItem('teacher_password') || '')
+        ...teacherAuthHeaders()
       }
     });
     const result = await res.json();
@@ -1327,3 +1315,288 @@ async function toggleInsight(id, btn) {
 
 window.toggleInsight = toggleInsight;
 window.loadInsightManager = loadInsightManager;
+
+
+// ==========================================================================
+// 입시정보 승인 + 꿀팁 영상 관리 (선생님 대시보드 '입시정보 · 영상 관리' 탭)
+// --------------------------------------------------------------------------
+// 자동 수집은 학교 홈페이지 구조에 기대고 있어서 언젠가는 엉뚱한 걸 가져온다.
+// 그게 바로 학생에게 노출되면 "앱이 틀린 입시 정보를 줬다"가 되기 때문에,
+// 사람이 한 번 보고 넘기는 단계를 반드시 거치게 한다.
+// ==========================================================================
+
+const ADMISSION_STATUS_LABEL = {
+  pending: '승인 대기',
+  approved: '학생에게 노출 중',
+  rejected: '반려됨',
+};
+
+async function loadAdmissionManager() {
+  const listEl = document.getElementById('admission-pending-list');
+  const countsEl = document.getElementById('admission-status-counts');
+  if (!listEl) return;
+
+  listEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="spinner"></span> 불러오는 중...</div>';
+
+  try {
+    const res = await fetch('/api/admission-info/manage?limit=150', { headers: teacherAuthHeaders() });
+    if (handleAuthFailure(res)) return;
+    const result = await res.json();
+    const items = (result && result.data) || [];
+    const counts = (result && result.counts) || {};
+
+    if (countsEl) {
+      countsEl.textContent = `승인 대기 ${counts.pending || 0}건 · 노출 중 ${counts.approved || 0}건 · 반려 ${counts.rejected || 0}건`;
+    }
+
+    if (!items.length) {
+      listEl.innerHTML = '<p style="color:var(--text-muted); font-size:0.88rem; padding:10px 0;">아직 수집된 공고가 없습니다. 「지금 수집하기」를 눌러 보세요.</p>';
+      return;
+    }
+
+    // 승인 대기를 맨 위로 — 선생님이 할 일이 먼저 보여야 한다.
+    const order = { pending: 0, approved: 1, rejected: 2 };
+    items.sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9));
+
+    listEl.innerHTML = items.map((item) => {
+      const chips = [];
+      if (item.school) chips.push(escapeHtml(item.school));
+      if (item.category) chips.push(escapeHtml(item.category));
+      if (item.board_name) chips.push(escapeHtml(item.board_name));
+      if (item.source_type === 'teacher') chips.push('선생님 등록');
+
+      const statusColor = item.status === 'approved' ? 'var(--neon-mint)'
+        : item.status === 'rejected' ? '#f87171' : 'var(--neon-purple)';
+
+      const actions = item.status === 'pending'
+        ? `<button class="btn btn-primary btn-admission-approve" data-id="${item.id}" style="padding:6px 12px; font-size:0.8rem;">승인</button>
+           <button class="btn btn-secondary btn-admission-reject" data-id="${item.id}" style="padding:6px 12px; font-size:0.8rem;">반려</button>`
+        : `<button class="btn btn-secondary btn-admission-reset" data-id="${item.id}" style="padding:6px 12px; font-size:0.8rem;">대기로 되돌리기</button>`;
+
+      const link = item.source_url
+        ? `<a href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--neon-mint); font-size:0.78rem;">원문 보기</a>`
+        : '';
+
+      return `
+        <div style="background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:12px; padding:14px; margin-bottom:10px;">
+          <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+            <span style="font-size:0.72rem; color:var(--text-muted);">${chips.join(' · ')}</span>
+            <span style="font-size:0.72rem; font-weight:700; color:${statusColor};">${ADMISSION_STATUS_LABEL[item.status] || escapeHtml(item.status)}</span>
+          </div>
+          <div style="font-weight:600; line-height:1.45; margin-bottom:4px;">${escapeHtml(item.title)}</div>
+          ${item.summary ? `<div style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-bottom:6px;">${escapeHtml(item.summary)}</div>` : ''}
+          <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px;">
+            <span style="font-size:0.72rem; color:var(--text-muted);">${escapeHtml(item.posted_at || '작성일 미상')}</span>
+            ${item.deadline ? `<span style="font-size:0.72rem; color:#f87171;">마감 ${escapeHtml(item.deadline)}</span>` : ''}
+            ${link}
+            <span style="flex:1;"></span>
+            ${actions}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    listEl.querySelectorAll('.btn-admission-approve').forEach(b =>
+      b.addEventListener('click', () => setAdmissionStatus(b.dataset.id, 'approved')));
+    listEl.querySelectorAll('.btn-admission-reject').forEach(b =>
+      b.addEventListener('click', () => setAdmissionStatus(b.dataset.id, 'rejected')));
+    listEl.querySelectorAll('.btn-admission-reset').forEach(b =>
+      b.addEventListener('click', () => setAdmissionStatus(b.dataset.id, 'pending')));
+  } catch (err) {
+    listEl.innerHTML = '<p style="color:#f87171; font-size:0.88rem;">입시 정보를 불러오지 못했습니다.</p>';
+  }
+}
+
+async function setAdmissionStatus(infoId, status) {
+  try {
+    const res = await fetch(`/api/admission-info/${infoId}/status`, {
+      method: 'PATCH',
+      headers: teacherAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ status }),
+    });
+    if (handleAuthFailure(res)) return;
+    if (!res.ok) throw new Error('status change failed');
+    showToast(status === 'approved' ? '승인했습니다. 학생 화면에 바로 보입니다.' : '변경했습니다.');
+    loadAdmissionManager();
+  } catch (err) {
+    showToast('변경에 실패했습니다.', 'error');
+  }
+}
+
+async function collectAdmissionNow(button) {
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = '수집 중...';
+  try {
+    const res = await fetch('/api/admission-info/collect', {
+      method: 'POST',
+      headers: teacherAuthHeaders(),
+    });
+    if (handleAuthFailure(res)) return;
+    const result = await res.json();
+    showToast(`수집 ${result.collected || 0}건 중 새 공고 ${result.new || 0}건을 찾았습니다.`);
+    loadAdmissionManager();
+  } catch (err) {
+    showToast('수집에 실패했습니다.', 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
+async function submitAdmissionForm(e) {
+  e.preventDefault();
+  const title = document.getElementById('admission-title').value.trim();
+  if (!title) return;
+
+  const payload = {
+    title,
+    summary: document.getElementById('admission-summary').value.trim() || null,
+    school: document.getElementById('admission-school').value.trim() || null,
+    category: document.getElementById('admission-category').value,
+    deadline: document.getElementById('admission-deadline').value || null,
+    source_url: document.getElementById('admission-url').value.trim() || null,
+    parts: [],
+  };
+
+  try {
+    const res = await fetch('/api/admission-info', {
+      method: 'POST',
+      headers: teacherAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(payload),
+    });
+    if (handleAuthFailure(res)) return;
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || '등록 실패');
+    }
+    showToast('등록했습니다. 학생 화면에 바로 보입니다.');
+    e.target.reset();
+    loadAdmissionManager();
+  } catch (err) {
+    showToast(err.message || '등록에 실패했습니다.', 'error');
+  }
+}
+
+async function loadVideoManager() {
+  const listEl = document.getElementById('video-list');
+  const stateEl = document.getElementById('video-search-state');
+  if (!listEl) return;
+
+  listEl.innerHTML = '<div style="text-align:center; padding:20px; color:var(--text-muted);"><span class="spinner"></span> 불러오는 중...</div>';
+
+  try {
+    const res = await fetch('/api/insight-videos', { headers: teacherAuthHeaders() });
+    if (handleAuthFailure(res)) return;
+    const result = await res.json();
+    const videos = (result && result.data) || [];
+
+    if (stateEl) {
+      stateEl.textContent = result.search_enabled
+        ? '자동 검색이 켜져 있습니다 — 매일 새 인터뷰 영상을 찾아 자막을 분석합니다.'
+        : '자동 검색이 꺼져 있습니다(YOUTUBE_API_KEY 미설정). 지금은 직접 등록한 영상만 사용됩니다.';
+      stateEl.style.color = result.search_enabled ? 'var(--neon-mint)' : '#fbbf24';
+    }
+
+    if (!videos.length) {
+      listEl.innerHTML = '<p style="color:var(--text-muted); font-size:0.88rem; padding:10px 0;">등록된 영상이 아직 없습니다.</p>';
+      return;
+    }
+
+    listEl.innerHTML = videos.map((v) => `
+      <div style="background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); border-radius:12px; padding:14px; margin-bottom:10px; ${v.is_active ? '' : 'opacity:0.5;'}">
+        <div style="display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:6px;">
+          <span style="font-size:0.72rem; color:var(--text-muted);">
+            ${escapeHtml(v.channel || '채널 미상')}${v.parts && v.parts.length ? ' · ' + v.parts.map(escapeHtml).join(', ') : ' · 전 파트'}
+          </span>
+          <span style="font-size:0.72rem; color:var(--text-muted);">
+            자막 ${v.transcript_chars || 0}자 (${escapeHtml(v.transcript_language || '?')}) · 유용도 ${v.relevance_score || 0}
+          </span>
+        </div>
+        <a href="${escapeHtml(v.url)}" target="_blank" rel="noopener noreferrer" style="color:var(--neon-mint); font-weight:600; font-size:0.88rem; text-decoration:none;">${escapeHtml(v.title)}</a>
+        ${v.analysis_summary ? `<div style="font-size:0.82rem; color:var(--text-muted); line-height:1.5; margin-top:6px;">${escapeHtml(v.analysis_summary)}</div>` : ''}
+        ${v.transcript_excerpt ? `<div style="font-size:0.8rem; color:var(--text-muted); border-left:2px solid var(--glass-border); padding-left:10px; margin-top:8px;">“${escapeHtml(v.transcript_excerpt)}”</div>` : ''}
+        <div style="margin-top:10px;">
+          <button class="btn btn-secondary btn-video-toggle" data-id="${escapeHtml(v.video_id)}" style="padding:6px 12px; font-size:0.8rem;">
+            ${v.is_active ? '노출 끄기' : '노출 켜기'}
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    listEl.querySelectorAll('.btn-video-toggle').forEach(b =>
+      b.addEventListener('click', () => toggleInsightVideo(b.dataset.id)));
+  } catch (err) {
+    listEl.innerHTML = '<p style="color:#f87171; font-size:0.88rem;">영상 목록을 불러오지 못했습니다.</p>';
+  }
+}
+
+async function toggleInsightVideo(videoId) {
+  try {
+    const res = await fetch(`/api/insight-videos/${encodeURIComponent(videoId)}/toggle`, {
+      method: 'PATCH',
+      headers: teacherAuthHeaders(),
+    });
+    if (handleAuthFailure(res)) return;
+    if (!res.ok) throw new Error('toggle failed');
+    loadVideoManager();
+  } catch (err) {
+    showToast('변경에 실패했습니다.', 'error');
+  }
+}
+
+async function submitVideoForm(e) {
+  e.preventDefault();
+  const input = document.getElementById('video-url');
+  const url = input.value.trim();
+  if (!url) return;
+
+  const button = e.target.querySelector('button[type="submit"]');
+  const original = button.textContent;
+  button.disabled = true;
+  button.textContent = '자막 분석 중...';
+
+  try {
+    const res = await fetch('/api/insight-videos', {
+      method: 'POST',
+      headers: teacherAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ url }),
+    });
+    if (handleAuthFailure(res)) return;
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.detail || '등록 실패');
+    showToast('영상을 등록했습니다.');
+    input.value = '';
+    loadVideoManager();
+  } catch (err) {
+    // 자막이 없는 영상은 여기서 걸린다 — 왜 안 되는지 그대로 보여준다.
+    showToast(err.message || '영상 등록에 실패했습니다.', 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
+}
+
+function initAdmissionTab() {
+  const collectBtn = document.getElementById('btn-collect-admission');
+  if (collectBtn && !collectBtn.dataset.bound) {
+    collectBtn.dataset.bound = '1';
+    collectBtn.addEventListener('click', () => collectAdmissionNow(collectBtn));
+  }
+  const admissionForm = document.getElementById('form-add-admission');
+  if (admissionForm && !admissionForm.dataset.bound) {
+    admissionForm.dataset.bound = '1';
+    admissionForm.addEventListener('submit', submitAdmissionForm);
+  }
+  const videoForm = document.getElementById('form-add-video');
+  if (videoForm && !videoForm.dataset.bound) {
+    videoForm.dataset.bound = '1';
+    videoForm.addEventListener('submit', submitVideoForm);
+  }
+  loadAdmissionManager();
+  loadVideoManager();
+}
+
+window.loadAdmissionManager = loadAdmissionManager;
+window.loadVideoManager = loadVideoManager;
+window.initAdmissionTab = initAdmissionTab;

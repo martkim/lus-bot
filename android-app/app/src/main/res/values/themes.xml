@@ -3,7 +3,7 @@
     <style name="Theme.BurstIn" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:statusBarColor">@color/app_background</item>
         <item name="android:windowBackground">@color/app_background</item>
-        <!-- 흰 상태바 위의 아이콘은 어두워야 보인다 -->
-        <item name="android:windowLightStatusBar">true</item>
+        <!-- 어두운 상태바 위의 아이콘은 밝아야 보인다 -->
+        <item name="android:windowLightStatusBar">false</item>
     </style>
 </resources>

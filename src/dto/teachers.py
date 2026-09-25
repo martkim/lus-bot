@@ -11,6 +11,32 @@ class TeacherDTO(BaseModel):
     part: Optional[str] = None
 
 
+class TeacherLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class TeacherLoginDTO(BaseModel):
+    """로그인 성공 응답 — 발급된 토큰과 신원을 함께 준다.
+
+    프런트가 곧바로 원장/파트 UI를 분기할 수 있도록 teacher를 같이 실어 보낸다.
+    (예전엔 로그인 직후 /api/teachers/me를 한 번 더 불러야 했다.)"""
+    token: str
+    expires_at: str
+    teacher: TeacherDTO
+
+
+class TeacherLoginResponse(BaseModel):
+    success: bool
+    message: str
+    data: TeacherLoginDTO
+
+
+class TeacherLogoutResponse(BaseModel):
+    success: bool
+    message: str
+
+
 class TeacherCreateRequest(BaseModel):
     username: str
     password: str

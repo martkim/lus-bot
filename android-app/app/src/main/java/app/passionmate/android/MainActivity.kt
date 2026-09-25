@@ -114,6 +114,13 @@ class MainActivity : AppCompatActivity() {
         settings.setSupportMultipleWindows(true) // required for onCreateWindow to fire on target="_blank"
         applyTextZoom(settings)
 
+        // WebView paints its own white background until the page's first paint, so launching
+        // showed dark window -> white flash -> dark page (measured: 2 frames of #ffffff).
+        // Match the web canvas so the handoff is invisible. The student screen defaults to
+        // dark; if the user switched to the light theme they get one dark frame instead,
+        // which is the same handoff the window background already does.
+        webView.setBackgroundColor(getColor(R.color.app_background))
+
         WebView.setWebContentsDebuggingEnabled(BuildConfig.WEBVIEW_DEBUGGABLE)
 
         webView.webViewClient = object : WebViewClient() {

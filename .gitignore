@@ -26,3 +26,6 @@ ngrok.exe
 
 # claude code local project data
 .claude/
+
+# QA 에이전트가 찍는 검증 스크린샷 — 소스가 아니라 산출물이고 계속 쌓인다
+qa_screens/

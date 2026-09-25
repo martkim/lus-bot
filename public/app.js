@@ -95,17 +95,65 @@ const dom = {
   todayHead: document.getElementById('today-head'),
   todayDate: document.getElementById('today-date'),
   todayStreak: document.getElementById('today-streak'),
-  scoreShortcuts: document.getElementById('score-shortcuts')
+  scoreShortcuts: document.getElementById('score-shortcuts'),
+
+  // 히어로 (아크 게이지 / 세리프 헤드라인) 및 테마 전환
+  heroArcValue: document.getElementById('hero-arc-value'),
+  heroHeadline: document.getElementById('hero-headline'),
+  btnThemeToggle: document.getElementById('btn-theme-toggle'),
+  metaThemeColor: document.getElementById('meta-theme-color')
 };
+
+// 히어로 헤드라인 문구. 상태마다 한 문장씩만 둔다 —
+// 숫자는 위에서 이미 말했으므로 여기서는 지금 무엇을 하면 되는지만 말한다.
+const HERO_HEADLINES = {
+  loggedOut: '준비되면 시작해요',
+  idle: '오늘 연습, 지금 시작할까요',
+  running: '지금 이 순간에 집중해요'
+};
+
+// 네이티브 상태바 색까지 같이 바꿔야 테마 전환이 화면 끝까지 맞는다.
+const THEME_CANVAS = { dark: '#0a0b0d', light: '#f6f4f0' };
 
 // 2. 초기 기동 함수
 document.addEventListener('DOMContentLoaded', () => {
   initApp();
   setupEventListeners();
-  
+  setupThemeToggle();
+
   // 백그라운드 오프라인 동기화 타이머 시작 (10초 주기)
   setInterval(syncOfflineData, 10000);
 });
+
+// 2-1. 테마 전환 (다크 기본 / 화이트 선택)
+// <head>의 인라인 스크립트가 저장값을 이미 적용해 둔 상태로 여기 들어온다.
+// 여기서는 토글과 상태바 색 동기화만 맡는다.
+function setupThemeToggle() {
+  applyThemeChrome(document.documentElement.getAttribute('data-theme'));
+
+  if (!dom.btnThemeToggle) return;
+  dom.btnThemeToggle.addEventListener('click', () => {
+    const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', next);
+    applyThemeChrome(next);
+    try {
+      localStorage.setItem('student_theme', next);
+    } catch (e) {
+      // 저장에 실패해도 이번 세션 동안은 바뀐 테마가 유지된다
+    }
+  });
+}
+
+function applyThemeChrome(theme) {
+  const isLight = theme === 'light';
+  if (dom.metaThemeColor) {
+    dom.metaThemeColor.setAttribute('content', isLight ? THEME_CANVAS.light : THEME_CANVAS.dark);
+  }
+  if (dom.btnThemeToggle) {
+    // 버튼이 말하는 건 현재 상태가 아니라 '누르면 어떻게 되는지'다.
+    dom.btnThemeToggle.setAttribute('aria-label', isLight ? '어두운 화면으로 전환' : '밝은 화면으로 전환');
+  }
+}
 
 // 3. 앱 초기설정 및 학생 로드
 async function initApp() {
@@ -527,6 +575,7 @@ function resumeTimerUI() {
 
   dom.timerRing.classList.add('active');
   dom.timerStatusText.textContent = '연습 중';
+  setHeroHeadline('running');
 
   // 1초 단위 타이머 가동
   updateTimerDigits();
@@ -548,6 +597,7 @@ function resetTimerUI() {
   dom.timerRing.classList.remove('active');
   dom.timerTime.textContent = '00:00:00';
   dom.timerStatusText.textContent = '대기 중';
+  setHeroHeadline(state.selectedStudent ? 'idle' : 'loggedOut');
 
   // BUG FIX: 로그인 상태일 땐 계획 섹션을 숨기지 않음 (퇴장 시에만 숨김)
   // personalPlanSection은 processStudentLogout()에서만 숨겨야 함
@@ -638,6 +688,20 @@ function renderSessionTimeline(sessions) {
     `;
     dom.personalSessionsList.appendChild(item);
   });
+}
+
+// 히어로 아크 게이지 — Oura의 0↔100 스코어 아크 자리.
+// 여기 채워지는 값은 '오늘 계획 달성률'이다. pathLength=100으로 정규화해 뒀으므로
+// CSS 변수에 퍼센트만 넘기면 stroke-dashoffset이 알아서 따라온다.
+function setHeroArc(donePlans, totalPlans) {
+  const percent = totalPlans > 0 ? Math.round((donePlans / totalPlans) * 100) : 0;
+  if (dom.timerRing) dom.timerRing.style.setProperty('--arc', percent);
+  if (dom.heroArcValue) dom.heroArcValue.textContent = String(percent);
+}
+
+// 히어로 헤드라인 — 세리프 한 문장으로 지금 상태를 말한다.
+function setHeroHeadline(key) {
+  if (dom.heroHeadline) dom.heroHeadline.textContent = HERO_HEADLINES[key] || HERO_HEADLINES.idle;
 }
 
 // 스코어 숏컷 한 칸을 갱신한다. 값과 단위를 나눠 두어야 큰 숫자만 눈에 들어온다.
@@ -863,8 +927,10 @@ function renderPersonalPlans(data) {
     dom.personalPlanList.appendChild(item);
   });
 
+  const doneCount = plans.filter((p) => p.done).length;
   updatePlanSlotCount(plans.length);
-  updateScoreChip('plan', `${plans.filter((p) => p.done).length}/${plans.length}`, '완료');
+  updateScoreChip('plan', `${doneCount}/${plans.length}`, '완료');
+  setHeroArc(doneCount, plans.length);
 }
 
 // 슬롯이 꽉 차면 입력창을 잠가, 눌러 본 뒤에야 거절당하는 일이 없게 한다.
@@ -1172,6 +1238,9 @@ function processStudentLogout() {
   // 상단 요약은 앞사람의 수치라 반드시 같이 치운다.
   if (dom.todayHead) dom.todayHead.style.display = 'none';
   if (dom.scoreShortcuts) dom.scoreShortcuts.style.display = 'none';
+  // 히어로 게이지도 앞사람의 달성률이라 같이 비운다.
+  setHeroArc(0, 0);
+  setHeroHeadline('loggedOut');
   if (dom.personalQaSection) {
     dom.personalQaSection.style.display = 'none';
   }
@@ -1358,14 +1427,16 @@ async function loadStudentHomework(studentId) {
       return;
     }
 
+    // 카드 안에 또 카드를 넣지 않는다. Oura 목록처럼 행 사이 선 하나로만 나눈다.
+    // (마감일은 '주의' 의미색을 달고 제목 위로 올라간다 — 먼저 읽혀야 할 정보라서다.)
     dom.personalHomeworkList.innerHTML = list.map(hw => `
-      <div class="glass-card" style="padding: 14px 16px; margin-bottom: 10px; background: rgba(255,255,255,0.03);">
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px;">
-          <strong style="font-size: 0.95rem;">${escapeHtml(hw.title)}</strong>
-          ${hw.dueDate ? `<span style="font-size: 0.78rem; color: var(--neon-coral);">마감: ${escapeHtml(hw.dueDate)}</span>` : ''}
+      <div class="plan-item">
+        <div class="plan-main">
+          ${hw.dueDate ? `<span class="plan-due">마감 ${escapeHtml(hw.dueDate)}</span>` : ''}
+          <span class="plan-text">${escapeHtml(hw.title)}</span>
+          ${hw.description ? `<span class="item-subtitle">${escapeHtml(hw.description)}</span>` : ''}
+          ${hw.attachmentUrl ? `<a class="plan-attachment" href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener">${escapeHtml(hw.attachmentFilename)}</a>` : ''}
         </div>
-        ${hw.description ? `<p style="font-size: 0.85rem; color: var(--text-muted); margin: 6px 0 0;">${escapeHtml(hw.description)}</p>` : ''}
-        ${hw.attachmentUrl ? `<a href="${escapeHtml(hw.attachmentUrl)}" target="_blank" rel="noopener" style="display: inline-block; margin-top: 8px; font-size: 0.82rem; color: var(--neon-mint);">${escapeHtml(hw.attachmentFilename)}</a>` : ''}
       </div>
     `).join('');
   } catch (err) {
@@ -1444,10 +1515,12 @@ async function loadDailyInsight() {
       const { title, html_content, created_at } = result.data;
       const dateStr = new Date(created_at).toLocaleDateString('ko-KR', { month: 'long', day: 'numeric', weekday: 'short' });
 
+      // html_content는 서버(src/knowledge/renderer.py)가 이스케이프까지 마쳐 만든
+      // 고정 구조라 그대로 넣는다. 반면 title은 여기서 한 번 더 감싼다.
       container.innerHTML = `
         <div class="insight-head">
-          <span class="insight-title">${title}</span>
-          <span class="insight-date">${dateStr} 갱신</span>
+          <span class="insight-title">${escapeHtml(title)}</span>
+          <span class="insight-date">${escapeHtml(dateStr)} 갱신</span>
         </div>
         <div id="insight-widget-frame" style="animation: fadeIn 0.4s ease;">${html_content}</div>
       `;
@@ -1465,5 +1538,66 @@ async function loadDailyInsight() {
         <p class="text-danger">교원 와이파이 연결 확인 후 다시 시도해 주세요.</p>
       </div>
     `;
+  }
+
+  // 꿀팁 아래에 붙는 입시 정보는 별도 호출 — 하나가 실패해도 다른 하나는 보이게 한다.
+  loadAdmissionInfo();
+}
+
+// ==========================================
+// 입시 정보 센터 — 선생님이 승인한 공고만 내려온다
+// ==========================================
+async function loadAdmissionInfo() {
+  const section = document.getElementById('admission-section');
+  const list = document.getElementById('admission-list');
+  const count = document.getElementById('admission-count');
+  if (!section || !list || !state.selectedStudent) return;
+
+  try {
+    const part = state.selectedStudent.instrument || '';
+    const res = await fetch(`/api/admission-info?part=${encodeURIComponent(part)}&limit=15`);
+    const result = await res.json();
+    const items = (result && result.data) || [];
+
+    // 승인된 공고가 하나도 없으면 섹션 자체를 숨긴다 — 빈 상자를 보여줄 이유가 없다.
+    if (!items.length) {
+      section.hidden = true;
+      return;
+    }
+
+    const today = new Date();
+    list.innerHTML = items.map((item) => {
+      const chips = [];
+      if (item.school) chips.push(`<span class="admission-chip">${escapeHtml(item.school)}</span>`);
+      if (item.category) chips.push(`<span class="admission-chip">${escapeHtml(item.category)}</span>`);
+
+      // 마감일이 지나지 않았고 2주 안쪽이면 눈에 띄게 표시한다.
+      if (item.deadline) {
+        const left = Math.ceil((new Date(item.deadline) - today) / 86400000);
+        if (left >= 0 && left <= 14) {
+          chips.push(`<span class="admission-chip is-deadline">D-${left}</span>`);
+        }
+      }
+
+      const dateStr = item.posted_at ? `<span class="admission-date">${escapeHtml(item.posted_at)}</span>` : '';
+      const summary = item.summary
+        ? `<span class="admission-summary">${escapeHtml(item.summary)}</span>` : '';
+      const body = `
+        <div class="admission-meta">${chips.join('')}${dateStr}</div>
+        <span class="admission-title">${escapeHtml(item.title)}</span>
+        ${summary}
+      `;
+
+      // 원문 링크가 있으면 공식 페이지로 보낸다. 우리는 본문을 복사해 두지 않는다.
+      return item.source_url
+        ? `<a class="admission-item" href="${escapeHtml(item.source_url)}" target="_blank" rel="noopener noreferrer">${body}</a>`
+        : `<div class="admission-item">${body}</div>`;
+    }).join('');
+
+    count.textContent = `${items.length}건`;
+    section.hidden = false;
+  } catch (err) {
+    // 입시 정보가 안 떠도 꿀팁 화면 자체는 멀쩡해야 한다.
+    section.hidden = true;
   }
 }
