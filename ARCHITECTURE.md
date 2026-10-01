@@ -300,7 +300,6 @@ start-*.bat/.py         수동 서버/터널 기동용 스크립트
 register-startup.*      Windows 시작프로그램 등록 스크립트 (⚠️ register-startup.ps1은 옛 프로젝트 경로를 가리키는 죽은 스크립트 — register-startup.vbs만 유효)
 ensure_watchdog.ps1     워치독(system_service.py)이 안 떠 있으면 재기동 ("워치독의 워치독", §2.6)
 register-watchdog-safety-net.ps1  위 스크립트를 작업 스케줄러 10분 주기 작업으로 등록 (1회 실행용)
-server.js, src/db.js    레거시 Node/Express 버전 — 사용 안 함, node_modules도 미설치
 ```
 
 ## 7. 운영 체크리스트
