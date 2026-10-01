@@ -1715,8 +1715,13 @@ def get_known_video_ids():
 
 
 def pick_video_for_part(part=None):
-    """꿀팁에 붙일 영상 하나. 해당 파트용을 먼저 보고, 없으면 파트 무관 영상으로.
+    """꿀팁에 붙일 영상 하나. 해당 파트용을 먼저 보고, 없으면 '전 파트 공통' 영상으로.
 
+    전에는 파트용이 없으면 아무 영상이나 집어왔다. 코퍼스에 미디 영상 한 편만
+    있던 동안 드럼·보컬 학생에게까지 그 영상이 붙었다(2026-09-26 실측). 전공이
+    다른 영상을 붙이느니 안 붙이는 게 낫다 — 카드는 영상 없이도 완성된다.
+
+    parts가 빈 배열이면 '전 파트 공통'이라는 뜻이고, 그것만 폴백으로 쓴다.
     transcript_excerpt가 있는 것만 고른다 — 자막을 못 받은 영상은 애초에 저장되지
     않지만, 수동 등록분이나 과거 데이터에 대비한 안전장치다.
     """
@@ -1733,11 +1738,13 @@ def pick_video_for_part(part=None):
             if row:
                 return _row_to_video(row)
 
-        cursor.execute(base + order)
+        # 전 파트 공통만 허용. 다른 전공 태그가 붙은 영상은 여기서 걸러진다.
+        cursor.execute(
+            base + "AND (parts IS NULL OR parts = '' OR parts = '[]') " + order
+        )
         return _row_to_video(cursor.fetchone())
     finally:
         conn.close()
-
 
 def mark_video_used(video_id, used_at_iso):
     conn = get_db_connection()
