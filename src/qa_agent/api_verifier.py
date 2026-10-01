@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from src.qa_agent.config import get_config
@@ -113,10 +114,10 @@ def run_probe(feature_key: str, probe: Probe, base_url: str, stage: str,
                     problems.append(f"응답 JSON에 키 없음: {', '.join(missing)}")
             except json.JSONDecodeError:
                 problems.append("JSON 응답이 아님")
-        for needle in probe.expect_body_contains:
+        for needle in probe.resolved_needles(probe.expect_body_contains, context):
             if needle not in text:
                 problems.append(f"본문에 '{needle}' 없음")
-        for needle in probe.expect_body_absent:
+        for needle in probe.resolved_needles(probe.expect_body_absent, context):
             if needle in text:
                 problems.append(f"본문에 '{needle}'가 있으면 안 됨")
 
@@ -160,4 +161,6 @@ def resolve_context() -> Dict[str, object]:
             student_id = students[0]["id"]
     except Exception as exc:
         logger.warning(f"[QA_VERIFY] 학생 ID 조회 실패, 기본값 1 사용: {exc}")
-    return {"student_id": student_id}
+    # {today}는 "오늘 날짜로 만들어진 것인가"를 확인하는 프로브가 쓴다. 점검이 도는
+    # 시점에 구해야 한다 — 서버는 며칠씩 켜져 있으므로 import 시점 날짜는 금방 썩는다.
+    return {"student_id": student_id, "today": datetime.now().strftime("%Y-%m-%d")}

@@ -37,6 +37,16 @@ class Probe:
             path = path.replace("{" + key + "}", str(value))
         return path
 
+    @staticmethod
+    def resolved_needles(needles: Tuple[str, ...], context: Dict[str, object]) -> Tuple[str, ...]:
+        """본문 기대 문자열에도 {today} 같은 자리표시자를 채워 넣는다."""
+        resolved = []
+        for needle in needles:
+            for key, value in context.items():
+                needle = needle.replace("{" + key + "}", str(value))
+            resolved.append(needle)
+        return tuple(resolved)
+
     def resolved_body(self, context: Dict[str, object]) -> Optional[dict]:
         """본문에 들어간 {student_id} 같은 자리표시자도 같이 치환한다."""
         if self.body is None:
@@ -208,6 +218,12 @@ FEATURES: Tuple[FeatureSpec, ...] = (
                   expect_json_keys=("success",), expect_body_contains=("tip-card",),
                   expect_body_absent=("<style", "#ffffff", "#454648"),
                   note="<style>이 다시 나타나면 AI가 HTML을 만들던 시절로 되돌아간 것"),
+            # 위 프로브들은 "카드가 있나"만 본다. 조회 쿼리가 최신 활성 카드를 집으므로
+            # 그날 생성이 실패해도 그제 카드가 나오고, 점검은 전부 통과한다. 실제로
+            # 2026-10-01 Gemini 503으로 생성이 멎었는데 그날 밤 정기 점검은 정상이었다.
+            Probe("오늘 날짜로 생성된 카드", "GET", "/api/daily-insight?part=%EB%B3%B4%EC%BB%AC",
+                  expect_json_keys=("success",), expect_body_contains=("{today}",),
+                  note="실패하면 카드는 있으나 오늘 생성분이 아니다 — 생성 루프를 확인할 것"),
         ),
         device_screen=True,
     ),
