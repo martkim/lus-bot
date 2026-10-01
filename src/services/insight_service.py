@@ -104,17 +104,21 @@ def _validate_content(item: dict) -> bool:
     return True
 
 
-async def auto_generate_daily_insight():
-    """하루 1회: 논문 한 편 -> 6개 파트 꿀팁 카드."""
+async def auto_generate_daily_insight() -> bool:
+    """하루 1회: 논문 한 편 -> 6개 파트 꿀팁 카드.
+
+    오늘 치를 확보했으면 True. 나중에 다시 시도해야 하면 False를 돌려주고,
+    호출하는 루프가 24시간 대신 짧게 쉬었다 다시 부른다.
+    """
     if not GEMINI_API_KEY:
         logger.warning("[AUTO_GENERATE_DAILY_INSIGHT] GEMINI_API_KEY 없음 - 생성 건너뜀")
-        return
+        return False
 
     try:
         today_str = datetime.now().strftime("%Y-%m-%d")
         if db.has_todays_insight(today_str):
             logger.info("[AUTO_GENERATE_DAILY_INSIGHT] 오늘자 인사이트가 이미 있음 - 건너뜀")
-            return
+            return True
 
         topic = _todays_topic()
         paper = paper_service.pick_todays_paper(topic)
@@ -124,7 +128,7 @@ async def auto_generate_daily_insight():
                 "`.venv/Scripts/python.exe -m src.knowledge.papers_seed`로 코퍼스를 만들고 "
                 "서버를 재시작하면 채워진다."
             )
-            return
+            return False
 
         theme_title = TOPICS.get(paper.get("topic") or topic, "오늘의 연구 기반 꿀팁")
         logger.info(f"[AUTO_GENERATE_DAILY_INSIGHT] 시작 topic={topic} theme={theme_title} "
@@ -141,8 +145,8 @@ async def auto_generate_daily_insight():
         except json.JSONDecodeError:
             logger.exception("오늘의 인사이트 JSON 파싱 실패")
             logger.error("[AUTO_GENERATE_DAILY_INSIGHT] Gemini 응답이 유효한 JSON이 아님 - "
-                         "오늘 배치 건너뜀(내일 재시도)")
-            return
+                         "잠시 뒤 재시도")
+            return False
 
         now_iso = datetime.now().isoformat()
         saved_count = 0
@@ -179,10 +183,12 @@ async def auto_generate_daily_insight():
 
         logger.info(f"[AUTO_GENERATE_DAILY_INSIGHT] 배치 저장 완료 {saved_count}/{len(PART_FOCUS)} 파트 "
                     f"paper={paper['doi']} 영상연결={len(used_video_ids)}건")
+        return saved_count > 0
 
     except Exception as e:
         logger.exception("오늘의 AI 인사이트 생성 실패")
         logger.error(f"[AUTO_GENERATE_DAILY_INSIGHT] 생성 실패: {e}")
+        return False
 
 
 def get_latest_active_insight(part: str) -> Optional[InsightDTO]:

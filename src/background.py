@@ -45,8 +45,11 @@ async def run_daily_insight_loop():
     await asyncio.sleep(20)  # 코퍼스 적재/영상 수집이 먼저 끝나도록
     while True:
         print("[AI Insight] Running daily insight generation loop...")
-        await auto_generate_daily_insight()
-        await asyncio.sleep(86400)
+        generated = await auto_generate_daily_insight()
+        # 실패했으면 24시간을 기다리지 않는다. 2026-10-01에 Gemini가 503을 한 번
+        # 뱉었는데 그대로 하루를 건너뛰어, 학생들은 이틀 동안 그제 카드를 봤다.
+        # 생성에 성공했거나 오늘 치가 이미 있으면 True가 오므로 재시도는 공짜다.
+        await asyncio.sleep(86400 if generated else 1800)
 
 
 async def run_ghost_session_cleanup_loop():
@@ -129,7 +132,12 @@ def register_all():
     """FastAPI startup 이벤트에서 호출 — 모든 루프를 백그라운드 태스크로 등록."""
     asyncio.create_task(run_knowledge_bootstrap())
     asyncio.create_task(run_24h_ai_analysis_loop())
-    asyncio.create_task(run_daily_curriculum_update_loop())
+    # run_daily_curriculum_update_loop()은 등록하지 않는다 — 이 루프는 curriculum.txt
+    # 전체를 AI 출력으로 덮어썼고, 다음 날 그 출력을 다시 읽어 또 덮어썼다. 서버를 띄울
+    # 때마다 한 번 더 돌기까지 해서, 선생님이 쓴 지침서가 "지금 바로 희망 전공을
+    # 알려주세요"를 수십 번 반복하는 문서로 변해 있었다(2026-10-02 확인). 이 파일은
+    # AI 튜터의 시스템 프롬프트라 그 변질이 학생 대화에 그대로 들어간다.
+    # 선생님은 화면에서 직접 커리큘럼을 고칠 수 있다(PUT /api/curriculum).
     asyncio.create_task(run_daily_video_harvest_loop())
     asyncio.create_task(run_daily_insight_loop())
     asyncio.create_task(run_daily_admission_info_loop())
