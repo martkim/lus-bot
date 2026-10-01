@@ -11,13 +11,13 @@
     "journal": "Psychological Review",
     "url": "https://doi.org/10.1037/0033-295x.100.3.363",
     "abstract": "The theoretical framework presented in this article explains expert performance as the end result of individuals' prolonged efforts to improve performance while negotiating motivational and external constraints. In most domains of expertise, individuals begin in their childhood a regimen of effortful activities (deliberate practice) designed to optimize improvement. Individual differences, even among elite performers, are closely related to assessed amounts of deliberate practice. Many characteristics once believed to reflect innate talent are actually the result of intense practice extended for a minimum of 10 years. Analysis of expert performance provides unique evidence on the potential and limits of extreme environmental adaptation and learning.",
-    "cited_by": 9052,
+    "cited_by": 9046,
     "type": "journal-article",
     "topic": "practice_design",
     "angle": "그냥 많이가 아니라, 의도적으로 어려운 것을 고쳐가며 연습할 때만 실력이 오른다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:44:58.252750"
+    "verified_at": "2026-09-26T14:57:21.671324"
   },
   {
     "doi": "10.1177/0022429408328851",
@@ -37,7 +37,7 @@
     "angle": "잘하는 학생은 연습량이 아니라 틀린 순간 멈추고 그 자리를 고치는 방식이 다르다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:44:59.928198"
+    "verified_at": "2026-09-26T14:57:23.026356"
   },
   {
     "doi": "10.1017/s0265051799000364",
@@ -55,7 +55,7 @@
     "angle": "연습을 계획-점검-수정의 순환으로 돌리는 학생이 더 빨리 는다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:04.503963"
+    "verified_at": "2026-09-26T14:57:24.974607"
   },
   {
     "doi": "10.1080/14613800020029914",
@@ -73,7 +73,7 @@
     "angle": "연차가 쌓일수록 연습 전략 자체가 바뀐다 — 초보와 고수의 연습은 다른 작업이다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:06.358744"
+    "verified_at": "2026-09-26T14:57:26.136633"
   },
   {
     "doi": "10.3389/fpsyg.2014.00646",
@@ -95,7 +95,7 @@
     "angle": "여러 연구를 합쳐 보면 연습의 질이 성취를 얼마나 설명하는가",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:08.410174"
+    "verified_at": "2026-09-26T14:57:27.624200"
   },
   {
     "doi": "10.1177/0956797614535810",
@@ -109,13 +109,13 @@
     "journal": "Psychological Science",
     "url": "https://doi.org/10.1177/0956797614535810",
     "abstract": "More than 20 years ago, researchers proposed that individual differences in performance in such domains as music, sports, and games largely reflect individual differences in amount of deliberate practice, which was defined as engagement in structured activities created specifically to improve performance in a domain. This view is a frequent topic of popular-science writing—but is it supported by empirical evidence? To answer this question, we conducted a meta-analysis covering all major domains in which deliberate practice has been investigated. We found that deliberate practice explained 26% of the variance in performance for games, 21% for music, 18% for sports, 4% for education, and less than 1% for professions. We conclude that deliberate practice is important, but not as important as has been argued.",
-    "cited_by": 657,
+    "cited_by": 659,
     "type": "journal-article",
     "topic": "practice_design",
     "angle": "연습만으로 설명되지 않는 부분도 크다 — 연습의 종류를 고민해야 하는 이유",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:09.939743"
+    "verified_at": "2026-09-26T14:57:29.189480"
   },
   {
     "doi": "10.1111/1467-9280.00462",
@@ -134,7 +134,7 @@
     "angle": "무대에서 기억이 무너지지 않게 되돌아갈 지점을 미리 심어두는 법",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:11.493500"
+    "verified_at": "2026-09-26T14:57:30.901339"
   },
   {
     "doi": "10.1080/14613800120089232",
@@ -153,7 +153,7 @@
     "angle": "스스로 목표를 세우고 점검하는 능력이 실력 차이를 만든다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:13.302954"
+    "verified_at": "2026-09-26T14:57:32.238073"
   },
   {
     "doi": "10.1037/0033-2909.132.3.354",
@@ -169,14 +169,14 @@
     "journal": "Psychological Bulletin",
     "url": "https://doi.org/10.1037/0033-2909.132.3.354",
     "abstract": "The authors performed a meta-analysis of the distributed practice effect to illuminate the effects of temporal variables that have been neglected in previous reviews. This review found 839 assessments of distributed practice in 317 experiments located in 184 articles. Effects of spacing (consecutive massed presentations vs. spaced learning episodes) and lag (less spaced vs. more spaced learning episodes) were examined, as were expanding interstudy interval (ISI) effects. Analyses suggest that ISI and retention interval operate jointly to affect final-test retention; specifically, the ISI producing maximal retention increased as retention interval increased. Areas needing future research and theoretical implications are discussed.",
-    "cited_by": 1896,
+    "cited_by": 1899,
     "type": "journal-article",
     "open_access_url": "https://escholarship.org/content/qt3rr6q10c/qt3rr6q10c.pdf?t=lnr1h0",
     "topic": "spacing",
     "angle": "몰아서 6시간보다 나눠서 6시간이 훨씬 오래 남는다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:15.237306"
+    "verified_at": "2026-09-26T14:57:33.415935"
   },
   {
     "doi": "10.1037/0278-7393.5.2.179",
@@ -189,13 +189,13 @@
     "journal": "Journal of Experimental Psychology: Human Learning and Memory",
     "url": "https://doi.org/10.1037/0278-7393.5.2.179",
     "abstract": "This study was based on Battig's conceptualization that increased contextual interference during skill acquisition can lead to improved retention or transfer, especially under changed contextual conditions. Subjects learned three motor tasks under a blocked (low interference) or random (high interference) sequence of presentation. Retention was measured after a 10-min. or 10-day delay under blocked and random sequences of presentation. Subsequent transfer to a task of either the same complexity or greater complexity than the originally learned tasks was also investigated. Results showed that retention was greater following high interference (random) acquisition than after low interference (blocked) acquisition when retention was measured under changed contextual interference conditions. Likewise, transfer was greater for high interference (random) acquisition groups than for low interference (blocked) acquisition groups. This effect was most notable when transfer was measured for the transfer task of greatest complexity. These results are considered as support for Battig's conceptualization of contextual interference effects on retention and transfer. Implications for the teaching of motor skills are also discussed.",
-    "cited_by": 1165,
+    "cited_by": 1167,
     "type": "journal-article",
     "topic": "spacing",
     "angle": "섞어서 연습하면 그날은 더 못하는 것 같아도 나중에 더 잘 남는다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:17.084609"
+    "verified_at": "2026-09-26T14:57:34.462641"
   },
   {
     "doi": "10.3389/fpsyg.2016.01251",
@@ -215,7 +215,7 @@
     "angle": "음악 연습에서 블록 연습과 교차 연습을 직접 비교하면 어떻게 되나",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:18.902938"
+    "verified_at": "2026-09-26T14:57:35.723012"
   },
   {
     "doi": "10.1177/0022429410385945",
@@ -227,14 +227,14 @@
     "journal": "Journal of Research in Music Education",
     "url": "https://doi.org/10.1177/0022429410385945",
     "abstract": "The purpose of this study was to investigate the effects of blocked and random practice schedules on the performance accuracy, speed, temporal evenness, and attitude of beginning band students in a group instructional setting. The research assumptions were based on the contextual interference hypothesis, which predicts that a blocked practice order (low contextual interference) leads to superior performance immediately following practice but that a random practice order (high contextual interference) supports superior performance at delayed retention testing. Beginning clarinet students ( N = 41) completed three practice sessions and one retention testing session, performing three seven-pitch exercises. At the end of practice, no significant differences were found between blocked and random practice groups for accuracy, speed, or temporal evenness. At retention, the random group performed significantly faster than the blocked group, F(1, 38) = 24.953, p &lt; .001, η 2 = .92, and the blocked group performed significantly slower than it did at the end of practice ( p &lt; .001). No significant differences were found between groups for transfer tasks or for attitude toward practice.",
-    "cited_by": 48,
+    "cited_by": 49,
     "type": "journal-article",
     "open_access_url": "https://digitalcommons.ric.edu/facultypublications/647",
     "topic": "spacing",
     "angle": "같은 구간 반복이 항상 정답은 아니다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:20.629518"
+    "verified_at": "2026-09-26T14:57:37.142137"
   },
   {
     "doi": "10.1007/s11251-007-9015-8",
@@ -253,7 +253,7 @@
     "angle": "순서를 섞는 것만으로 학습 효과가 달라진다",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:45:22.261262"
+    "verified_at": "2026-09-26T14:57:38.317558"
   },
   {
     "doi": "10.1111/j.1467-9280.2006.01693.x",
@@ -272,7 +272,7 @@
     "angle": "악보를 보고 또 보는 것보다 덮고 떠올려보는 게 더 남는다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:24.259417"
+    "verified_at": "2026-09-26T14:57:39.700260"
   },
   {
     "doi": "10.1126/science.1152408",
@@ -291,7 +291,7 @@
     "angle": "다시 꺼내 쓰기가 다시 집어넣기보다 강하다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:26.011449"
+    "verified_at": "2026-09-26T14:57:41.241875"
   },
   {
     "doi": "10.3758/bf03194050",
@@ -313,7 +313,7 @@
     "angle": "복습 간격을 어떻게 잡아야 시험 날까지 살아남나",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:45:27.647641"
+    "verified_at": "2026-09-26T14:57:42.511116"
   },
   {
     "doi": "10.1080/00222899809601334",
@@ -333,7 +333,7 @@
     "angle": "내 손가락에 집중할 때보다 나오는 소리에 집중할 때 몸이 더 잘 움직인다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:29.523845"
+    "verified_at": "2026-09-26T14:57:43.860444"
   },
   {
     "doi": "10.1080/1750984x.2012.723728",
@@ -351,7 +351,7 @@
     "angle": "15년치 연구가 같은 방향을 가리킨다 — 주의를 바깥(결과)에 두라",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:31.417872"
+    "verified_at": "2026-09-26T14:57:45.068673"
   },
   {
     "doi": "10.1177/0022429418801573",
@@ -370,7 +370,7 @@
     "angle": "음악 연주에서도 외적 초점이 실제로 연주를 낫게 만들었다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:33.500291"
+    "verified_at": "2026-09-26T14:57:46.262910"
   },
   {
     "doi": "10.1177/0022429410396093",
@@ -384,13 +384,13 @@
     "journal": "Journal of Research in Music Education",
     "url": "https://doi.org/10.1177/0022429410396093",
     "abstract": "To test the extent to which learners performing a simple keyboard passage would be affected by directing their focus of attention to different aspects of their movements, 16 music majors performed a brief keyboard passage under each of four focus conditions arranged in a counterbalanced design—a total of 64 experimental sessions. As they performed the test passage, participants were directed to focus their attention on either their fingers, the piano keys, the piano hammers, or the sound produced. Complete MIDI data for all responses were digitally recorded by software written specifically for this experiment. Consistent with findings obtained in tests of other physical skills, the results show that performance was most accurate and generalizable when participants focused on the effects their movements produced rather than on the movements themselves, and that the more distal the focus of attention, the more accurate the motor control.",
-    "cited_by": 133,
+    "cited_by": 132,
     "type": "journal-article",
     "topic": "attention_focus",
     "angle": "어디에 주의를 두라고 말해주느냐가 그 자리에서 연주를 바꾼다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:35.958904"
+    "verified_at": "2026-09-26T14:57:47.458391"
   },
   {
     "doi": "10.1177/0305735607086051",
@@ -409,7 +409,7 @@
     "angle": "청소년 연주자의 무대공포가 어떤 경험에서 시작되는가",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:37.532159"
+    "verified_at": "2026-09-26T14:57:48.859678"
   },
   {
     "doi": "10.1007/s00420-010-0608-1",
@@ -432,7 +432,7 @@
     "angle": "무대공포를 실제로 겪는 사람들이 어떤 대처를 쓰고 무엇이 통했나",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:45:39.702806"
+    "verified_at": "2026-09-26T14:57:50.475809"
   },
   {
     "doi": "10.1037/0096-3445.130.4.701",
@@ -451,7 +451,7 @@
     "angle": "잘하던 게 실기장에서 무너지는 이유 — 몸에 밴 동작을 머리로 감시할 때",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:41.731419"
+    "verified_at": "2026-09-26T14:57:51.785263"
   },
   {
     "doi": "10.1037/0022-3514.46.3.610",
@@ -463,13 +463,13 @@
     "journal": "Journal of Personality and Social Psychology",
     "url": "https://doi.org/10.1037/0022-3514.46.3.610",
     "abstract": null,
-    "cited_by": 1226,
+    "cited_by": 1227,
     "type": "journal-article",
     "topic": "performance_anxiety",
     "angle": "잘해야 한다는 압박이 어떻게 역효과를 내는가",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:45:43.325259"
+    "verified_at": "2026-09-26T14:57:52.874885"
   },
   {
     "doi": "10.1037/a0025719",
@@ -490,7 +490,7 @@
     "angle": "심장이 뛰는 걸 망했다가 아니라 준비됐다로 해석하면 몸 반응이 달라진다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:44.987770"
+    "verified_at": "2026-09-26T14:57:54.197620"
   },
   {
     "doi": "10.1037/a0035325",
@@ -508,7 +508,7 @@
     "angle": "진정하자보다 신난다가 실제로 더 잘 통했다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:46.551061"
+    "verified_at": "2026-09-26T14:57:55.787580"
   },
   {
     "doi": "10.1371/journal.pone.0046597",
@@ -524,14 +524,14 @@
     "journal": "PLoS ONE",
     "url": "https://doi.org/10.1371/journal.pone.0046597",
     "abstract": "BACKGROUND: Musical performance is a skilled activity performed under intense pressure, thus is often a profound source of anxiety. In other contexts, anxiety and its concomitant symptoms of sympathetic nervous system arousal have been successfully ameliorated with HRV biofeedback (HRV BF), a technique involving slow breathing which augments autonomic and emotional regulatory capacity. OBJECTIVE: This randomised-controlled study explored the impact of a single 30-minute session of HRV BF on anxiety in response to a highly stressful music performance. METHODS: A total of 46 trained musicians participated in this study and were randomly allocated to a slow breathing with or without biofeedback or no-treatment control group. A 3 Group×2 Time mixed experimental design was employed to compare the effect of group before and after intervention on performance anxiety (STAI-S) and frequency domain measures of HRV. RESULTS: Slow breathing groups (n=30) showed significantly greater improvements in high frequency (HF) and LF/HF ratio measures of HRV relative to control (n=15) during 5 minute recordings of performance anticipation following the intervention (effect size: η(2) =0.122 and η(2) =0.116, respectively). The addition of biofeedback to a slow breathing protocol did not produce differential results. While intervention groups did not exhibit an overall reduction in self-reported anxiety, participants with high baseline anxiety who received the intervention (n=15) displayed greater reductions in self-reported state anxiety relative to those in the control condition (n=7) (r=0.379). CONCLUSIONS: These findings indicate that a single session of slow breathing, regardless of biofeedback, is sufficient for controlling physiological arousal in anticipation of psychosocial stress associated with music performance and that slow breathing is particularly helpful for musicians with high levels of anxiety. Future research is needed to further examine the effects of HRV BF as a low-cost, non-pharmacological treatment for music performance anxiety.",
-    "cited_by": 189,
+    "cited_by": 188,
     "type": "journal-article",
     "open_access_url": "https://journals.plos.org/plosone/article/file?id=10.1371/journal.pone.0046597&type=printable",
     "topic": "performance_anxiety",
     "angle": "호흡과 심박을 다루는 단 한 번의 훈련이 연주 불안에 미친 영향",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:48.303382"
+    "verified_at": "2026-09-26T14:57:57.345031"
   },
   {
     "doi": "10.1080/02699931.2016.1233095",
@@ -549,7 +549,7 @@
     "angle": "시험 직전 깊은 호흡이 불안과 점수에 실제로 영향을 줬다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:50.056183"
+    "verified_at": "2026-09-26T14:57:58.508630"
   },
   {
     "doi": "10.1126/science.1199427",
@@ -562,13 +562,13 @@
     "journal": "Science",
     "url": "https://doi.org/10.1126/science.1199427",
     "abstract": "Write Your Worries Away Tests and exams are stressful for many people. Students who “choke” at an exam may perform less well than their knowledge base warrants. Such results can accumulate to generate reduced educational achievements and expectations. Studying young adults performing math tests, Ramirez and Beilock (p. 211 ) found that a brief intervention—writing about their anxiety about the upcoming exam—helped students to do better in the exam. Perhaps by acknowledging their fears, students were able to tame distracting emotions.",
-    "cited_by": 434,
+    "cited_by": 435,
     "type": "journal-article",
     "topic": "performance_anxiety",
     "angle": "시험 직전 걱정을 글로 쏟아내면 성적이 올라갔다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:52.425431"
+    "verified_at": "2026-09-26T14:57:59.831771"
   },
   {
     "doi": "10.1080/10413200.2011.574676",
@@ -587,7 +587,7 @@
     "angle": "음악가용 멘탈 훈련 프로그램이 실제로 효과가 있었나",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:45:54.147094"
+    "verified_at": "2026-09-26T14:58:00.929110"
   },
   {
     "doi": "10.1016/s0896-6273(02)00746-8",
@@ -603,14 +603,14 @@
     "journal": "Neuron",
     "url": "https://doi.org/10.1016/s0896-6273(02)00746-8",
     "abstract": null,
-    "cited_by": 1325,
+    "cited_by": 1326,
     "type": "journal-article",
     "open_access_url": "http://www.cell.com/article/S0896627302007468/pdf",
     "topic": "sleep_recovery",
     "angle": "연습한 동작은 자는 동안 완성된다 — 밤새우면 그 이득이 사라진다",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:45:55.975473"
+    "verified_at": "2026-09-26T14:58:02.778894"
   },
   {
     "doi": "10.2307/4151346",
@@ -629,7 +629,7 @@
     "angle": "같은 연습량이어도 자고 난 뒤에 더 잘 쳤다(건반 실험)",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:45:57.446608"
+    "verified_at": "2026-09-26T14:58:03.981986"
   },
   {
     "doi": "10.1152/physrev.00032.2012",
@@ -642,14 +642,14 @@
     "journal": "Physiological Reviews",
     "url": "https://doi.org/10.1152/physrev.00032.2012",
     "abstract": "Over more than a century of research has established the fact that sleep benefits the retention of memory. In this review we aim to comprehensively cover the field of “sleep and memory” research by providing a historical perspective on concepts and a discussion of more recent key findings. Whereas initial theories posed a passive role for sleep enhancing memories by protecting them from interfering stimuli, current theories highlight an active role for sleep in which memories undergo a process of system consolidation during sleep. Whereas older research concentrated on the role of rapid-eye-movement (REM) sleep, recent work has revealed the importance of slow-wave sleep (SWS) for memory consolidation and also enlightened some of the underlying electrophysiological, neurochemical, and genetic mechanisms, as well as developmental aspects in these processes. Specifically, newer findings characterize sleep as a brain state optimizing memory consolidation, in opposition to the waking brain being optimized for encoding of memories. Consolidation originates from reactivation of recently encoded neuronal memory representations, which occur during SWS and transform respective representations for integration into long-term memory. Ensuing REM sleep may stabilize transformed memories. While elaborated with respect to hippocampus-dependent memories, the concept of an active redistribution of memory representations from networks serving as temporary store into long-term stores might hold also for non-hippocampus-dependent memory, and even for nonneuronal, i.e., immunological memories, giving rise to the idea that the offline consolidation of memory during sleep represents a principle of long-term memory formation established in quite different physiological systems.",
-    "cited_by": 2893,
+    "cited_by": 2894,
     "type": "journal-article",
     "open_access_url": "https://www.zora.uzh.ch/id/eprint/77770/1/physiol_rev_93.pdf",
     "topic": "sleep_recovery",
     "angle": "잠이 기억을 정리하고 굳히는 과정",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:45:59.066702"
+    "verified_at": "2026-09-26T14:58:05.507157"
   },
   {
     "doi": "10.5665/sleep.1132",
@@ -664,14 +664,14 @@
     "journal": "Sleep",
     "url": "https://doi.org/10.5665/sleep.1132",
     "abstract": "STUDY OBJECTIVES: To investigate the effects of sleep extension over multiple weeks on specific measures of athletic performance as well as reaction time, mood, and daytime sleepiness. SETTING: Stanford Sleep Disorders Clinic and Research Laboratory and Maples Pavilion, Stanford University, Stanford, CA. PARTICIPANTS: Eleven healthy students on the Stanford University men's varsity basketball team (mean age 19.4 ± 1.4 years). INTERVENTIONS: Subjects maintained their habitual sleep-wake schedule for a 2-4 week baseline followed by a 5-7 week sleep extension period. Subjects obtained as much nocturnal sleep as possible during sleep extension with a minimum goal of 10 h in bed each night. Measures of athletic performance specific to basketball were recorded after every practice including a timed sprint and shooting accuracy. Reaction time, levels of daytime sleepiness, and mood were monitored via the Psychomotor Vigilance Task (PVT), Epworth Sleepiness Scale (ESS), and Profile of Mood States (POMS), respectively. RESULTS: Total objective nightly sleep time increased during sleep extension compared to baseline by 110.9 ± 79.7 min (P < 0.001). Subjects demonstrated a faster timed sprint following sleep extension (16.2 ± 0.61 sec at baseline vs. 15.5 ± 0.54 sec at end of sleep extension, P < 0.001). Shooting accuracy improved, with free throw percentage increasing by 9% and 3-point field goal percentage increasing by 9.2% (P < 0.001). Mean PVT reaction time and Epworth Sleepiness Scale scores decreased following sleep extension (P < 0.01). POMS scores improved with increased vigor and decreased fatigue subscales (P < 0.001). Subjects also reported improved overall ratings of physical and mental well-being during practices and games. CONCLUSIONS: Improvements in specific measures of basketball performance after sleep extension indicate that optimal sleep is likely beneficial in reaching peak athletic performance.",
-    "cited_by": 625,
+    "cited_by": 626,
     "type": "journal-article",
     "open_access_url": "https://academic.oup.com/sleep/article-pdf/34/7/943/26618907/aasm.34.7.943.pdf",
     "topic": "sleep_recovery",
     "angle": "잠을 늘리자 선수들의 실제 수행이 좋아졌다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:00.529908"
+    "verified_at": "2026-09-26T14:58:06.923802"
   },
   {
     "doi": "10.1073/pnas.1221454110",
@@ -683,14 +683,14 @@
     "journal": "Proceedings of the National Academy of Sciences",
     "url": "https://doi.org/10.1073/pnas.1221454110",
     "abstract": "Social judgments are made on the basis of both visual and auditory information, with consequential implications for our decisions. To examine the impact of visual information on expert judgment and its predictive validity for performance outcomes, this set of seven experiments in the domain of music offers a conservative test of the relative influence of vision versus audition. People consistently report that sound is the most important source of information in evaluating performance in music. However, the findings demonstrate that people actually depend primarily on visual information when making judgments about music performance. People reliably select the actual winners of live music competitions based on silent video recordings, but neither musical novices nor professional musicians were able to identify the winners based on sound recordings or recordings with both video and sound. The results highlight our natural, automatic, and nonconscious dependence on visual cues. The dominance of visual information emerges to the degree that it is overweighted relative to auditory information, even when sound is consciously valued as the core domain content.",
-    "cited_by": 262,
+    "cited_by": 263,
     "type": "journal-article",
     "open_access_url": "https://www.pnas.org/content/pnas/110/36/14580.full.pdf",
     "topic": "judging",
     "angle": "심사위원조차 소리보다 보이는 것에 영향을 받는다 — 무대 위 태도가 점수다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:02.114395"
+    "verified_at": "2026-09-26T14:58:08.353580"
   },
   {
     "doi": "10.1525/mp.2012.30.1.71",
@@ -709,7 +709,7 @@
     "angle": "보면서 들을 때 평가가 어떻게 달라지는가",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:04.308885"
+    "verified_at": "2026-09-26T14:58:09.644031"
   },
   {
     "doi": "10.2307/3345347",
@@ -729,7 +729,7 @@
     "angle": "무대 매너와 복장이 연주 평가에 실제로 끼어든다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:05.952151"
+    "verified_at": "2026-09-26T14:58:10.896104"
   },
   {
     "doi": "10.1177/102986490801200205",
@@ -747,7 +747,7 @@
     "angle": "입고 서는 방식이 연주 인상에 미치는 영향",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:07.552555"
+    "verified_at": "2026-09-26T14:58:12.131458"
   },
   {
     "doi": "10.1086/691462",
@@ -762,14 +762,14 @@
     "journal": "Journal of the Association for Consumer Research",
     "url": "https://doi.org/10.1086/691462",
     "abstract": "Our smartphones enable—and encourage—constant connection to information, entertainment, and each other. They put the world at our fingertips, and rarely leave our sides. Although these devices have immense potential to improve welfare, their persistent presence may come at a cognitive cost. In this research, we test the “brain drain” hypothesis that the mere presence of one’s own smartphone may occupy limited-capacity cognitive resources, thereby leaving fewer resources available for other tasks and undercutting cognitive performance. Results from two experiments indicate that even when people are successful at maintaining sustained attention—as when avoiding the temptation to check their phones—the mere presence of these devices reduces available cognitive capacity. Moreover, these cognitive costs are highest for those highest in smartphone dependence. We conclude by discussing the practical implications of this smartphone-induced brain drain for consumer decision-making and consumer welfare.",
-    "cited_by": 784,
+    "cited_by": 786,
     "type": "journal-article",
     "open_access_url": "https://doi.org/10.15781/t2j679d4s",
     "topic": "focus_distraction",
     "angle": "폰을 안 봐도, 옆에 있기만 해도 집중력이 깎인다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:09.608950"
+    "verified_at": "2026-09-26T14:58:13.538479"
   },
   {
     "doi": "10.1145/1357054.1357072",
@@ -783,13 +783,13 @@
     "journal": "Proceedings of the SIGCHI Conference on Human Factors in Computing Systems",
     "url": "https://doi.org/10.1145/1357054.1357072",
     "abstract": "We performed an empirical study to investigate whether the context of interruptions makes a difference. We found that context does not make a difference but surprisingly, people completed interrupted tasks in less time with no difference in quality. Our data suggests that people compensate for interruptions by working faster, but this comes at a price: experiencing more stress, higher frustration, time pressure and effort. Individual differences exist in the management of interruptions: personality measures of openness to experience and need for personal structure predict disruption costs of interruptions. We discuss implications for how system design can support interrupted work.",
-    "cited_by": 676,
+    "cited_by": 675,
     "type": "proceedings-article",
     "topic": "focus_distraction",
     "angle": "한 번 끊긴 집중을 되돌리는 데 드는 실제 비용",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:11.422092"
+    "verified_at": "2026-09-26T14:58:14.920305"
   },
   {
     "doi": "10.1073/pnas.0903620106",
@@ -803,14 +803,14 @@
     "journal": "Proceedings of the National Academy of Sciences",
     "url": "https://doi.org/10.1073/pnas.0903620106",
     "abstract": "Chronic media multitasking is quickly becoming ubiquitous, although processing multiple incoming streams of information is considered a challenge for human cognition. A series of experiments addressed whether there are systematic differences in information processing styles between chronically heavy and light media multitaskers. A trait media multitasking index was developed to identify groups of heavy and light media multitaskers. These two groups were then compared along established cognitive control dimensions. Results showed that heavy media multitaskers are more susceptible to interference from irrelevant environmental stimuli and from irrelevant representations in memory. This led to the surprising result that heavy media multitaskers performed worse on a test of task-switching ability, likely due to reduced ability to filter out interference from the irrelevant task set. These results demonstrate that media multitasking, a rapidly growing societal trend, is associated with a distinct approach to fundamental information processing.",
-    "cited_by": 1804,
+    "cited_by": 1805,
     "type": "journal-article",
     "open_access_url": "https://www.ncbi.nlm.nih.gov/pmc/articles/2747164",
     "topic": "focus_distraction",
     "angle": "동시에 여러 개를 하는 습관이 주의력 자체를 바꾼다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:13.368226"
+    "verified_at": "2026-09-26T14:58:16.255640"
   },
   {
     "doi": "10.1037/0022-3514.92.6.1087",
@@ -825,13 +825,13 @@
     "journal": "Journal of Personality and Social Psychology",
     "url": "https://doi.org/10.1037/0022-3514.92.6.1087",
     "abstract": "The importance of intellectual talent to achievement in all professional domains is well established, but less is known about other individual differences that predict success. The authors tested the importance of 1 noncognitive trait: grit. Defined as perseverance and passion for long-term goals, grit accounted for an average of 4% of the variance in success outcomes, including educational attainment among 2 samples of adults (N=1,545 and N=690), grade point average among Ivy League undergraduates (N=138), retention in 2 classes of United States Military Academy, West Point, cadets (N=1,218 and N=1,308), and ranking in the National Spelling Bee (N=175). Grit did not relate positively to IQ but was highly correlated with Big Five Conscientiousness. Grit nonetheless demonstrated incremental predictive validity of success measures over and beyond IQ and conscientiousness. Collectively, these findings suggest that the achievement of difficult goals entails not only talent but also the sustained and focused application of talent over time.",
-    "cited_by": 6955,
+    "cited_by": 6960,
     "type": "journal-article",
     "topic": "motivation_habit",
     "angle": "재능보다 오래 버티는 힘이 결과를 더 잘 예측한 경우",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:14.985407"
+    "verified_at": "2026-09-26T14:58:17.915433"
   },
   {
     "doi": "10.1111/j.1467-8624.2007.00995.x",
@@ -845,13 +845,13 @@
     "journal": "Child Development",
     "url": "https://doi.org/10.1111/j.1467-8624.2007.00995.x",
     "abstract": "Abstract Two studies explored the role of implicit theories of intelligence in adolescents' mathematics achievement. In Study 1 with 373 7th graders, the belief that intelligence is malleable (incremental theory) predicted an upward trajectory in grades over the two years of junior high school, while a belief that intelligence is fixed (entity theory) predicted a flat trajectory. A mediational model including learning goals, positive beliefs about effort, and causal attributions and strategies was tested. In Study 2, an intervention teaching an incremental theory to 7th graders (N=48) promoted positive change in classroom motivation, compared with a control group (N=43). Simultaneously, students in the control group displayed a continuing downward trajectory in grades, while this decline was reversed for students in the experimental group.",
-    "cited_by": 3802,
+    "cited_by": 3805,
     "type": "journal-article",
     "topic": "motivation_habit",
     "angle": "실력은 바뀐다고 믿는 학생이 힘든 시기를 지나며 더 올라갔다",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:16.639444"
+    "verified_at": "2026-09-26T14:58:19.211814"
   },
   {
     "doi": "10.1037/0003-066x.54.7.493",
@@ -863,14 +863,14 @@
     "journal": "American Psychologist",
     "url": "https://doi.org/10.1037/0003-066x.54.7.493",
     "abstract": "When people encounter problems in translating their goals into action (e.g., failing to get started, becoming distracted, or falling into bad habits), they may strategically call on automatic processes in an attempt to secure goal attain-ment. This can be achieved by plans in the form of imple-mentation intentions that link anticipated critical situations to goal-directed responses (\"Whenever situation x arises, I will initiate the goal-directed response y!\"). Implementa-tion intentions delegate the control of goal-directed re-sponses to anticipated situational cues, which (when actu-ally encountered) elicit these responses automatically. A program of research demonstrates that implementation intentions further the attainment of goals, and it reveals the underlying processes. Good resolutions are useless attempts to interfere with scientific laws. Their origin is pure vanity. Their result is absolutely nil. —Oscar Wilde, The Picture of Dorian Gray G ood intentions have a bad reputation. People whoform New Year's resolutions earn at best a sym-pathetic smile when they announce their heroic intentions (e.g., exercising regularly, avoiding unhealthy foods). Though the audience may concede that such reso-lutions are made with good will (Oscar Wilde is less trusting), they doubt their effectiveness. This suspicion is deeply rooted. Folklore tells us that \"the road to hell is paved with good intentions.\" Do good intentions deserve this bad reputation? As the many empirical studies based on Ajzen's (1985) theory of planned behavior demonstrate, there is no reason to assume that good intentions have nil effects or even negative ef-fects on behavior. Quite to the contrary, strong intentions (e.g., \"I strongly intend to do x\") are reliably observed to be realized more often than weak intentions (see reviews by",
-    "cited_by": 5380,
+    "cited_by": 5384,
     "type": "journal-article",
     "open_access_url": "https://kops.uni-konstanz.de/server/api/core/bitstreams/14cc2a36-5f01-4dc1-b9ca-f2d0ca0c8930/content",
     "topic": "motivation_habit",
     "angle": "언제, 어디서, 무엇을까지 정해두면 실행률이 확 오른다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:18.174701"
+    "verified_at": "2026-09-26T14:58:20.600121"
   },
   {
     "doi": "10.1037/0022-3514.80.5.736",
@@ -890,7 +890,7 @@
     "angle": "합격을 상상만 하면 오히려 힘이 빠진다 — 장애물까지 같이 그려야 한다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:19.834574"
+    "verified_at": "2026-09-26T14:58:21.830141"
   },
   {
     "doi": "10.1002/ejsp.674",
@@ -905,14 +905,14 @@
     "journal": "European Journal of Social Psychology",
     "url": "https://doi.org/10.1002/ejsp.674",
     "abstract": "Abstract To investigate the process of habit formation in everyday life, 96 volunteers chose an eating, drinking or activity behaviour to carry out daily in the same context (for example ‘after breakfast’) for 12 weeks. They completed the self‐report habit index (SRHI) each day and recorded whether they carried out the behaviour. The majority (82) of participants provided sufficient data for analysis, and increases in automaticity (calculated with a sub‐set of SRHI items) were examined over the study period. Nonlinear regressions fitted an asymptotic curve to each individual's automaticity scores over the 84 days. The model fitted for 62 individuals, of whom 39 showed a good fit. Performing the behaviour more consistently was associated with better model fit. The time it took participants to reach 95% of their asymptote of automaticity ranged from 18 to 254 days; indicating considerable variation in how long it takes people to reach their limit of automaticity and highlighting that it can take a very long time. Missing one opportunity to perform the behaviour did not materially affect the habit formation process. With repetition of a behaviour in a consistent context, automaticity increases following an asymptotic curve which can be modelled at the individual level. Copyright © 2009 John Wiley &amp; Sons, Ltd.",
-    "cited_by": 2064,
+    "cited_by": 2068,
     "type": "journal-article",
     "open_access_url": "https://onlinelibrary.wiley.com/doi/pdfdirect/10.1002/ejsp.674",
     "topic": "motivation_habit",
     "angle": "습관이 자리잡는 데 실제로 걸린 기간과, 하루 걸러도 괜찮은 이유",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:21.579431"
+    "verified_at": "2026-09-26T14:58:23.067480"
   },
   {
     "doi": "10.1037/0003-066x.57.9.705",
@@ -925,13 +925,13 @@
     "journal": "American Psychologist",
     "url": "https://doi.org/10.1037/0003-066x.57.9.705",
     "abstract": null,
-    "cited_by": 6025,
+    "cited_by": 6038,
     "type": "journal-article",
     "topic": "motivation_habit",
     "angle": "열심히보다 구체적이고 어려운 목표가 더 많은 걸 끌어낸다",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:46:23.211898"
+    "verified_at": "2026-09-26T14:58:24.379245"
   },
   {
     "doi": "10.21091/mppa.2012.4034",
@@ -951,7 +951,7 @@
     "angle": "프로 연주자들이 실제로 어디를 다치는가 — 미리 알고 피하기",
     "has_evidence": true,
     "abstract_source": "crossref",
-    "verified_at": "2026-09-24T01:46:26.119288"
+    "verified_at": "2026-09-26T14:58:26.489829"
   },
   {
     "doi": "10.1038/nrn2152",
@@ -965,13 +965,13 @@
     "journal": "Nature Reviews Neuroscience",
     "url": "https://doi.org/10.1038/nrn2152",
     "abstract": null,
-    "cited_by": 1780,
+    "cited_by": 1782,
     "type": "journal-article",
     "topic": "brain_learning",
     "angle": "듣는 것과 움직이는 것이 뇌에서 어떻게 한 덩어리가 되는가",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:46:28.126528"
+    "verified_at": "2026-09-26T14:58:28.086340"
   },
   {
     "doi": "10.1016/j.neuron.2012.10.011",
@@ -984,14 +984,14 @@
     "journal": "Neuron",
     "url": "https://doi.org/10.1016/j.neuron.2012.10.011",
     "abstract": null,
-    "cited_by": 909,
+    "cited_by": 910,
     "type": "journal-article",
     "open_access_url": "http://www.cell.com/article/S0896627312009312/pdf",
     "topic": "brain_learning",
     "angle": "연습이 실제로 뇌를 바꾼다 — 그래서 꾸준함이 통한다",
     "has_evidence": false,
     "abstract_source": null,
-    "verified_at": "2026-09-24T01:46:29.867103"
+    "verified_at": "2026-09-26T14:58:29.422612"
   },
   {
     "doi": "10.1037/0021-9010.79.4.481",
@@ -1005,13 +1005,13 @@
     "journal": "Journal of Applied Psychology",
     "url": "https://doi.org/10.1037/0021-9010.79.4.481",
     "abstract": "Mental practice is the cognitive rehearsal of a task prior to performance. Although most researchers contend that mental practice is an effective means of enhancing performance, a clear consensus is precluded because (a) mental practice is often denned so loosely as to include almost any type of mental preparation and (b) empirical results are inconclusive. A meta-analysis of the literature on mental practice was conducted to determine the effect of mental practice on performance and to identify conditions under which mental practice is most effective. Results indicated that mental practice has a positive and significant effect on performance, and the effectiveness of mental practice was moderated by the type of task, the retention interval between practice and performance, and the length or duration of the mental practice intervention. Mental practice refers to the cognitive rehearsal of a task in the absence of overt physical movement. When a musician practices a passage by thinking it through or when an athlete prepares for an event by visualizing the steps required to perform the task, he or she is engaging in mental practice. A number of studies have examined the effects of mental practice on performance. Whereas the research of Kelsey (1961) and Ryan and Simons (1982) supports the efficacy of mental practice for enhancing performance, Beasley (1978) reported negative results. An astute reviewer may be able to estimate the direction and magnitude of effect of the relationship between mental practice and performance from the preponderance of evidence across the majority of studies. For example, Richardson (1967a) concluded that most studies support the efficacy of mental practice on performance. However, Richardson, and later Corbin (1972), noted that this evidence was inconclusive. Because different studies use different types of tasks, with different types of subjects, and report different study statistics, it is difficult if not impossible to integrate these disparate research studies on an intuitive level to draw firm conclusions on the effectiveness of mental practice. The purpose of this study was to integrate the literature on mental practice, summarize the overall effects of mental practice on performance, and specify the conditions under which mental practice is most effective.",
-    "cited_by": 1141,
+    "cited_by": 1142,
     "type": "journal-article",
     "topic": "mental_practice",
     "angle": "악기 없이 머릿속으로 하는 연습도 효과가 있다 — 단, 조건이 있다",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:31.631205"
+    "verified_at": "2026-09-26T14:58:30.712819"
   },
   {
     "doi": "10.3389/fnhum.2013.00451",
@@ -1034,6 +1034,102 @@
     "angle": "숙련 연주자에게 심상 연습이 어떤 방식으로 도움이 됐나",
     "has_evidence": true,
     "abstract_source": "openalex",
-    "verified_at": "2026-09-24T01:46:34.043260"
+    "verified_at": "2026-09-26T14:58:31.945577"
+  },
+  {
+    "doi": "10.1111/j.2044-835x.1996.tb00714.x",
+    "title": "The role of parental influences in the development of musical performance",
+    "authors": [
+      "Jane W. Davidson",
+      "Michael J. A. Howe",
+      "Derek G. Moore",
+      "John A. Sloboda"
+    ],
+    "year": 1996,
+    "journal": "British Journal of Developmental Psychology",
+    "url": "https://doi.org/10.1111/j.2044-835x.1996.tb00714.x",
+    "abstract": "Interviews were conducted with 257 children and their parents; all of the children had studied a musical instrument but differed in the extent of their mastery. The purpose of the study was to investigate the role of parents in the development of musical ability. It was discovered that the most successful children had parents who were the most highly involved in lessons and practice in the earliest stages of learning. These successful music learners often had parents who were involved with music themselves. Parental involvement in music typically took the form of listening to music rather than performing it, and tended to increase over the child's learning period. The children who failed to continue with lessons had parents who were, on average, less interested in music and who did not change their own degree of involvement with music over their child's learning period. Overall, the most musically able children had the highest levels of parental support.",
+    "cited_by": 251,
+    "type": "journal-article",
+    "open_access_url": "https://repository.uel.ac.uk/download/53c577695de79a3e6aafc19394c6b56b8abb6909f4e102e2e1ec5b24be86e1dd/67838/parental%20influences%20paper.pdf",
+    "topic": "relationships",
+    "angle": "부모가 어떻게 관여했는지가 아이가 악기를 계속하는지와 이어져 있었다",
+    "has_evidence": true,
+    "abstract_source": "crossref",
+    "verified_at": "2026-09-26T14:58:33.198142"
+  },
+  {
+    "doi": "10.1080/14613800903569237",
+    "title": "Learning a musical instrument: the case for parental support",
+    "authors": [
+      "Andrea Creech"
+    ],
+    "year": 2010,
+    "journal": "Music Education Research",
+    "url": "https://doi.org/10.1080/14613800903569237",
+    "abstract": "The aims of this research were to identify the ways in which parents may most constructively support their children's musical development, and to ascertain whether styles of parent–teacher and parent–pupil interaction would influence the extent to which parents engage in different types of supportive behaviours. A model of parent involvement as comprising behavioural support, cognitive/intellectual support and personal support was applied to a sample of 337 parent–pupil–teacher trios, in the context of individual violin instruction. A typological approach was taken; using a quantitative survey that measured interpersonal interaction behaviours, as well as learning outcomes, six distinct categories of parent–pupil–teacher interaction types in instrumental learning were identified. The three categories of parental support were compared across these interaction types. The extent to which parents engaged in various types of support was found to vary according to interpersonal relating style, and the interaction types in turn were found to impact on learning outcomes. Learning outcomes, including enjoyment of music, motivation, self-esteem, self-efficacy and personal satisfaction with music lessons, were found to be enhanced when parents: (1) elicited their children's views regarding appropriate parental involvement, (2) negotiated with their children over practising issues, within parameters set by the teacher, (3) provided a structured home environment for practice, (4) took an interest in promoting good teacher–pupil rapport, (5) communicated with the teacher in relation to the child's progress and (6) remained as a supremely interested audience.",
+    "cited_by": 116,
+    "type": "journal-article",
+    "open_access_url": "https://discovery.ucl.ac.uk/1500563/1/Creech2010Learning13.pdf",
+    "topic": "relationships",
+    "angle": "부모의 지원이 통제가 아니라 지지일 때 학생의 만족과 성취가 같이 올라간다",
+    "has_evidence": true,
+    "abstract_source": "openalex",
+    "verified_at": "2026-09-26T14:58:34.460594"
+  },
+  {
+    "doi": "10.1017/s0265051702005272",
+    "title": "Parent–teacher–pupil interactions in instrumental music tuition: a literature review",
+    "authors": [
+      "Andrea Creech",
+      "Susan Hallam"
+    ],
+    "year": 2003,
+    "journal": "British Journal of Music Education",
+    "url": "https://doi.org/10.1017/s0265051702005272",
+    "abstract": "This paper considers the literature that may inform our understanding of parent–teacher–pupil interactions in instrumental music. It draws on research directly concerned with instrumental music learning and that from the wider psychological, sociological and educational literature concerned with conceptions of effective learning and teaching; conceptions of effective parenting; and dimensions of interpersonal relationships. Finally, a systemic, dynamic model is proposed which may serve to guide future research in the field.",
+    "cited_by": 111,
+    "type": "journal-article",
+    "topic": "relationships",
+    "angle": "선생님-학생-부모 세 축의 상호작용이 레슨 성과를 가르는 지점",
+    "has_evidence": true,
+    "abstract_source": "crossref",
+    "verified_at": "2026-09-26T14:58:35.964047"
+  },
+  {
+    "doi": "10.1177/0305735609339467",
+    "title": "One-to-one tuition in a conservatoire: the perceptions of instrumental and vocal students",
+    "authors": [
+      "Helena Gaunt"
+    ],
+    "year": 2009,
+    "journal": "Psychology of Music",
+    "url": "https://doi.org/10.1177/0305735609339467",
+    "abstract": "This paper analyses the perceptions of 20 students in a conservatoire in the UK about one-to-one tuition, and forms part of research also investigating the perceptions of the students’ teachers. Findings suggested that these students had significantly different experiences of one-to-one tuition in terms of frequency and length of lessons. Nevertheless all were enthusiastic about their relationship with their current teacher(s), and the individual attention which one-to-one tuition offered. Tension emerged between trust in a single teacher and ways in which having several teachers encouraged students to become more responsible for their own learning. Furthermore, the dynamics of power in this relationship, though rarely discussed, seemed to have considerable impact on the students, at times hampering their development. Those who had experienced difficulties in the past with teachers also expressed anxiety about personal and professional repercussions. Although students had clear aspirations, for example to be professional performers, these were not usually translating into focused strategic efforts to develop work. This was surprising particularly as their teachers were themselves usually active in the music profession. It was clear that the development of planning and reflective strategies relating to either learning processes or career development were rarely prioritized.",
+    "cited_by": 251,
+    "type": "journal-article",
+    "topic": "relationships",
+    "angle": "일대일 레슨에서 학생이 실제로 무엇을 얻고 무엇에 막히는지 학생 쪽 시선",
+    "has_evidence": true,
+    "abstract_source": "crossref",
+    "verified_at": "2026-09-26T14:58:37.493883"
+  },
+  {
+    "doi": "10.2307/3345412",
+    "title": "Parental Involvement, Selected Student Attributes, and Learning Outcomes in Instrumental Music",
+    "authors": [
+      "Stephen F. Zdzinski"
+    ],
+    "year": 1996,
+    "journal": "Journal of Research in Music Education",
+    "url": "https://doi.org/10.2307/3345412",
+    "abstract": "This study examined relationships among selected aspects of parental involvement as they relate to the cognitive, affective, and performance outcomes of instrumental music students. Independent variables were music aptitude, parental involvement, grade level, and gender. Dependent variables were cognitive musical outcomes, performance outcomes, and affective outcomes. Subjects were instrumental music students ( N = 406) from five intact band programs located in rural New York and Pennsylvania. Wind and percussion volunteers from Grades 4 through 12 participated. Data were examined using descriptive analysis, correlational analysis, and analysis of variance. Major findings included: (1) Parental involvement was related to overall performance, affective, and cognitive musical outcomes. (2) For cognitive musical outcomes, parental involvement was only related at the elementary level. (3) For musical performance outcomes, parental involvement was only related at the elementary level. (4) For affective outcomes, the strength of the parental involvement relationship increased with student age. (5) Items concerning concert attendance, providing materials, participating in parent groups, and tape-recording student performances were related to all outcome areas.",
+    "cited_by": 119,
+    "type": "journal-article",
+    "topic": "relationships",
+    "angle": "부모 개입의 '양'보다 '어떤 종류인가'가 학습 결과와 더 관련 있었다",
+    "has_evidence": true,
+    "abstract_source": "crossref",
+    "verified_at": "2026-09-26T14:58:38.599458"
   }
 ]

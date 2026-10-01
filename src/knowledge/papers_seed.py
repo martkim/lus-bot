@@ -42,6 +42,9 @@ TOPICS = {
     "body_injury": "신체·부상 예방",
     "brain_learning": "뇌와 음악 학습",
     "mental_practice": "심상(이미지) 연습",
+    # 입시는 혼자 하는 일이 아니다 — 선생님과의 관계, 같이 준비하는 친구,
+    # 가족의 기대까지가 실기력에 그대로 얹힌다.
+    "relationships": "선생님·동료·가족 관계",
 }
 
 CANDIDATES = [
@@ -228,6 +231,24 @@ CANDIDATES = [
     dict(title="Mental practice promotes motor anticipation: evidence from skilled music performance",
          author="Bernardi", year=2013, topic="mental_practice",
          angle="숙련 연주자에게 심상 연습이 어떤 방식으로 도움이 됐나"),
+    # --- 선생님·동료·가족 관계 ---
+    # 입시는 혼자 하는 일처럼 보이지만, 레슨 선생님과의 관계와 부모의 개입 방식이
+    # 연습 지속과 성취에 실제로 남는다는 연구가 쌓여 있다.
+    dict(title="The role of parental influences in the development of musical performance",
+         author="Davidson", year=1996, topic="relationships",
+         angle="부모가 어떻게 관여했는지가 아이가 악기를 계속하는지와 이어져 있었다"),
+    dict(title="Learning a musical instrument: the case for parental support",
+         author="Creech", year=2010, topic="relationships",
+         angle="부모의 지원이 통제가 아니라 지지일 때 학생의 만족과 성취가 같이 올라간다"),
+    dict(title="Parent-teacher-pupil interactions in instrumental music tuition: a literature review",
+         author="Creech", year=2003, topic="relationships",
+         angle="선생님-학생-부모 세 축의 상호작용이 레슨 성과를 가르는 지점"),
+    dict(title="One-to-one tuition in a conservatoire: the perceptions of instrumental and vocal students",
+         author="Gaunt", year=2010, topic="relationships",
+         angle="일대일 레슨에서 학생이 실제로 무엇을 얻고 무엇에 막히는지 학생 쪽 시선"),
+    dict(title="Parental involvement, selected student attributes, and learning outcomes in instrumental music",
+         author="Zdzinski", year=1996, topic="relationships",
+         angle="부모 개입의 '양'보다 '어떤 종류인가'가 학습 결과와 더 관련 있었다"),
 ]
 
 
