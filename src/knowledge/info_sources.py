@@ -23,6 +23,7 @@ import time
 import urllib.parse
 import urllib.request
 import urllib.robotparser
+from datetime import date
 from typing import List, Optional
 
 logger = logging.getLogger("passion_mate")
@@ -116,6 +117,24 @@ ADMISSION_KEYWORDS = [
     "원서", "지원", "설명회", "요강", "면접", "고사", "등록",
 ]
 
+# 위 키워드만으로는 못 거르는 것들. 우리 학생은 **고등학교 졸업 예정 실용음악 입시생**이라,
+# 입학 관련 글이어도 대상이 다르면 화면에 올라가 봐야 혼란만 준다.
+# 2026-09 수집분 29건 중 10건이 전문기술석사과정 공고였고, 4건은 '장애학생지원센터'
+# 같은 사이드바 메뉴였다("지원", "등록"이 키워드에 걸려 통과했다).
+EXCLUDE_KEYWORDS = [
+    # 대상이 다른 과정 — 고졸 신입학이 아니다
+    "석사", "박사", "대학원", "전공심화", "편입", "재입학", "평생교육", "최고위",
+    # 게시판이 아니라 학교 조직·행정 페이지(메뉴 링크가 딸려 들어온다).
+    # '센터'를 통째로 막지 않는 이유: 고사장 안내에 '예술센터' 같은 건물 이름이 나온다.
+    "위원회", "심의", "지원센터", "신고센터", "상담센터", "취업", "진로",
+    "채용", "임용", "교직원",
+]
+
+# 입시는 학년도 단위로 돌아간다. 3월이면 이미 다음 학년도 모집이 시작되므로
+# (수시 요강 공고 -> 9월 원서 -> 이듬해 2월 정시 종료) 그 시점부터 +1년으로 본다.
+_YEAR_IN_TITLE = re.compile(r"(20\d{2})\s*학년도")
+_STALE_DAYS_WITHOUT_YEAR = 365
+
 
 def _session() -> urllib.request.OpenerDirector:
     """쿠키를 물고 다니는 오프너. 서울예대처럼 세션을 먼저 요구하는 곳이 있다."""
@@ -172,8 +191,20 @@ def _polite_fetch(opener, url: str, data: Optional[bytes] = None, timeout: int =
         return None
 
 
+_HTML_COMMENT = re.compile(r"<!--.*?(?:-->|$)", re.S)
+# 게시판 목록의 링크 텍스트에는 글번호와 분류가 먼저 붙어 들어온다
+# (한예종이 "83 전체 2024 한예종 ..." 형태라 제목이 저 숫자부터 시작했다).
+# 20xx로 시작하면 글번호가 아니라 연도다 — "2027학년도 수시 모집요강"에서 연도를
+# 떼어내면 지난 학년도 판정이 작성일로 떨어져 버린다.
+_LIST_PREFIX = re.compile(r"^\s*(?!20\d{2})\d{1,4}\s*(?:전체|공지|일반|NEW)?\s*")
+
+
 def _clean(text: str) -> str:
-    return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", text or "")).strip()
+    # 주석을 태그보다 먼저 지운다. <[^>]+>로는 닫히지 않은 <!-- 가 제목 끝에 남는다.
+    text = _HTML_COMMENT.sub(" ", text or "")
+    text = re.sub(r"<[^>]+>", " ", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return _LIST_PREFIX.sub("", text).strip()
 
 
 _EGOV_ROW = re.compile(
@@ -252,9 +283,40 @@ _EXTRACTORS = {
 }
 
 
+def current_admission_year(today: Optional[date] = None) -> int:
+    """지금 돌아가고 있는 입시 학년도. 3월부터는 다음 학년도가 현재 사이클이다."""
+    today = today or date.today()
+    return today.year + 1 if today.month >= 3 else today.year
+
+
+def is_current_cycle(title: str, posted_at: Optional[str], today: Optional[date] = None) -> bool:
+    """지난 학년도 공고를 걸러낸다.
+
+    제목에 학년도가 적혀 있으면 그걸 믿는다 — 작성일보다 정확하다(2027학년도 요강이
+    2026년에 올라온다). 학년도가 없으면 작성일로 보고, 둘 다 없으면 통과시켜
+    선생님이 판단하게 둔다. 자동으로 버리는 것보다 사람이 한 번 보는 쪽이 낫다.
+    """
+    today = today or date.today()
+    match = _YEAR_IN_TITLE.search(title or "")
+    if match:
+        return int(match.group(1)) >= current_admission_year(today)
+
+    if posted_at:
+        try:
+            posted = date.fromisoformat(posted_at)
+        except ValueError:
+            return True
+        return (today - posted).days <= _STALE_DAYS_WITHOUT_YEAR
+
+    return True
+
+
 def is_admission_related(title: str) -> bool:
     """입시생에게 의미 있는 공고인지 제목으로 1차 선별."""
-    return any(kw in (title or "") for kw in ADMISSION_KEYWORDS)
+    title = title or ""
+    if any(kw in title for kw in EXCLUDE_KEYWORDS):
+        return False
+    return any(kw in title for kw in ADMISSION_KEYWORDS)
 
 
 def fetch_source(source: dict) -> List[dict]:
@@ -283,8 +345,13 @@ def fetch_source(source: dict) -> List[dict]:
 
     raw_items = extractor(html, source)
     items = []
+    dropped_unrelated = dropped_stale = 0
     for item in raw_items:
         if not is_admission_related(item["title"]):
+            dropped_unrelated += 1
+            continue
+        if not is_current_cycle(item["title"], item.get("posted_at")):
+            dropped_stale += 1
             continue
         item.update({
             "school": source["school"],
@@ -293,7 +360,8 @@ def fetch_source(source: dict) -> List[dict]:
         })
         items.append(item)
 
-    logger.info(f"[FETCH_SOURCE] key={source['key']} 추출 {len(raw_items)}건 -> 입시관련 {len(items)}건")
+    logger.info(f"[FETCH_SOURCE] key={source['key']} 추출 {len(raw_items)}건 -> 통과 {len(items)}건 "
+                f"(대상밖 {dropped_unrelated}건, 지난 학년도 {dropped_stale}건)")
     return items
 
 
