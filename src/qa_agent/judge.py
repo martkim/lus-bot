@@ -65,6 +65,11 @@ def _build_prompt(features: List[str], primary_summary: str, secondary_summary: 
         "- pass: 학생/선생님이 지금 쓰는 데 지장이 없다.\n"
         "- fail: 실제 사용자가 겪을 문제가 확인된다(화면이 안 보임, 기능 오류, 인증 뚫림 등).\n"
         "- uncertain: 증거만으로는 단정할 수 없다.\n\n"
+        "**1차(로컬)가 전부 통과했는데 2차(공개 도메인)만 실패한 경우는 fail로 매기지 마라.**\n"
+        "같은 코드가 로컬에서 멀쩡히 응답했다면 코드 회귀가 아니라 Cloudflare 터널·DNS·"
+        "일시적 네트워크 문제일 가능성이 높다(타임아웃, 520, 간헐적 5xx가 그렇다). 이런 건 "
+        "호출하는 쪽이 이미 warn 등급으로 따로 기록하므로, 너는 pass로 두고 findings에만 "
+        "적어라. 2차 실패가 매번 같은 경로에서 반복되거나 1차에서도 재현되면 그때는 fail이다.\n\n"
         "반드시 아래 JSON 하나만 출력하라. 다른 말, 마크다운, 이모지는 절대 쓰지 마라.\n"
         '{"verdict": "pass|fail|uncertain", "reason": "한국어 두 문장 이내 요약", '
         '"findings": ["구체적인 문제 1", "구체적인 문제 2"]}\n'

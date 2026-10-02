@@ -27,6 +27,9 @@ class Probe:
     # 이 문자열이 응답에 **있으면** 실패. "그게 없어야 정상"인 회귀를 잡을 때 쓴다
     # (예: 꿀팁 카드에 인라인 <style>이 다시 나타나는 것 — 다크 테마에서 글자가 사라졌던 원인).
     expect_body_absent: Tuple[str, ...] = ()
+    # 이 중 **하나라도** 있으면 통과. 정상값이 여러 개일 때 쓴다
+    # (예: 꿀팁 카드 날짜는 생성 시각 전까지 어제 것이 정상이다).
+    expect_body_any: Tuple[str, ...] = ()
     body: Optional[dict] = None
     mutating: bool = False
     note: str = ""
@@ -221,9 +224,13 @@ FEATURES: Tuple[FeatureSpec, ...] = (
             # 위 프로브들은 "카드가 있나"만 본다. 조회 쿼리가 최신 활성 카드를 집으므로
             # 그날 생성이 실패해도 그제 카드가 나오고, 점검은 전부 통과한다. 실제로
             # 2026-10-01 Gemini 503으로 생성이 멎었는데 그날 밤 정기 점검은 정상이었다.
-            Probe("오늘 날짜로 생성된 카드", "GET", "/api/daily-insight?part=%EB%B3%B4%EC%BB%AC",
-                  expect_json_keys=("success",), expect_body_contains=("{today}",),
-                  note="실패하면 카드는 있으나 오늘 생성분이 아니다 — 생성 루프를 확인할 것"),
+            #
+            # 어제 날짜까지 허용하는 이유: 생성 루프는 하루 한 번 정해진 시각에 돌아서,
+            # 자정부터 그 시각 전까지는 어제 카드가 최신인 게 정상이다. 그제 것까지
+            # 내려가면 그때는 하루를 통째로 건너뛴 것이다.
+            Probe("카드가 하루 넘게 묵지 않음", "GET", "/api/daily-insight?part=%EB%B3%B4%EC%BB%AC",
+                  expect_json_keys=("success",), expect_body_any=("{today}", "{yesterday}"),
+                  note="실패하면 생성이 하루 이상 멎은 것이다 — 생성 루프를 확인할 것"),
         ),
         device_screen=True,
     ),

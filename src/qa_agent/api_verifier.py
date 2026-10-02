@@ -13,7 +13,7 @@ import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional
 
 from src.qa_agent.config import get_config
@@ -120,6 +120,9 @@ def run_probe(feature_key: str, probe: Probe, base_url: str, stage: str,
         for needle in probe.resolved_needles(probe.expect_body_absent, context):
             if needle in text:
                 problems.append(f"본문에 '{needle}'가 있으면 안 됨")
+        any_needles = probe.resolved_needles(probe.expect_body_any, context)
+        if any_needles and not any(needle in text for needle in any_needles):
+            problems.append(f"본문에 {' / '.join(any_needles)} 중 아무것도 없음")
 
     ok = not problems
     detail = "정상" if ok else " / ".join(problems)
@@ -161,6 +164,11 @@ def resolve_context() -> Dict[str, object]:
             student_id = students[0]["id"]
     except Exception as exc:
         logger.warning(f"[QA_VERIFY] 학생 ID 조회 실패, 기본값 1 사용: {exc}")
-    # {today}는 "오늘 날짜로 만들어진 것인가"를 확인하는 프로브가 쓴다. 점검이 도는
+    # {today}/{yesterday}는 "묵은 것이 아닌가"를 확인하는 프로브가 쓴다. 점검이 도는
     # 시점에 구해야 한다 — 서버는 며칠씩 켜져 있으므로 import 시점 날짜는 금방 썩는다.
-    return {"student_id": student_id, "today": datetime.now().strftime("%Y-%m-%d")}
+    now = datetime.now()
+    return {
+        "student_id": student_id,
+        "today": now.strftime("%Y-%m-%d"),
+        "yesterday": (now - timedelta(days=1)).strftime("%Y-%m-%d"),
+    }
