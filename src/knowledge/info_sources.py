@@ -16,6 +16,7 @@ robots.txt는 **매 수집마다** 확인한다. 한 번 보고 코드에 박아
 
 모든 수집물은 `pending` 상태로 들어가고, 선생님이 승인해야 학생에게 보인다.
 """
+import html as html_module
 import http.cookiejar
 import logging
 import re
@@ -72,11 +73,24 @@ SOURCES = [
         "extractor": "egov_notice",
         "enabled": True,
     },
+    # 전문학사과정 = 고졸 신입학으로 들어오는 과정. 우리 학생들이 지원하는 곳이다.
+    # 예전엔 BBSMSTR_000000001388을 "입시 공지사항"으로 걸어 뒀는데, 그건 학교
+    # 메뉴에 '석사과정'으로 적혀 있는 대학원 게시판이라 수집분 10건이 전부
+    # 전문기술석사과정 공고였다(2026-10-03 확인).
     {
         "key": "seoularts_admission_notice",
         "school": "서울예술대학교",
-        "board_name": "입시 공지사항",
-        "list_url": "https://www.seoularts.ac.kr/web/cop/bbsWeb/selectBoardList.do?bbsId=BBSMSTR_000000001388",
+        "board_name": "입학 공지(전문학사)",
+        "list_url": "https://www.seoularts.ac.kr/web/cop/bbsWeb/selectBoardList.do?bbsId=BBSMSTR_000000000702",
+        "warmup_url": "https://www.seoularts.ac.kr/web/com/setEnvi.do",
+        "extractor": "egov_notice",
+        "enabled": True,
+    },
+    {
+        "key": "seoularts_extra_pass",
+        "school": "서울예술대학교",
+        "board_name": "추가합격 발표",
+        "list_url": "https://www.seoularts.ac.kr/web/cop/bbsWeb/selectBoardList.do?bbsId=BBSMSTR_000000001501",
         "warmup_url": "https://www.seoularts.ac.kr/web/com/setEnvi.do",
         "extractor": "egov_notice",
         "enabled": True,
@@ -87,7 +101,10 @@ SOURCES = [
         "board_name": "공지사항",
         "list_url": "https://www.karts.ac.kr/cop/bbs/selectBoardList.do?bbsId=BBSMSTR_000000000035",
         "extractor": "anchor_list",
-        "enabled": True,
+        "enabled": False,
+        "disabled_reason": "한예종에는 실용음악 전공이 없다(음악원은 클래식·한국음악). "
+                           "이 게시판에서 나온 건 사이드바 메뉴 4건과 2023~24년 뮤지컬아카데미 공고뿐이라, "
+                           "우리 학생에게 쓸모 있는 글이 한 건도 없었다",
     },
     # robots.txt가 전체 수집을 금지한 곳 — 자동 수집 대상에서 뺀다.
     # 선생님이 대시보드에서 직접 입력하는 경로로 들어온다.
@@ -203,6 +220,9 @@ def _clean(text: str) -> str:
     # 주석을 태그보다 먼저 지운다. <[^>]+>로는 닫히지 않은 <!-- 가 제목 끝에 남는다.
     text = _HTML_COMMENT.sub(" ", text or "")
     text = re.sub(r"<[^>]+>", " ", text)
+    # 엔티티는 태그를 지운 뒤에 푼다. 먼저 풀면 &lt;b&gt;가 진짜 태그가 돼 지워진다.
+    # 서울예대 제목에 "&lt;2026.9.30.(수) 17:00 기준&gt;"처럼 꺾쇠가 자주 들어간다.
+    text = html_module.unescape(text)
     text = re.sub(r"\s+", " ", text).strip()
     return _LIST_PREFIX.sub("", text).strip()
 
@@ -369,11 +389,22 @@ def collect_all() -> List[dict]:
     """활성화된 모든 소스를 한 바퀴 돈다. 한 곳이 실패해도 나머지는 계속 간다."""
     _robots_cache.clear()  # 사이클마다 robots를 새로 확인한다(규칙은 바뀐다)
     collected = []
+    # 학교가 같은 공고를 여러 게시판에 함께 올린다(입학설명회가 '입학설명회' 게시판과
+    # '입학 공지'에 같이 떴다). 저장 지문은 게시판 글번호 기준이라 둘 다 들어가서,
+    # 선생님은 같은 글을 두 번 승인해야 한다. 한 사이클 안에서 먼저 나온 것만 남긴다.
+    seen_titles = set()
+    duplicates = 0
     for source in SOURCES:
         try:
-            collected.extend(fetch_source(source))
+            for item in fetch_source(source):
+                key = (item.get("school"), item["title"])
+                if key in seen_titles:
+                    duplicates += 1
+                    continue
+                seen_titles.add(key)
+                collected.append(item)
         except Exception as e:
             logger.exception(f"[COLLECT_ALL] 소스 수집 중 예외 key={source.get('key')}")
             logger.error(f"[COLLECT_ALL] key={source.get('key')} 실패(계속 진행): {e}")
-    logger.info(f"[COLLECT_ALL] 총 {len(collected)}건 수집 (소스 {len(SOURCES)}개)")
+    logger.info(f"[COLLECT_ALL] 총 {len(collected)}건 수집 (소스 {len(SOURCES)}개, 중복 {duplicates}건 제외)")
     return collected
