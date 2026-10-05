@@ -196,3 +196,36 @@ def critical_histogram(run_id: int) -> List[tuple]:
             # 뒤에 붙는 구체적인 값은 떼고 종류만 센다
             counter[item.split(":")[0]] += 1
     return counter.most_common()
+
+
+def regrade_all(run_id: int, evaluate) -> dict:
+    """저장된 답변을 다시 채점한다 — 모델을 다시 돌리지 않는다.
+
+    채점 규칙은 돌려보면서 고쳐진다(2026-10-06 파일럿에서 '클래식 거절'을 실패로
+    잡는 오탐이 나왔다). 답변 원문을 통째로 보관하는 이유가 이것이다. 6일치 GPU를
+    다시 태우지 않고 규칙만 바꿔 다시 매긴다.
+    """
+    import json as _json
+    conn = _connect()
+    try:
+        rows = conn.execute(
+            "SELECT id, bucket, intent, part, state_key, reply, error, elapsed_sec "
+            "FROM sim_results WHERE run_id=?", (run_id,)).fetchall()
+        changed = 0
+        updates = []
+        for r in rows:
+            scenario = {"bucket": r["bucket"], "intent": r["intent"],
+                        "part": r["part"], "state_key": r["state_key"]}
+            res = evaluate(scenario, r["reply"], r["error"], r["elapsed_sec"] or 0)
+            updates.append((res["verdict"],
+                            _json.dumps(res["criticals"], ensure_ascii=False),
+                            _json.dumps(res["warns"], ensure_ascii=False), r["id"]))
+        conn.executemany(
+            "UPDATE sim_results SET verdict=?, criticals=?, warns=? WHERE id=?", updates)
+        conn.commit()
+        after = {r["verdict"]: r["c"] for r in conn.execute(
+            "SELECT verdict, COUNT(*) c FROM sim_results WHERE run_id=? GROUP BY verdict",
+            (run_id,)).fetchall()}
+        return {"regraded": len(updates), "by_verdict": after}
+    finally:
+        conn.close()

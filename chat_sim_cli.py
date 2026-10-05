@@ -121,6 +121,23 @@ def cmd_failures(limit: int):
         print(f"답변(앞 300자): {r['reply_head']}")
 
 
+def cmd_regrade():
+    """채점 규칙을 고친 뒤, 이미 받아둔 답변을 다시 매긴다."""
+    from src.chat_sim import checks
+    repository.init_db()
+    conn = repository._connect()
+    try:
+        run = conn.execute("SELECT * FROM sim_runs ORDER BY id DESC LIMIT 1").fetchone()
+    finally:
+        conn.close()
+    if not run:
+        print("실행 기록이 없습니다.")
+        return
+    result = repository.regrade_all(run["id"], checks.evaluate)
+    print(f"run #{run['id']} — {result['regraded']}건 재채점")
+    print("판정: " + ", ".join(f"{k} {v}" for k, v in sorted(result["by_verdict"].items())))
+
+
 def main():
     parser = argparse.ArgumentParser(description="AI 상담 챗봇 UX 시나리오 시뮬레이터")
     parser.add_argument("--plan", action="store_true", help="시나리오 구성만 출력")
@@ -131,6 +148,8 @@ def main():
                         help="이 묶음만 돌린다. 안전/인젝션을 먼저 보려면 adversarial")
     parser.add_argument("--report", action="store_true", help="결과 요약")
     parser.add_argument("--failures", type=int, metavar="N", help="실패 N건 상세")
+    parser.add_argument("--regrade", action="store_true",
+                        help="채점 규칙을 고친 뒤 저장된 답변을 다시 매긴다(모델 재실행 없음)")
     args = parser.parse_args()
 
     if args.plan:
@@ -141,6 +160,8 @@ def main():
         cmd_report()
     elif args.failures:
         cmd_failures(args.failures)
+    elif args.regrade:
+        cmd_regrade()
     else:
         parser.print_help()
 
