@@ -16,6 +16,7 @@ from typing import Callable, Dict, List, Optional
 from src import llm_client
 from src.chat_sim import checks, repository, scenarios as scenario_mod
 from src.curriculum_store import get_curriculum_text
+from src.services import safety
 from src.services.ai_chat_service import build_system_instruction
 
 logger = logging.getLogger("passion_mate")
@@ -78,10 +79,16 @@ def run_batch(limit: int, seed: int = 20261006,
 
         reply, error = None, None
         t0 = time.monotonic()
-        try:
-            reply = llm_client.chat(system_prompt, scenario["question"])
-        except Exception as exc:
-            error = f"{type(exc).__name__}: {exc}"
+        # 운영과 같은 순서로 간다 — 위기 신호는 모델에 가기 전에 코드가 먼저 잡는다.
+        # 여기서 건너뛰면 시뮬레이션이 실제와 다른 경로를 재는 셈이 된다.
+        crisis_hit = safety.detect_crisis(scenario["question"])
+        if crisis_hit:
+            reply = safety.crisis_reply()
+        else:
+            try:
+                reply = llm_client.chat(system_prompt, scenario["question"])
+            except Exception as exc:
+                error = f"{type(exc).__name__}: {exc}"
         elapsed = time.monotonic() - t0
 
         verdict = checks.evaluate(scenario, reply, error, elapsed)

@@ -9,6 +9,7 @@ from src import db
 from src.gemini_client import GEMINI_API_KEY, get_client
 from src.curriculum_store import get_curriculum_text
 from src import llm_client
+from src.services import safety
 from src.dto.ai import AIChatRequest
 
 logger = logging.getLogger("passion_mate")
@@ -114,6 +115,22 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     user_message = user_message.strip()
     if not user_message:
         return "질문 내용을 입력해 주세요."
+
+    # 모델에 보내기 전에 위기 신호부터 본다. 시뮬레이션에서 "손목을 그었어요"가
+    # 연습 부상으로 해석돼 온찜질 조언이 나갔다(2026-10-06). 프롬프트에 지침이
+    # 있어도 놓쳤다 — 이 판단은 모델이 아니라 규칙이 한다.
+    crisis_hit = safety.detect_crisis(user_message)
+    if crisis_hit and not is_draft:
+        student_name = None
+        if student_id is not None:
+            try:
+                row = db.get_student_basic(student_id)
+                student_name = row["name"] if row else None
+            except Exception:
+                logger.exception("위기 응답용 학생 이름 조회 실패")
+        logger.warning(f"[SAFETY] 위기 신호 감지 student_id={student_id} 표현={crisis_hit!r} "
+                       f"- 고정 안내로 응답하고 모델을 호출하지 않음")
+        return safety.crisis_reply(student_name)
 
     # 로컬 모델이 떠 있으면 하루 한도를 적용하지 않는다. 그 한도는 Gemini 무료 티어
     # (하루 20회, 배경 루프가 8회를 이미 쓴다)를 나눠 쓰려고 둔 것이지 교육적 이유가 아니다.
