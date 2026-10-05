@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 from src import db
 from src.gemini_client import GEMINI_API_KEY, get_client
 from src.curriculum_store import get_curriculum_text
+from src import llm_client
 from src.dto.ai import AIChatRequest
 
 logger = logging.getLogger("passion_mate")
@@ -77,7 +78,11 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     if not user_message:
         return "질문 내용을 입력해 주세요."
 
-    if student_id is not None:
+    # 로컬 모델이 떠 있으면 하루 한도를 적용하지 않는다. 그 한도는 Gemini 무료 티어
+    # (하루 20회, 배경 루프가 8회를 이미 쓴다)를 나눠 쓰려고 둔 것이지 교육적 이유가 아니다.
+    use_local = llm_client.is_available()
+
+    if student_id is not None and not use_local:
         today_str = datetime.now().strftime("%Y-%m-%d")
         usage_count = db.get_todays_ai_usage_count(student_id, today_str)
         if usage_count >= DAILY_AI_LIMIT_PER_STUDENT:
@@ -119,31 +124,50 @@ async def get_ai_reply(user_message: str, is_draft: bool = False, student_id: in
     else:
         student_context = "등록된 학생 정보가 없습니다."
 
+    # 시스템 지시문은 어느 백엔드로 가든 같다. 로컬·클라우드가 서로 다른 성격으로
+    # 답하면 학생은 날마다 다른 선생님을 만나는 셈이 된다.
+    if is_draft:
+        system_instruction = (
+            "너는 입시생이 선생님에게 직접 물어볼 질문에 대해, 선생님이 보고 즉시 전송하거나 가볍게 수정하여 답변할 수 있도록 "
+            "선생님의 연습 커리큘럼 및 지침서(Curriculum)에 입각하여 명확하고 정중하게 답변 초안을 작성해주는 '버스트인 AI 비서'이다.\n"
+            "선생님의 어조(전문적이고 따뜻한 격려의 말투)로 답변을 작성하라. 답변은 2~4문장 내외로 간결하고 핵심적으로 하되, 절대 반말을 쓰지 마라.\n"
+            "이모지와 그림문자는 절대 쓰지 마라. 글자만 사용하라.\n\n"
+            f"=== [질문 학생의 오늘 학습 내용] ===\n{student_context}\n\n"
+            f"=== [선생님의 커리큘럼 및 지침서] ===\n{curriculum_text}\n======================================"
+        )
+    else:
+        system_instruction = (
+            "너는 실기 시험을 준비하는 음악 입시생의 학습/연습을 전담하는 '버스트인 AI 튜터' 보조교사이다.\n"
+            "항상 친절하고 전문적이며, 학생들에게 영감을 주고 용기를 불어넣는 따뜻한 어조(반말이 아닌 격려의 말투)로 대답하라.\n"
+            "특히 아래 명시된 '선생님의 연습 커리큘럼 및 지침서(Curriculum)' 내용을 절대 거스르지 말고 이에 입각하여 조언하라.\n"
+            "학생이 '오늘 연습이 안돼요', '울고싶다' 등 감정적인 말을 하면 적극적으로 다독이며 공감을 주어라.\n"
+            "이모지와 그림문자는 절대 쓰지 마라. 글자만 사용하라.\n"
+            "**답은 400자 안팎으로 짧게 쓴다.** 공감 한두 문장으로 시작하고, 오늘 연습실에서 바로 할 수 있는 "
+            "구체적인 행동 두세 가지를 번호로 준 뒤 끝내라. 학생은 답을 기다리는 중이고, 길게 늘어놓으면 "
+            "읽지 않는다. 한 번에 세 가지 넘게 시키지 마라.\n"
+            "학생의 전공은 위에 적혀 있다. 전공을 되묻지 말고 그 전공에 맞는 말을 바로 하라.\n\n"
+            f"=== [질문 학생의 오늘 학습 내용] ===\n{student_context}\n\n"
+            f"=== [선생님의 커리큘럼 및 지침서] ===\n{curriculum_text}\n======================================"
+        )
+
+    # 1순위: 이 PC 안의 모델. 호출 수 제한이 없어 학생이 몇 번이든 물어볼 수 있다.
+    if use_local:
+        try:
+            reply_text = await asyncio.to_thread(
+                llm_client.chat, system_instruction, user_message)
+            if student_id is not None:
+                db.record_ai_usage(student_id, datetime.now().isoformat())
+            return reply_text
+        except Exception as e:
+            logger.exception("로컬 LLM 호출 실패, 다음 경로로 전환")
+            logger.warning(f"[LOCAL_LLM] 실패 — Gemini/룰베이스로 넘어간다: {e}")
+
+    # 2순위: Gemini. 로컬이 꺼져 있거나 답을 못 냈을 때만 온다.
     if GEMINI_API_KEY:
         if student_id is not None:
-            # 성공/실패 여부와 무관하게 시도 시점에 기록 — 실패해도 Google 쪽 요청은
-            # 이미 나갔을 수 있어 공용 쿼터 보호 관점에서 보수적으로 카운트한다.
+            # 성공/실패와 무관하게 시도 시점에 기록 — 실패해도 Google 쪽 요청은 이미
+            # 나갔을 수 있어 공용 쿼터 보호 관점에서 보수적으로 센다.
             db.record_ai_usage(student_id, datetime.now().isoformat())
-
-        if is_draft:
-            system_instruction = (
-                "너는 입시생이 선생님에게 직접 물어볼 질문에 대해, 선생님이 보고 즉시 전송하거나 가볍게 수정하여 답변할 수 있도록 "
-                "선생님의 연습 커리큘럼 및 지침서(Curriculum)에 입각하여 명확하고 정중하게 답변 초안을 작성해주는 '버스트인 AI 비서'이다.\n"
-                "선생님의 어조(전문적이고 따뜻한 격려의 말투)로 답변을 작성하라. 답변은 2~4문장 내외로 간결하고 핵심적으로 하되, 절대 반말을 쓰지 마라.\n"
-                "이모지와 그림문자는 절대 쓰지 마라. 글자만 사용하라.\n\n"
-                f"=== [질문 학생의 오늘 학습 내용] ===\n{student_context}\n\n"
-                f"=== [선생님의 커리큘럼 및 지침서] ===\n{curriculum_text}\n======================================"
-            )
-        else:
-            system_instruction = (
-                "너는 실기 시험을 준비하는 음악 입시생의 학습/연습을 전담하는 '버스트인 AI 튜터' 보조교사이다.\n"
-                "항상 친절하고 전문적이며, 학생들에게 영감을 주고 용기를 불어넣는 따뜻한 어조(반말이 아닌 격려의 말투)로 대답하라.\n"
-                "특히 아래 명시된 '선생님의 연습 커리큘럼 및 지침서(Curriculum)' 내용을 절대 거스르지 말고 이에 입각하여 조언하라.\n"
-                "학생이 '오늘 연습이 안돼요', '울고싶다' 등 감정적인 말을 하면 적극적으로 다독이며 공감을 주어라.\n"
-                "이모지와 그림문자는 절대 쓰지 마라. 글자만 사용하라.\n\n"
-                f"=== [질문 학생의 오늘 학습 내용] ===\n{student_context}\n\n"
-                f"=== [선생님의 커리큘럼 및 지침서] ===\n{curriculum_text}\n======================================"
-            )
 
         try:
             prompt = f"System Instructions: {system_instruction}\n\nUser Question: {user_message}"
