@@ -22,17 +22,24 @@ logger = logging.getLogger("passion_mate")
 
 # 호출 사이 쉬는 시간. GPU와 전원을 쉬게 하고, 그 틈에 실제 학생 요청이 끼어들 수 있다.
 PAUSE_BETWEEN_SEC = 1.0
-# 이만큼 모이면 저장한다. 너무 크면 죽었을 때 잃는 양이 늘고, 너무 작으면 디스크를 때린다.
-SAVE_EVERY = 10
+# 한 건마다 저장한다. 한 건에 50초가 걸리므로 SQLite 쓰기 비용은 사실상 0이고,
+# 묶어서 저장하면 PC가 죽었을 때 그만큼을 통째로 잃는다(이 PC는 메모리 결함으로
+# 블루스크린 이력이 있다).
+SAVE_EVERY = 1
 
 
-def run_batch(limit: int, seed: int = scenario_mod.TOTAL_TARGET and 20261006,
+def run_batch(limit: int, seed: int = 20261006,
               total: int = scenario_mod.TOTAL_TARGET,
               pause_sec: float = PAUSE_BETWEEN_SEC,
+              bucket: Optional[str] = None,
               progress: Optional[Callable[[Dict], None]] = None) -> Dict:
     """남은 시나리오 중 `limit`건을 돌린다.
 
     같은 seed로 끝나지 않은 run이 있으면 거기에 이어 붙인다. 없으면 새로 시작한다.
+
+    `bucket`을 주면 그 묶음만 돌린다. 섞인 순서대로 가면 전체의 5%인 adversarial이
+    며칠 뒤에나 나오는데, 안전 관련 실패를 닷새 뒤에 아는 건 늦다. 그래서
+    adversarial부터 먼저 비우고 나머지를 돌리는 쪽을 권한다.
     """
     if not llm_client.is_available(force=True):
         raise RuntimeError(
@@ -52,7 +59,10 @@ def run_batch(limit: int, seed: int = scenario_mod.TOTAL_TARGET and 20261006,
         logger.info(f"[CHAT_SIM] 새 run 시작 run_id={run_id}")
 
     done = repository.done_order_numbers(run_id)
-    pending = [s for s in all_scenarios if s["order_no"] not in done][:limit]
+    pending = [s for s in all_scenarios if s["order_no"] not in done]
+    if bucket:
+        pending = [s for s in pending if s["bucket"] == bucket]
+    pending = pending[:limit]
 
     if not pending:
         repository.finish_run(run_id)
@@ -93,8 +103,12 @@ def run_batch(limit: int, seed: int = scenario_mod.TOTAL_TARGET and 20261006,
     if buffer:
         repository.save_results(run_id, buffer)
 
-    done_after = len(repository.done_order_numbers(run_id))
+    done_after_set = repository.done_order_numbers(run_id)
+    done_after = len(done_after_set)
     remaining = total - done_after
+    remaining_in_bucket = (len([s for s in all_scenarios
+                                if s["bucket"] == bucket and s["order_no"] not in done_after_set])
+                           if bucket else remaining)
     if remaining <= 0:
         repository.finish_run(run_id)
 
@@ -104,6 +118,8 @@ def run_batch(limit: int, seed: int = scenario_mod.TOTAL_TARGET and 20261006,
         "ran": ran,
         "done_total": done_after,
         "remaining": remaining,
+        "remaining_in_bucket": remaining_in_bucket,
+        "bucket": bucket,
         "wall_sec": round(wall, 1),
         "sec_per_item": round(wall / ran, 1) if ran else 0,
         "eta_hours": round(remaining * (wall / ran) / 3600, 1) if ran else None,

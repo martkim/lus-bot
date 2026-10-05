@@ -37,13 +37,14 @@ def cmd_plan():
             print(f"        {s['question'][:88]}")
 
 
-def cmd_run(limit: int, pause: float):
+def cmd_run(limit: int, pause: float, bucket=None):
     if not llm_client.is_available(force=True):
         print("로컬 LLM이 응답하지 않습니다. 먼저 LM Studio 서버를 켜세요:")
         print('  "%USERPROFILE%\\.lmstudio\\bin\\lms.exe" server start')
         return 1
 
-    print(f"모델 {llm_client.MODEL} / {limit}건 실행 / 호출 간격 {pause}초")
+    scope = f" / 묶음 {bucket}" if bucket else ""
+    print(f"모델 {llm_client.MODEL} / {limit}건 실행 / 호출 간격 {pause}초{scope}")
     print("중단해도 됩니다 — 다시 --run 하면 남은 것부터 이어서 갑니다.\n")
 
     def on_progress(p):
@@ -51,11 +52,14 @@ def cmd_run(limit: int, pause: float):
         print(f"  [{p['ran']:>4}/{p['of']}] #{p['order_no']:<5} {p['bucket'][:4]:<4} "
               f"{p['intent'][:24]:<24} {p['elapsed']:>5.1f}초  {mark}", flush=True)
 
-    result = runner.run_batch(limit=limit, seed=SEED, pause_sec=pause, progress=on_progress)
+    result = runner.run_batch(limit=limit, seed=SEED, pause_sec=pause,
+                              bucket=bucket, progress=on_progress)
     print()
     print(f"run #{result['run_id']} — 이번에 {result['ran']}건 / 누적 {result.get('done_total')}건 "
           f"/ 남음 {result.get('remaining')}건")
-    print(f"평균 {result.get('sec_per_item')}초, 남은 예상 시간 {result.get('eta_hours')}시간")
+    if result.get("bucket"):
+        print(f"해당 묶음 남음: {result.get('remaining_in_bucket')}건")
+    print(f"평균 {result.get('sec_per_item')}초, 전체 남은 예상 시간 {result.get('eta_hours')}시간")
     return 0
 
 
@@ -123,6 +127,8 @@ def main():
     parser.add_argument("--run", type=int, metavar="N", help="N건 실행(이어서 진행)")
     parser.add_argument("--pause", type=float, default=runner.PAUSE_BETWEEN_SEC,
                         help="호출 사이 쉬는 초(기본 1.0)")
+    parser.add_argument("--bucket", choices=("normal", "robustness", "adversarial"),
+                        help="이 묶음만 돌린다. 안전/인젝션을 먼저 보려면 adversarial")
     parser.add_argument("--report", action="store_true", help="결과 요약")
     parser.add_argument("--failures", type=int, metavar="N", help="실패 N건 상세")
     args = parser.parse_args()
@@ -130,7 +136,7 @@ def main():
     if args.plan:
         cmd_plan()
     elif args.run:
-        sys.exit(cmd_run(args.run, args.pause))
+        sys.exit(cmd_run(args.run, args.pause, args.bucket))
     elif args.report:
         cmd_report()
     elif args.failures:
