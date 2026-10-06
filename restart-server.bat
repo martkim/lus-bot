@@ -1,64 +1,71 @@
 @echo off
-setlocal
-title PASSION MATE - 서버 재시작
+setlocal enabledelayedexpansion
+title PASSION MATE - Restart Server
 cd /d "%~dp0"
 
 REM ---------------------------------------------------------------------------
-REM 서버(uvicorn)를 내리고 워치독이 새 코드로 되살리게 한다.
+REM Stops uvicorn so the watchdog starts it again with the current code.
+REM The backend runs without --reload, so edits do nothing until a restart.
 REM
-REM 왜 필요한가: 백엔드는 --reload 없이 돌아서 .py를 고쳐도 재시작 전까지 반영되지
-REM 않는다. 그런데 이 서버는 작업 스케줄러가 S4U로 띄워서 **세션 0**에 있고,
-REM 로그인 세션에서 일반 권한으로는 종료가 안 된다. 그래서 이 스크립트는 관리자
-REM 권한을 요청한다.
+REM This script only KILLS. It does not start the server itself.
 REM
-REM 내리기만 하면 된다. system_service.py(워치독)가 5분 주기로 포트를 확인하다
-REM 죽어 있으면 알아서 다시 띄운다. 여기서는 그 시간을 기다리지 않고 바로
-REM 띄워주되, 실패해도 워치독이 받쳐준다.
+REM Why: the first version ran "start /B python -m uvicorn ...", which attaches
+REM the child to this console. Closing the window after the pause killed the
+REM server with it, and the site went down until the watchdog noticed
+REM (2026-10-07). system_service.py already starts uvicorn the right way --
+REM detached, no console, in session 0 -- and checks the port every 5 minutes.
+REM Letting it do that is both simpler and more reliable than repeating it here.
+REM
+REM Needs elevation: a scheduled task starts the server S4U, so it lives in
+REM session 0 and a normal logged-in session cannot kill it (access denied).
+REM
+REM This file is ASCII only on purpose. cmd.exe reads .bat in the console
+REM codepage (949 on Korean Windows), so UTF-8 Korean comments become garbage
+REM lines that cmd tries to execute. That broke the first version too.
 REM ---------------------------------------------------------------------------
 
 net session >nul 2>&1
 if not "%errorlevel%"=="0" (
-    echo 관리자 권한이 필요합니다. 권한을 요청합니다...
+    echo Requesting administrator rights...
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b
 )
 
 echo ============================================================
-echo   PASSION MATE 서버 재시작
+echo   PASSION MATE - Restart Server
 echo ============================================================
 echo.
 
-echo [1/3] 포트 8088을 쓰는 프로세스를 찾습니다...
+echo [1/2] Stopping the process on port 8088...
 set "FOUND="
 for /f "tokens=5" %%P in ('netstat -ano ^| findstr /R /C:":8088 .*LISTENING"') do (
     set "FOUND=1"
-    echo       PID %%P 종료
-    taskkill /PID %%P /F >nul 2>&1
+    echo       killing PID %%P
+    taskkill /PID %%P /F
 )
-if not defined FOUND echo       (실행 중인 서버가 없습니다)
+if not defined FOUND echo       nothing was running on 8088
 
 echo.
-echo [2/3] 서버를 다시 띄웁니다...
-start "" /B python -m uvicorn main:app --host 0.0.0.0 --port 8088 >> logs\server_out.log 2>> logs\server_err.log
-
-echo.
-echo [3/3] 응답을 확인합니다...
+echo [2/2] Waiting for the watchdog to start it again...
+echo       (it checks every 5 minutes, so this can take a few minutes)
 set "OK="
-for /L %%i in (1,1,15) do (
+for /L %%i in (1,1,60) do (
     if not defined OK (
-        timeout /t 2 /nobreak >nul
+        timeout /t 6 /nobreak >nul
         curl -s -o nul -m 3 http://127.0.0.1:8088/ && set "OK=1"
     )
 )
 
 echo.
 if defined OK (
-    echo 성공 - 서버가 새 코드로 응답합니다.
-    echo 커리큘럼 덮어쓰기 루프가 제거된 코드가 적용되었습니다.
+    echo SUCCESS - the server is answering again, now running the current code.
 ) else (
-    echo 아직 응답이 없습니다. 워치독이 5분 안에 다시 띄웁니다.
-    echo 상태는 logs\server_err.log 와 logs\monitor_log.txt 에서 확인하세요.
+    echo Still no response. Check these:
+    echo   logs\monitor_log.txt     - watchdog cycle
+    echo   logs\server_err.log      - startup errors
+    echo   Get-Process pythonw      - the watchdog itself must be running
 )
 
 echo.
+echo You can close this window now. The server does not depend on it.
 pause
